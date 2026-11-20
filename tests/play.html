@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocket Playroom — one game</title>
+<!-- Dev/test page: loads the shell plus ONE game, so a game can be worked on
+     and tested without the others.  tests/play.html?g=<id>#<id>
+     (?g=_template loads the template game.) -->
+<link rel="stylesheet" href="../css/shell.css">
+<script>
+  var MG_DEV_GAME = (new URLSearchParams(location.search).get('g') || '').replace(/[^a-z0-9_-]/g, '');
+  if (MG_DEV_GAME && MG_DEV_GAME !== '_template') document.write('<link rel="stylesheet" href="../css/games/' + MG_DEV_GAME + '.css">');
+</script>
+</head>
+<body>
+<div id="app"></div>
+<script src="../js/core.js"></script>
+<script>
+  if (MG_DEV_GAME) document.write('<script src="../js/games/' + MG_DEV_GAME + '.js"><\/script>');
+</script>
+<script>MG.start();</script>
+</body>
+</html>
