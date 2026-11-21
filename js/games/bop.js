@@ -21,6 +21,7 @@
   var RISING = -0.08;         // still going up faster than this: not yours to bop yet
   var DRAG = 0.6;             // share of its sideways speed a balloon keeps each second
   var STRING = 0.5;           // string length, in balloon widths
+  var DRIFT_MIN = 0.15;       // a balloon waiting over the sender's half drifts towards the middle at least this fast
   var COLORS = ['berry', 'sun', 'sea', 'leaf', 'grape', 'tangerine'];
 
   /* ---------------------------------------------------------- pure rules */
@@ -231,6 +232,11 @@
           // It hangs up there until it can be somebody's: rested, and over the other player's half.
           // So the whole fall is theirs to react in, and it never sinks where nobody may touch it.
           var hang = ctx.time < b.cool || (b.from >= 0 && over === b.from);
+          // ...and while it waits over the sender's half it always drifts on towards the middle, so it can never stall there
+          if (hang && ctx.time >= b.cool && b.from >= 0 && over === b.from) {
+            var toward = b.from === 0 ? 1 : -1;
+            if (b.vx * toward < DRIFT_MIN) b.vx = toward * DRIFT_MIN;
+          }
           fly(b, dt, gravityFor(ctx.helpFor(over)), ceiling, wall, hang);
           if (b.y >= FLOOR) { b.y = FLOOR; land(b); }
           draw(b);
