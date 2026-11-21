@@ -1,0 +1,141 @@
+/* Shh! Tiptoe — styles. Every selector is scoped under .g-tiptoe.
+   The whole playmat says what the wolf is doing: night (asleep, go!),
+   dusk (stirring, careful...), bright (awake, FREEZE). --pos (0..1) is how
+   far up its lane a player has tiptoed. */
+
+.g-tiptoe .tt-scene {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  gap: 8px 10px;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "wolf wolf" "l0 l1";
+  background: #2B2A6B;
+  transition: background-color 0.25s;
+  --wolf: clamp(64px, calc(var(--gmin) * 0.22), 150px);
+  --me: clamp(48px, calc(var(--gmin) * 0.17), 110px);
+}
+.g-tiptoe .tt-scene[data-phase="stir"] { background: #8A5BC4; }
+.g-tiptoe .tt-scene[data-phase="awake"] { background: #FFD45C; }
+.g-tiptoe .tt-scene[data-phase="yawn"] { background: #6A5BB0; }
+.g-tiptoe .tt-scene[data-phase="party"] { background: var(--sun-soft); }
+
+/* ----------------------------------------------------------------- wolf */
+
+.g-tiptoe .tt-wolf {
+  grid-area: wolf;
+  justify-self: center;
+  position: relative;
+  margin-top: calc(var(--wolf) * 0.16); /* headroom for the eyes that pop up */
+  width: var(--wolf);
+  height: var(--wolf);
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--wolf) * 0.84);
+  line-height: 1;
+  transition: filter 0.25s, transform 0.25s cubic-bezier(.3, 1.6, .5, 1);
+}
+.g-tiptoe .tt-scene[data-phase="sleep"] .tt-wolf { filter: saturate(0.55) brightness(0.8); transform: rotate(-8deg) translateY(6%); }
+.g-tiptoe .tt-scene[data-phase="yawn"] .tt-wolf { filter: saturate(0.7) brightness(0.9); transform: rotate(-4deg); }
+.g-tiptoe .tt-scene[data-phase="awake"] .tt-wolf { transform: scale(1.14); }
+.g-tiptoe .tt-scene[data-phase="party"] .tt-wolf { animation: tt-nod 0.3s ease-in-out infinite alternate; }
+@keyframes tt-nod { from { transform: rotate(-8deg); } to { transform: rotate(8deg) scale(1.08); } }
+
+.g-tiptoe .tt-eyes, .g-tiptoe .tt-zzz { position: absolute; line-height: 1; opacity: 0; pointer-events: none; }
+.g-tiptoe .tt-zzz { right: -22%; top: -6%; font-size: 0.42em; }
+.g-tiptoe .tt-scene[data-phase="sleep"] .tt-zzz { opacity: 1; animation: tt-zzz 1.7s ease-in-out infinite; }
+@keyframes tt-zzz { 0%, 100% { transform: translateY(0) scale(0.85); } 50% { transform: translateY(-20%) scale(1.1); } }
+.g-tiptoe .tt-eyes { left: 50%; top: -14%; font-size: 0.56em; transform: translateX(-50%) scale(0.2); }
+.g-tiptoe .tt-scene[data-phase="awake"] .tt-eyes {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  transition: transform 0.18s cubic-bezier(.3, 1.9, .5, 1);
+  animation: tt-look 0.9s 0.2s ease-in-out infinite alternate;
+}
+@keyframes tt-look { from { transform: translateX(-74%); } to { transform: translateX(-26%); } }
+
+/* ---------------------------------------------------------------- lanes */
+
+.g-tiptoe .tt-lane {
+  appearance: none;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-soft);
+  overflow: hidden;
+}
+.g-tiptoe .tt-lane[data-p="0"] { grid-area: l0; }
+.g-tiptoe .tt-lane[data-p="1"] { grid-area: l1; }
+.g-tiptoe .tt-scene[data-phase="awake"] .tt-lane { box-shadow: inset 0 0 0 5px var(--berry); }
+
+.g-tiptoe .tt-cake {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  font-size: calc(var(--me) * 0.62);
+  line-height: 1;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.g-tiptoe .tt-marks {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--me) * 0.8);
+  bottom: calc(var(--me) * 0.62);
+  width: 10px;
+  margin-left: -5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.g-tiptoe .tt-mark { width: 10px; height: 10px; border-radius: 50%; background: var(--c-dark); opacity: 0.45; }
+
+.g-tiptoe .tt-climber {
+  position: absolute;
+  left: 50%;
+  /* from the bottom of the lane up to just under the cupcake */
+  bottom: calc(2% + var(--pos) * (96% - var(--me) * 1.72));
+  width: var(--me);
+  height: var(--me);
+  margin-left: calc(var(--me) * -0.5);
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--c);
+  font-size: calc(var(--me) * 0.56);
+  line-height: 1;
+  pointer-events: none;
+  transition: bottom 0.4s cubic-bezier(.4, 1.5, .6, 1);
+}
+.g-tiptoe .tt-climber.is-hop .mg-sticker { animation: tt-hop 0.42s ease-out; }
+@keyframes tt-hop { 0% { transform: none; } 40% { transform: translateY(-22%) rotate(-8deg) scale(1.08); } 100% { transform: none; } }
+.g-tiptoe .tt-climber.is-dizzy { animation: tt-dizzy 0.8s linear; }
+@keyframes tt-dizzy { to { transform: rotate(720deg); } }
+.g-tiptoe .tt-climber.is-champ { box-shadow: 0 0 0 5px var(--sun); }
+.g-tiptoe .tt-lane.is-zooming .tt-climber { transition-duration: 0.8s; }
+
+.g-tiptoe .tt-hand {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  font-size: calc(var(--me) * 0.8);
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 0 rgba(12, 10, 38, 0.3));
+  animation: tt-hand 0.5s ease-in-out infinite alternate;
+}
+.g-tiptoe .tt-hand.is-done { display: none; }
+@keyframes tt-hand { from { transform: translateX(-50%) translateY(16%); } to { transform: translateX(-50%) translateY(-6%) scale(0.92); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-tiptoe .tt-hand, .g-tiptoe .tt-scene[data-phase="sleep"] .tt-zzz, .g-tiptoe .tt-scene[data-phase="party"] .tt-wolf,
+  .g-tiptoe .tt-scene[data-phase="awake"] .tt-eyes, .g-tiptoe .tt-climber.is-dizzy, .g-tiptoe .tt-climber.is-hop .mg-sticker { animation: none; }
+}

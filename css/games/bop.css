@@ -1,0 +1,167 @@
+/* Balloon Bop — styles. Every selector is scoped under .g-bop.
+   Balloons are placed by left/top in % of the scene (their centre). */
+
+.g-bop .bp-scene {
+  position: absolute;
+  inset: 0;
+  --size: clamp(84px, calc(var(--gmin) * 0.3), 190px);
+}
+
+/* each half is one big button */
+.g-bop .bp-pad {
+  appearance: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc(50% - 4px);
+  padding: 0;
+  border: 0;
+  background: var(--c-soft);
+  transition: background-color 0.2s;
+}
+.g-bop .bp-pad[data-p="0"] { left: 0; border-right: 3px dashed var(--c-dark); }
+.g-bop .bp-pad[data-p="1"] { right: 0; border-left: 3px dashed var(--c-dark); }
+/* the half the balloon is over lights up: "yours!" */
+.g-bop .bp-scene[data-over="0"] .bp-pad[data-p="0"],
+.g-bop .bp-scene[data-over="1"] .bp-pad[data-p="1"] { background: var(--c); }
+
+.g-bop .bp-who {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  width: calc(var(--size) * 0.62);
+  height: calc(var(--size) * 0.62);
+  margin-left: calc(var(--size) * -0.31);
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: calc(var(--size) * 0.36);
+  line-height: 1;
+  pointer-events: none;
+}
+.g-bop .bp-hand {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  font-size: calc(var(--size) * 0.42);
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 0 rgba(12, 10, 38, 0.3));
+  animation: bp-hand 0.5s ease-in-out infinite alternate;
+}
+.g-bop .bp-hand.is-done { display: none; }
+@keyframes bp-hand { from { transform: translateX(-50%) translateY(16%); } to { transform: translateX(-50%) translateY(-6%) scale(0.92); } }
+
+.g-bop .bp-sky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+
+.g-bop .bp-balloon {
+  position: absolute;
+  width: 0;
+  height: 0;
+  animation: bp-in 0.4s cubic-bezier(.3, 1.7, .5, 1) backwards;
+}
+@keyframes bp-in { from { transform: scale(0.1); } }
+.g-bop .bp-body {
+  position: absolute;
+  left: calc(var(--size) * -0.5);
+  top: calc(var(--size) * -0.6);
+  width: var(--size);
+  height: calc(var(--size) * 1.18);
+  border: 3px solid var(--line);
+  border-radius: 50% 50% 50% 50% / 44% 44% 56% 56%;
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.7) 0 9%, transparent 10%),
+    var(--b);
+  box-shadow: inset calc(var(--size) * -0.08) calc(var(--size) * -0.08) 0 var(--b-dark);
+  transform: rotate(var(--lean, 0deg));
+  transform-origin: 50% 100%;
+}
+/* the knot */
+.g-bop .bp-body::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--size) * -0.1);
+  width: calc(var(--size) * 0.16);
+  height: calc(var(--size) * 0.12);
+  border: 3px solid var(--line);
+  border-radius: 20% 20% 50% 50%;
+  background: var(--b-dark);
+  transform: translateX(-50%);
+}
+/* a happy face: two eyes and a smile */
+.g-bop .bp-face {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 34%;
+  height: 16%;
+  border: 0 solid var(--line);
+  border-bottom-width: 4px;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  transform: translateX(-50%);
+}
+.g-bop .bp-face::before, .g-bop .bp-face::after {
+  content: "";
+  position: absolute;
+  top: -110%;
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--line);
+}
+.g-bop .bp-face::before { left: 0; }
+.g-bop .bp-face::after { right: 0; }
+.g-bop .bp-string {
+  position: absolute;
+  left: -1px;
+  top: calc(var(--size) * 0.68);
+  width: 3px;
+  height: calc(var(--size) * 0.5);
+  border-radius: 2px;
+  background: var(--ink-soft);
+  transform: rotate(calc(var(--lean, 0deg) * -0.6));
+  transform-origin: 50% 0;
+}
+
+/* touchdown: it goes flat and whizzes off sideways */
+.g-bop .bp-balloon.is-flat { animation: bp-flat 0.75s cubic-bezier(.4, 0, .8, .4) forwards; }
+@keyframes bp-flat {
+  0% { transform: scale(1.2, 0.7); }
+  30% { transform: translate(calc(var(--dir) * var(--size) * 0.6), calc(var(--size) * -0.9)) scale(0.6) rotate(calc(var(--dir) * 200deg)); }
+  65% { transform: translate(calc(var(--dir) * var(--size) * -0.4), calc(var(--size) * -1.6)) scale(0.4) rotate(calc(var(--dir) * 480deg)); }
+  100% { transform: translate(calc(var(--dir) * var(--size) * 0.3), calc(var(--size) * -2.4)) scale(0.1) rotate(calc(var(--dir) * 720deg)); opacity: 0; }
+}
+
+/* the row of passes to fill */
+.g-bop .bp-row {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  display: grid;
+  grid-template-columns: repeat(6, auto);
+  gap: 5px;
+  padding: 7px 9px;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--line);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.g-bop .bp-dot {
+  width: clamp(12px, calc(var(--gmin) * 0.045), 22px);
+  aspect-ratio: 1;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.g-bop .bp-dot.is-on { background: var(--sun); animation: bp-dot 0.3s cubic-bezier(.3, 1.9, .5, 1); }
+@keyframes bp-dot { from { transform: scale(0.3); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-bop .bp-hand { animation: none; }
+  .g-bop .bp-balloon.is-flat { animation-duration: 0.2s; }
+}
