@@ -1,1 +1,196 @@
-/* Noodle Slurp — styles. Every selector is scoped under .g-slurp */
+/* Noodle Slurp — styles. Every selector is scoped under .g-slurp.
+   --p (set by the game, -1..1) is where the meatball sits along the noodle. */
+
+.g-slurp {
+  --sl-noodle: #FFE39A;
+  --sl-ball: #B5653A;
+  --sl-ball-dark: #7E3F1F;
+}
+
+.g-slurp .sl-scene {
+  position: absolute;
+  inset: 0;
+  --p: 0;
+  --face: calc(var(--gmin) * 0.27);
+  --inset: calc(var(--face) * 0.62);              /* face centre, from its own edge */
+  --span: calc(50% - var(--inset) - var(--face) * 0.3);  /* centre -> a mouth */
+  --line-y: 50%;
+}
+
+/* each half is one big button */
+.g-slurp .sl-pad {
+  appearance: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc(50% - 5px);
+  padding: 0;
+  border: 0;
+  background: var(--c-soft);
+  transition: background-color 0.3s;
+}
+.g-slurp .sl-pad[data-p="0"] { left: 0; border-right: 3px dashed var(--c-dark); }
+.g-slurp .sl-pad[data-p="1"] { right: 0; border-left: 3px dashed var(--c-dark); }
+.g-slurp .sl-scene[data-state="slurp"] .sl-pad:active { background: var(--c); }
+
+.g-slurp .sl-face {
+  position: absolute;
+  top: var(--line-y);
+  width: var(--face);
+  height: var(--face);
+  margin-top: calc(var(--face) * -0.62);
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--face) * 0.86);
+  line-height: 1;
+  pointer-events: none;
+}
+.g-slurp .sl-pad[data-p="0"] .sl-face { left: calc(var(--inset) - var(--face) / 2); }
+.g-slurp .sl-pad[data-p="1"] .sl-face { right: calc(var(--inset) - var(--face) / 2); }
+.g-slurp .sl-face.is-full > .mg-sticker { animation: sl-full 0.5s ease-in-out 3 alternate; }
+@keyframes sl-full { from { transform: rotate(-6deg); } to { transform: rotate(6deg) scale(1.08); } }
+
+.g-slurp .sl-tash {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  font-size: 0.5em;
+  line-height: 1;
+  color: var(--sl-noodle);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.2) rotate(40deg);
+}
+.g-slurp .sl-face.is-tashed .sl-tash {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  transition: transform 0.3s cubic-bezier(.3, 1.9, .5, 1), opacity 0.1s;
+}
+
+/* bowls won: two places on each side */
+.g-slurp .sl-wins {
+  position: absolute;
+  top: 14px;
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+.g-slurp .sl-pad[data-p="0"] .sl-wins { left: 14px; }
+.g-slurp .sl-pad[data-p="1"] .sl-wins { right: 14px; flex-direction: row-reverse; }
+.g-slurp .sl-slot {
+  width: calc(var(--gmin) * 0.13);
+  height: calc(var(--gmin) * 0.13);
+  display: grid;
+  place-items: center;
+  border: 3px dashed var(--c-dark);
+  border-radius: 50%;
+  font-size: calc(var(--gmin) * 0.085);
+  line-height: 1;
+}
+.g-slurp .sl-slot.is-won {
+  border-style: solid;
+  border-color: var(--line);
+  background: var(--surface);
+  animation: sl-won 0.4s cubic-bezier(.3, 1.8, .5, 1) both;
+}
+@keyframes sl-won { from { transform: scale(0.2) rotate(-90deg); } to { transform: none; } }
+
+/* the wordless tutorial: a tapping finger on each side until that side's first slurp */
+.g-slurp .sl-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  font-size: calc(var(--gmin) * 0.15);
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 0 rgba(12, 10, 38, 0.3));
+  transform: translateX(-50%);
+  animation: sl-hand 0.5s ease-in-out infinite alternate;
+}
+.g-slurp .sl-hand.is-done { display: none; }
+@keyframes sl-hand { from { transform: translateX(-50%) translateY(18%); } to { transform: translateX(-50%) translateY(-6%) scale(0.92); } }
+
+/* the noodle, the meatball and the bowl it came from */
+.g-slurp .sl-noodle {
+  position: absolute;
+  top: var(--line-y);
+  left: calc(50% - var(--span));
+  width: calc(var(--span) * 2);
+  height: calc(var(--gmin) * 0.07);
+  margin-top: calc(var(--gmin) * -0.035);
+  overflow: hidden;
+  pointer-events: none;
+}
+.g-slurp .sl-noodle svg {
+  display: block;
+  width: 120%;
+  height: 100%;
+  margin-left: -10%;
+  overflow: visible;
+  transform: translateX(calc(var(--p) * 8%));
+}
+.g-slurp .sl-noodle path { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.g-slurp .sl-noodle__edge { stroke: var(--line); stroke-width: calc(var(--gmin) * 0.045 + 6px); }
+.g-slurp .sl-noodle__core { stroke: var(--sl-noodle); stroke-width: calc(var(--gmin) * 0.045); }
+.g-slurp .sl-scene[data-state="slurp"] .sl-noodle { animation: sl-wobble 0.18s ease-in-out infinite alternate; }
+@keyframes sl-wobble { from { transform: scaleY(0.92); } to { transform: scaleY(1.1); } }
+
+.g-slurp .sl-ball {
+  position: absolute;
+  top: var(--line-y);
+  left: calc(50% + var(--p) * var(--span));
+  width: calc(var(--gmin) * 0.13);
+  height: calc(var(--gmin) * 0.13);
+  margin: calc(var(--gmin) * -0.065) 0 0 calc(var(--gmin) * -0.065);
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.55) 0 12%, transparent 13%),
+    radial-gradient(circle at 66% 62%, var(--sl-ball-dark) 0 9%, transparent 10%),
+    radial-gradient(circle at 36% 70%, var(--sl-ball-dark) 0 7%, transparent 8%),
+    var(--sl-ball);
+  box-shadow: 0 4px 0 var(--line);
+  pointer-events: none;
+}
+.g-slurp .sl-scene[data-state="gulp"] .sl-ball { transform: scale(0); transition: transform 0.22s ease-in; }
+
+.g-slurp .sl-bowl {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--line-y) + var(--gmin) * 0.14);
+  font-size: calc(var(--gmin) * 0.2);
+  line-height: 1;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* ready ... set ... SLURP */
+.g-slurp .sl-lights {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--line-y) - var(--gmin) * 0.36);
+  display: flex;
+  gap: calc(var(--gmin) * 0.03);
+  padding: calc(var(--gmin) * 0.025);
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--line);
+  transform: translateX(-50%);
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.g-slurp .sl-scene[data-state="gulp"] .sl-lights { opacity: 0; }
+.g-slurp .sl-light {
+  width: calc(var(--gmin) * 0.075);
+  height: calc(var(--gmin) * 0.075);
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.g-slurp .sl-light.is-on { background: var(--sun); animation: sl-light 0.25s cubic-bezier(.3, 1.8, .5, 1); }
+.g-slurp .sl-light.is-on.is-go { background: var(--leaf); }
+@keyframes sl-light { from { transform: scale(0.5); } to { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-slurp .sl-hand, .g-slurp .sl-scene[data-state="slurp"] .sl-noodle, .g-slurp .sl-face.is-full > .mg-sticker { animation: none; }
+}

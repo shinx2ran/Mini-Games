@@ -1,1 +1,199 @@
-/* Egg Twins — styles. Every selector is scoped under .g-twins */
+/* Egg Twins — styles. Every selector is scoped under .g-twins.
+   The game sets --cols/--rows and --egg (egg width in px) on .tw-board. */
+
+.g-twins {
+  --tw-shell: #FFF7E2;
+  --tw-speck: #E9B872;
+  --tw-straw: #F0D08A;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-twins { --tw-straw: #5B4A24; }
+}
+:root[data-theme="dark"] .g-twins { --tw-straw: #5B4A24; }
+
+.g-twins .tw-scene {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "board board" "n0 n1";
+}
+.g-twins[data-orient="landscape"] .tw-scene {
+  grid-template-columns: minmax(84px, 17%) minmax(0, 1fr) minmax(84px, 17%);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "n0 board n1";
+}
+
+.g-twins .tw-board {
+  grid-area: board;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows, 3), minmax(0, 1fr));
+  --egg: 56px;
+}
+
+/* the whole cell is the button; the egg sits in the middle of it */
+.g-twins .tw-egg {
+  appearance: none;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: grid;
+  place-items: center;
+}
+.g-twins .tw-egg.is-gone { visibility: hidden; }
+
+.g-twins .tw-shell, .g-twins .tw-baby {
+  grid-area: 1 / 1;
+  width: var(--egg);
+  height: calc(var(--egg) * 1.24);
+  transition: transform 0.22s cubic-bezier(.3, 1.5, .5, 1), opacity 0.12s;
+}
+.g-twins .tw-shell {
+  position: relative;
+  border: 3px solid var(--line);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: var(--tw-shell);
+  box-shadow: 0 calc(var(--egg) * 0.07) 0 var(--line);
+  transform: rotate(var(--tilt));
+  overflow: hidden;
+}
+.g-twins .tw-speck {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 28% 30%, var(--tw-speck) 0 6%, transparent 7%),
+    radial-gradient(circle at 66% 22%, var(--tw-speck) 0 4%, transparent 5%),
+    radial-gradient(circle at 74% 58%, var(--tw-speck) 0 7%, transparent 8%),
+    radial-gradient(circle at 36% 70%, var(--tw-speck) 0 5%, transparent 6%),
+    radial-gradient(circle at 54% 44%, var(--tw-speck) 0 3%, transparent 4%);
+}
+.g-twins .tw-egg:active .tw-shell { transform: rotate(var(--tilt)) scale(0.93); }
+
+.g-twins .tw-baby {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--tint);
+  font-size: calc(var(--egg) * 0.66);
+  line-height: 1;
+  opacity: 0;
+  transform: scale(0.4);
+  overflow: hidden;
+}
+.g-twins .tw-baby .mg-sticker { transform: translateY(-8%); }
+/* the bottom half of its shell */
+.g-twins .tw-cup {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -30%;
+  height: 56%;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--tw-shell);
+}
+
+.g-twins .tw-egg.is-open .tw-shell { opacity: 0; transform: rotate(var(--tilt)) scale(1.25); }
+.g-twins .tw-egg.is-open .tw-baby { opacity: 1; transform: scale(1); }
+.g-twins .tw-egg.is-twin .tw-baby { animation: tw-twin 0.3s ease-in-out infinite alternate; box-shadow: 0 0 0 4px var(--sun); }
+@keyframes tw-twin { from { transform: rotate(-6deg); } to { transform: rotate(6deg) scale(1.08); } }
+
+/* invisible help: the twin she has already seen wobbles, just a little */
+.g-twins .tw-egg.is-shimmer .tw-shell { animation: tw-shimmer 0.9s ease-in-out infinite; }
+@keyframes tw-shimmer {
+  0%, 60%, 100% { transform: rotate(var(--tilt)); }
+  70% { transform: rotate(calc(var(--tilt) - 7deg)) scale(1.04); }
+  85% { transform: rotate(calc(var(--tilt) + 7deg)) scale(1.04); }
+}
+
+.g-twins .tw-flyer {
+  position: absolute;
+  z-index: 20;
+  font-size: calc(var(--gmin) * 0.1);
+  line-height: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+/* ------------------------------------------------------------- the nests */
+
+.g-twins .tw-nest {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-soft);
+  transition: box-shadow 0.2s;
+}
+.g-twins .tw-nest[data-p="0"] { grid-area: n0; }
+.g-twins .tw-nest[data-p="1"] { grid-area: n1; flex-direction: row-reverse; }
+.g-twins .tw-nest.is-champ { box-shadow: 0 0 0 5px var(--sun); }
+.g-twins .tw-nest__who {
+  flex: none;
+  width: calc(var(--gmin) * 0.11);
+  height: calc(var(--gmin) * 0.11);
+  min-width: 34px;
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--c);
+  font-size: max(20px, calc(var(--gmin) * 0.066));
+  line-height: 1;
+}
+.g-twins .tw-nest__row {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: calc(var(--gmin) * 0.13);
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 2px 6px;
+  padding: 4px 6px;
+  border: 3px dashed var(--c-dark);
+  border-radius: var(--r-sm);
+  background: var(--tw-straw);
+}
+.g-twins .tw-nest[data-p="1"] .tw-nest__row { flex-direction: row-reverse; }
+.g-twins .tw-pair {
+  display: inline-flex;
+  font-size: max(15px, calc(var(--gmin) * 0.052));
+  line-height: 1;
+  animation: tw-arrive 0.4s cubic-bezier(.3, 1.9, .5, 1) both;
+}
+.g-twins .tw-pair .mg-sticker + .mg-sticker { margin-left: -0.28em; }
+@keyframes tw-arrive { from { transform: scale(0.2) translateY(-40%); } to { transform: none; } }
+
+.g-twins[data-orient="landscape"] .tw-nest,
+.g-twins[data-orient="landscape"] .tw-nest[data-p="1"] { flex-direction: column; padding: 8px 6px; }
+.g-twins[data-orient="landscape"] .tw-nest__row,
+.g-twins[data-orient="landscape"] .tw-nest[data-p="1"] .tw-nest__row {
+  width: 100%;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  align-content: normal;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .g-twins .tw-egg.is-twin .tw-baby, .g-twins .tw-egg.is-shimmer .tw-shell { animation: none; }
+  .g-twins .tw-egg.is-shimmer .tw-shell { box-shadow: 0 0 0 4px var(--sun); }
+}
