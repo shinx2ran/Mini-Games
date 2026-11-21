@@ -68,7 +68,7 @@ h.run('shell', async (t) => {
   await hold(page, '.mg-hud__pause');
   await page.waitForSelector('.mg-overlay--pause');
   const t0 = await page.evaluate(() => MG.current.ctx.time);
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(450);
   const t1 = await page.evaluate(() => MG.current.ctx.time);
   assert.strictEqual(t0, t1, 'clock frozen while paused');
   await page.locator('.mg-pausecard .mg-btn--primary').tap();
@@ -76,7 +76,7 @@ h.run('shell', async (t) => {
   await page.waitForFunction((v) => MG.current.ctx.time > v, t1);
 
   // --- options persist and restart the round
-  await page.evaluate(() => MG.pause());
+  await t.pause(page);
   await page.locator('.mg-seg__btn', { hasText: '5' }).tap();
   await page.waitForFunction(() => MG.current && MG.current.api.target === 5);
 
@@ -92,6 +92,11 @@ h.run('shell', async (t) => {
   // --- settings are hold-gated; night-night opens and closes
   await hold(page, '.mg-home__gear');
   await page.waitForSelector('.mg-overlay--pause');
+
+  // a finger still down when the menu appears must not click what lands under it
+  await page.evaluate(() => { document.querySelector('#mg-overlay').hidden = true; document.querySelector('#mg-overlay').textContent = ''; MG.settings(); document.querySelector('.mg-btn--night').click(); });
+  assert.strictEqual(await page.locator('.mg-night').count(), 0, 'menu buttons ignore clicks for a beat after opening');
+  await page.waitForTimeout(450);
   await page.locator('.mg-btn--night').tap();
   await page.waitForSelector('.mg-night');
   await page.waitForTimeout(2700);

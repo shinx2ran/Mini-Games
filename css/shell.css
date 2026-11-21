@@ -25,7 +25,7 @@
   --sea: #2FB4F5;        --sea-dark: #127DBA;        --sea-soft: #CDEDFF;
   --grape: #9B6BFF;      --grape-dark: #683CCF;      --grape-soft: #E4D8FF;
 
-  /* players (JS overwrites these on <html> with the chosen colours) */
+  /* players (JS overwrites these on the root element with the chosen colours) */
   --p0: var(--berry); --p0-dark: var(--berry-dark); --p0-soft: var(--berry-soft);
   --p1: var(--sea);   --p1-dark: var(--sea-dark);   --p1-soft: var(--sea-soft);
 

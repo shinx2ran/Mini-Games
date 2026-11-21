@@ -70,6 +70,12 @@ async function run(name, fn) {
       if (gameId) await page.waitForFunction((id) => window.MG.current && window.MG.current.id === id, gameId);
       return page;
     },
+    /** Open the pause menu and wait until its buttons accept taps. */
+    async pause(page) {
+      await page.evaluate(() => window.MG.pause());
+      await page.waitForSelector('.mg-overlay--pause');
+      await page.waitForTimeout(450);
+    },
     /** Speed up the game clock (ctx.after/every/wait/frame). */
     async fast(page, scale = 8) { await page.evaluate((s) => { window.MG.timeScale = s; }, scale); },
     /** The mounted game's exposed test API, evaluated in the page: api(page, (api, arg) => ..., arg) */

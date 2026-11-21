@@ -584,6 +584,7 @@
       timer = window.setTimeout(function () {
         timer = 0; activePointer = null;
         b.classList.remove('is-holding');
+        if (!b.offsetParent) return; // its screen went away mid-hold
         sfx.play('good');
         opts.onHold();
       }, ms);
@@ -612,14 +613,7 @@
     var littleIdx = players[0].little === players[1].little ? 0 : (players[0].little ? 0 : 1);
     var firstPlayer = (littleIdx + round) % 2;
 
-    function tick(ts) {
-      if (!alive) return;
-      rafId = window.requestAnimationFrame(tick);
-      if (!lastTs) { lastTs = ts; return; }
-      var dt = (ts - lastTs) / 1000;
-      lastTs = ts;
-      if (paused || dt <= 0) return;
-      dt = Math.min(dt, 0.05) * (MG.timeScale || 1);
+    function step(dt) {
       clock += dt;
       if (timers.size) {
         var due = [];
@@ -628,8 +622,12 @@
         for (var i = 0; i < due.length; i++) {
           var t = due[i];
           if (!alive) return;
-          if (!timers.has(t)) continue; // cancelled by an earlier callback this tick
-          if (t.every) t.at = clock + t.every; else timers.delete(t);
+          if (!timers.has(t)) continue; // cancelled by an earlier callback this step
+          if (t.every) {
+            // keep the cadence (no drift), but never fire a burst to catch up
+            t.at += t.every;
+            if (t.at <= clock) t.at = clock + t.every;
+          } else timers.delete(t);
           t.fn();
         }
       }
@@ -639,6 +637,25 @@
           if (!alive) return;
           if (loops.has(fns[j])) fns[j](dt, clock);
         }
+      }
+    }
+
+    function tick(ts) {
+      if (!alive) return;
+      rafId = window.requestAnimationFrame(tick);
+      if (!lastTs) { lastTs = ts; return; }
+      var dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      if (paused || dt <= 0) return;
+      dt = Math.min(dt, 0.05);
+      // Fast-forward (tests) runs whole extra steps, so a sped-up round plays
+      // out exactly like a real one instead of taking giant strides.
+      var scale = MG.timeScale || 1;
+      var n = Math.max(1, Math.round(scale));
+      if (scale < 1) dt *= scale;
+      for (var k = 0; k < n; k++) {
+        if (!alive || paused) return;
+        step(dt);
       }
     }
 
@@ -960,7 +977,12 @@
     dom.overlay.className = 'mg-overlay';
   }
 
+  // A finger that was already down when a menu appeared (the end of a
+  // press-and-hold) must not "click" whatever landed underneath it.
+  var overlayArmAt = 0;
+
   function openOverlay(kind, card) {
+    if (dom.overlay.hidden) overlayArmAt = window.performance.now() + 400;
     dom.overlay.textContent = '';
     dom.overlay.className = 'mg-overlay mg-overlay--' + kind;
     dom.overlay.appendChild(card);
@@ -1099,6 +1121,7 @@
   }
 
   function showSettings() {
+    if (session || !dom.overlay.hidden) return;
     function render() {
       var card = el('div', { class: 'mg-card mg-pausecard', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Settings' },
         el('div', { class: 'mg-pausecard__settings' },
@@ -1303,6 +1326,9 @@
         dom.chips[0], dom.status, dom.chips[1]),
       dom.playmat);
     dom.overlay = el('div', { class: 'mg-overlay', id: 'mg-overlay', hidden: true });
+    dom.overlay.addEventListener('click', function (ev) {
+      if (window.performance.now() < overlayArmAt) { ev.stopPropagation(); ev.preventDefault(); }
+    }, true);
 
     app.appendChild(dom.home);
     app.appendChild(dom.stage);
