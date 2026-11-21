@@ -1,1 +1,353 @@
-/* Super Slow Race — styles. Every selector is scoped under .g-race */
+/* Super Slow Race — styles. Every selector is scoped under .g-race.
+   Geometry comes from layoutFor() in js/games/race.js as custom properties on
+   .rc-scene: --unit (one stone), --pile, --side, --band, --badge, --gap, --picnic.
+   Stones and racers are zero-size anchors at a path node; their art hangs off them. */
+
+.g-race {
+  --rc-grass: #CDF2B4;
+  --rc-sand: #F7E3AE;
+  --rc-sand-dot: #E3C47A;
+  --rc-bed: #EBD3A0;
+  --rc-stone: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-race { --rc-grass: #1F4A36; --rc-sand: #5E5030; --rc-sand-dot: #8A7647; --rc-bed: #4A3F26; --rc-stone: #4B478F; }
+}
+:root[data-theme="dark"] .g-race { --rc-grass: #1F4A36; --rc-sand: #5E5030; --rc-sand-dot: #8A7647; --rc-bed: #4A3F26; --rc-stone: #4B478F; }
+
+.g-race .rc-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--rc-grass);
+  --unit: 60px;
+  --pile: 90px;
+  --side: 0px;
+  --band: 0px;
+  --badge: 40px;
+  --gap: 10px;
+  --picnic: 1;
+}
+
+/* ------------------------------------------------------------ the meadow */
+
+.g-race .rc-blooms, .g-race .rc-trail { position: absolute; inset: 0; pointer-events: none; }
+.g-race .rc-bloom {
+  position: absolute;
+  font-size: calc(var(--unit) * 0.24);
+  line-height: 1;
+  opacity: 0.6;
+  transform: translate(-50%, -50%);
+}
+.g-race .rc-trail svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.g-race .rc-trail path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.g-race .rc-trail__sand { stroke: var(--rc-sand); stroke-width: calc(var(--unit) * 0.66); }
+.g-race .rc-trail__steps { stroke: var(--rc-sand-dot); stroke-width: 4px; stroke-dasharray: 1 12; }
+
+.g-race .rc-node { position: absolute; z-index: 1; width: 0; height: 0; }
+
+.g-race .rc-stone, .g-race .rc-pad, .g-race .rc-blanket {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 3px solid var(--line);
+  box-shadow: 0 calc(var(--unit) * 0.07) 0 var(--line);
+  transform: translate(-50%, -50%) rotate(var(--tilt, 0deg));
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+.g-race .rc-stone {
+  width: calc(var(--unit) * 0.8);
+  height: calc(var(--unit) * 0.46);
+  border-radius: 50%;
+  background: var(--rc-stone);
+}
+.g-race .rc-node.is-pressed .rc-stone,
+.g-race .rc-node.is-pressed .rc-pad,
+.g-race .rc-node.is-pressed .rc-blanket {
+  transform: translate(-50%, -44%) rotate(var(--tilt, 0deg)) scale(1.05, 0.9);
+  box-shadow: 0 1px 0 var(--line);
+}
+.g-race .rc-node--rainbow .rc-stone { background: var(--sea-soft); }
+.g-race .rc-node--banana .rc-stone { background: var(--sun); }
+
+.g-race .rc-mark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: calc(var(--unit) * 0.4);
+  transform: translate(-50%, -64%);
+  pointer-events: none;
+}
+.g-race .rc-node.is-eager .rc-mark { animation: rc-eager 0.45s ease-in-out infinite alternate; }
+.g-race .rc-node.is-slipped .rc-mark { animation: rc-slip 0.9s ease-out both; }
+@keyframes rc-eager { from { transform: translate(-50%, -64%) rotate(-10deg); } to { transform: translate(-50%, -84%) rotate(10deg) scale(1.15); } }
+@keyframes rc-slip { 0% { transform: translate(-50%, -64%); } 40% { transform: translate(-50%, -190%) rotate(260deg); } 100% { transform: translate(-50%, -64%) rotate(720deg); } }
+
+.g-race .rc-pad {
+  width: calc(var(--unit) * 0.98);
+  height: calc(var(--unit) * 0.54);
+  border-radius: 28%;
+  background: var(--leaf);
+}
+.g-race .rc-flag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: calc(var(--unit) * 0.34);
+  transform: translate(-150%, -150%) rotate(-10deg);
+}
+
+.g-race .rc-blanket {
+  width: calc(var(--unit) * 0.92 * var(--picnic));
+  height: calc(var(--unit) * 0.56);
+  border-radius: 10%;
+  --tilt: -3deg;
+  background: repeating-conic-gradient(var(--berry) 0 25%, #FFFFFF 0 50%) 0 0 / calc(var(--unit) * 0.3) calc(var(--unit) * 0.3);
+}
+.g-race .rc-basket, .g-race .rc-berry { position: absolute; left: 0; top: 0; pointer-events: none; }
+.g-race .rc-basket {
+  font-size: calc(var(--unit) * 0.42);
+  transform: translate(calc(-50% + var(--unit) * 0.32 * var(--picnic)), -92%);
+}
+.g-race .rc-berry {
+  font-size: calc(var(--unit) * 0.26);
+  transform: translate(calc(-50% - var(--unit) * 0.34 * var(--picnic)), -70%);
+}
+.g-race .rc-node--picnic.is-eager .rc-basket { animation: rc-basket 0.45s ease-in-out infinite alternate; }
+@keyframes rc-basket {
+  from { transform: translate(calc(-50% + var(--unit) * 0.32 * var(--picnic)), -92%) rotate(-8deg); }
+  to { transform: translate(calc(-50% + var(--unit) * 0.32 * var(--picnic)), -110%) rotate(8deg); }
+}
+
+/* ------------------------------------------------------------- the racers */
+
+.g-race .rc-racer {
+  position: absolute;
+  z-index: 5;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  --share: 0;
+  --flip: 1;
+}
+.g-race .rc-racer[data-p="0"] { --pc: var(--p0); }
+.g-race .rc-racer[data-p="1"] { --pc: var(--p1); }
+.g-race .rc-racer.is-turn { z-index: 6; }
+
+.g-race .rc-racer__hop { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; will-change: transform; }
+.g-race .rc-racer__seat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateX(calc(var(--share) * var(--unit) * 0.27));
+  transition: transform 0.2s ease-out;
+}
+.g-race .rc-racer__look {
+  position: absolute;
+  left: calc(var(--unit) * -0.42);
+  bottom: calc(var(--unit) * -0.12);
+  width: calc(var(--unit) * 0.84);
+  height: calc(var(--unit) * 0.94);
+  transform-origin: 50% 90%;
+  transition: opacity 0.25s;
+}
+.g-race .rc-racer.is-asleep .rc-racer__look { opacity: 0.72; }
+
+.g-race .rc-racer__base {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 22%;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--pc);
+}
+.g-race .rc-racer.is-turn .rc-racer__base { box-shadow: 0 0 0 3px var(--edge); }
+
+.g-race .rc-racer__flip { position: absolute; inset: 0; transform: scaleX(var(--flip)); }
+.g-race .rc-racer__mount, .g-race .rc-racer__rider { position: absolute; left: 50%; line-height: 1; }
+.g-race .rc-racer__mount { bottom: 6%; font-size: calc(var(--unit) * 0.56); transform: translateX(-50%); }
+.g-race .rc-racer__rider { bottom: 46%; font-size: calc(var(--unit) * 0.38); transform: translateX(-34%); }
+.g-race .rc-racer.is-turn .rc-racer__rider { animation: rc-ready 0.5s ease-in-out infinite alternate; }
+@keyframes rc-ready { from { transform: translateX(-34%) translateY(0); } to { transform: translateX(-34%) translateY(-12%); } }
+
+.g-race .rc-racer__zzz, .g-race .rc-racer__crown { position: absolute; line-height: 1; opacity: 0; }
+.g-race .rc-racer__zzz { right: -8%; top: -6%; font-size: calc(var(--unit) * 0.26); }
+.g-race .rc-racer.is-asleep .rc-racer__zzz { opacity: 1; animation: rc-zzz 2.2s ease-in-out infinite; }
+@keyframes rc-zzz { 0%, 100% { transform: translateY(0) scale(0.9); } 50% { transform: translateY(-18%) scale(1.1); } }
+.g-race .rc-racer__crown {
+  left: 50%;
+  top: -16%;
+  font-size: calc(var(--unit) * 0.34);
+  transform: translateX(-50%) translateY(-150%) rotate(-30deg);
+}
+.g-race .rc-racer.is-champ .rc-racer__crown {
+  opacity: 1;
+  transform: translateX(-50%) rotate(-8deg);
+  transition: transform 0.35s cubic-bezier(.3, 1.8, .5, 1), opacity 0.1s;
+}
+
+/* ------------------------------------------------- leaf piles (the "dice") */
+
+.g-race .rc-tray {
+  position: absolute;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.g-race .rc-tray[data-p="0"] { --pc: var(--p0); --pc-soft: var(--p0-soft); }
+.g-race .rc-tray[data-p="1"] { --pc: var(--p1); --pc-soft: var(--p1-soft); }
+
+.g-race .rc-tray__bed {
+  position: absolute;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--pc-soft);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.g-race .rc-tray.is-open .rc-tray__bed { opacity: 1; }
+
+.g-race .rc-tray__who {
+  position: relative;
+  flex: none;
+  width: var(--badge);
+  height: var(--badge);
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--pc);
+  font-size: calc(var(--badge) * 0.54);
+  line-height: 1;
+  opacity: 0.4;
+  transition: opacity 0.2s, transform 0.2s cubic-bezier(.3, 1.6, .5, 1);
+}
+.g-race .rc-tray.is-open .rc-tray__who { opacity: 1; transform: scale(1.08); }
+
+.g-race .rc-piles { position: relative; display: flex; gap: var(--gap); }
+.g-race .rc-tray:not(.is-open) .rc-piles { visibility: hidden; }
+.g-race .rc-tray.is-open .rc-piles { pointer-events: auto; }
+
+/* portrait: one band along the bottom; each player's badge on their own side */
+.g-race[data-orient="portrait"] .rc-tray {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--band);
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 14px;
+}
+.g-race[data-orient="portrait"] .rc-tray__who { position: absolute; top: 0; }
+.g-race[data-orient="portrait"] .rc-tray[data-p="0"] .rc-tray__who { left: 14px; }
+.g-race[data-orient="portrait"] .rc-tray[data-p="1"] .rc-tray__who { right: 14px; }
+.g-race[data-orient="portrait"] .rc-tray__bed { left: 6px; right: 6px; bottom: 6px; height: calc(var(--pile) + 16px); }
+
+/* landscape: a column at each player's own edge */
+.g-race[data-orient="landscape"] .rc-tray {
+  top: 0;
+  bottom: 0;
+  width: var(--side);
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--gap);
+}
+.g-race[data-orient="landscape"] .rc-tray[data-p="0"] { left: 0; }
+.g-race[data-orient="landscape"] .rc-tray[data-p="1"] { right: 0; }
+.g-race[data-orient="landscape"] .rc-piles { flex-direction: column; }
+.g-race[data-orient="landscape"] .rc-tray__bed { left: 6px; right: 6px; top: 6px; bottom: 6px; }
+
+.g-race .rc-pile {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: var(--pile);
+  height: var(--pile);
+  padding: 0;
+  border: 0;
+  background: none;
+  animation: rc-pile-in 0.35s calc(var(--i) * 70ms) cubic-bezier(.3, 1.5, .5, 1) both;
+}
+@keyframes rc-pile-in { from { transform: scale(0.2) translateY(30%); opacity: 0; } to { transform: none; opacity: 1; } }
+.g-race .rc-pile.is-aside { opacity: 0.6; }
+
+.g-race .rc-plate {
+  position: absolute;
+  inset: 9%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  gap: 7%;
+  padding: 13%;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--line);
+  opacity: 0;
+  transform: scale(0.5);
+}
+.g-race .rc-pile.is-open .rc-plate {
+  opacity: 1;
+  transform: scale(1);
+  transition: transform 0.25s cubic-bezier(.3, 1.6, .5, 1), opacity 0.1s;
+}
+.g-race .rc-pile.is-aside .rc-plate { transform: scale(0.82); }
+
+.g-race .rc-dot {
+  flex: none;
+  width: 34%;
+  aspect-ratio: 1;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--berry);
+  transform: scale(0);
+}
+.g-race .rc-plate[data-n="1"] .rc-dot { width: 46%; }
+.g-race .rc-pile.is-open .rc-dot {
+  transform: scale(1);
+  transition: transform 0.2s calc(0.14s + var(--k) * 0.11s) cubic-bezier(.3, 1.8, .5, 1), opacity 0.2s;
+}
+.g-race .rc-pile.is-open .rc-dot.is-used { transform: scale(0.7); opacity: 0.35; transition-delay: 0s; }
+
+.g-race .rc-heap { position: absolute; inset: 0; pointer-events: none; }
+.g-race .rc-leaf {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: calc(var(--pile) * 0.46);
+  line-height: 1;
+  transform: translate(calc(-50% + var(--x) * var(--pile)), calc(-50% + var(--y) * var(--pile))) rotate(var(--r));
+  transition: transform 0.5s cubic-bezier(.2, .7, .3, 1), opacity 0.5s ease-in;
+}
+.g-race .rc-pile.is-open .rc-leaf {
+  transform: translate(calc(-50% + (var(--x) + var(--bx)) * var(--pile)), calc(-50% + (var(--y) + var(--by)) * var(--pile))) rotate(var(--br));
+  opacity: 0;
+}
+.g-race .rc-pile.is-rustling .rc-heap { animation: rc-rustle 0.11s linear infinite alternate; }
+@keyframes rc-rustle { from { transform: rotate(-5deg) translateX(-2%); } to { transform: rotate(5deg) translateX(2%); } }
+
+.g-race .rc-critter {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: calc(var(--pile) * 0.26);
+  pointer-events: none;
+  animation: rc-critter 1.4s ease-in both;
+}
+@keyframes rc-critter {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  20% { transform: translate(-50%, -80%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dir) * var(--pile) * 0.9), -60%) scale(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .g-race .rc-node.is-eager .rc-mark, .g-race .rc-node--picnic.is-eager .rc-basket,
+  .g-race .rc-racer.is-turn .rc-racer__rider, .g-race .rc-racer.is-asleep .rc-racer__zzz,
+  .g-race .rc-pile.is-rustling .rc-heap, .g-race .rc-node.is-slipped .rc-mark { animation: none; }
+  .g-race .rc-pile { animation-duration: 0.01s; }
+}

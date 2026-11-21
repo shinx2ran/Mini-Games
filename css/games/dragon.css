@@ -1,1 +1,323 @@
-/* Sneezy Dragon — styles. Every selector is scoped under .g-dragon */
+/* Sneezy Dragon — styles. Every selector is scoped under .g-dragon.
+   Layout numbers (12px edge, 8px gap, 4px between treasures, zone padding)
+   mirror fitLayout() in js/games/dragon.js, which picks --cell/--post/--cols. */
+
+.g-dragon {
+  --dg-skin: #4CCB6B;
+  --dg-skin-light: #A5EBB4;
+  --dg-nose: #278F44;
+  --dg-wing: #9B6BFF;
+  --dg-spike: #FF8A3D;
+  --dg-horn: #FFE9A8;
+  --dg-gold: #FFC933;
+  --dg-coin: #FFE27A;
+  --dg-mouth: #7A1F3D;
+}
+
+.g-dragon .dg-scene {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  --cell: 64px;
+  --post: 51px;
+  --cols: 2;
+  --pad: 5px;
+}
+.g-dragon .dg-scene[data-layout="under"] {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "den den" "z0 z1";
+  justify-items: center;
+}
+.g-dragon .dg-scene[data-layout="under"] .dg-den { grid-area: den; width: 100%; height: 100%; }
+.g-dragon .dg-scene[data-layout="under"] .dg-zone[data-p="0"] { grid-area: z0; }
+.g-dragon .dg-scene[data-layout="under"] .dg-zone[data-p="1"] { grid-area: z1; }
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] { --pad: 3px; }
+
+/* ------------------------------------------------------------- zones */
+
+.g-dragon .dg-zone {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: calc(var(--cols) * var(--cell) + (var(--cols) - 1) * 4px + 2 * var(--pad));
+  padding: calc(var(--pad) - 3px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-soft);
+  transition: box-shadow 0.2s ease-out, background-color 0.3s;
+}
+.g-dragon .dg-zone.is-turn { box-shadow: 0 0 0 4px var(--c); }
+.g-dragon .dg-zone.is-glittered { background: var(--sun-soft); }
+
+.g-dragon .dg-veil {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--mat);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.g-dragon .dg-zone.is-turn .dg-veil { opacity: 0; pointer-events: none; }
+
+.g-dragon .dg-post {
+  height: var(--post);
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-post { flex-direction: column; gap: 2px; align-items: center; }
+
+.g-dragon .dg-ava {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  height: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--c);
+  font-size: calc(var(--post) * 0.54);
+  line-height: 1;
+}
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-ava { height: 58%; font-size: calc(var(--post) * 0.34); }
+.g-dragon .dg-ava.is-blown { animation: dg-blown 1s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes dg-blown {
+  0% { transform: none; }
+  35% { transform: translateX(calc(var(--away) * 8px)) rotate(calc(var(--away) * 400deg)) scale(0.8); }
+  70% { transform: translateX(calc(var(--away) * 3px)) rotate(calc(var(--away) * 720deg)) scale(1.12); }
+  100% { transform: rotate(calc(var(--away) * 720deg)); }
+}
+
+.g-dragon .dg-hat {
+  position: absolute;
+  left: 50%;
+  top: -46%;
+  font-size: 0.95em;
+  line-height: 1;
+  opacity: 0;
+  transform: translate(-50%, -160%) rotate(-30deg);
+  filter: drop-shadow(0 2px 0 rgba(12, 10, 38, 0.3));
+}
+.g-dragon .dg-hat.is-on {
+  opacity: 1;
+  transform: translate(-50%, 0) rotate(-8deg);
+  transition: transform 0.34s cubic-bezier(.3, 1.8, .5, 1), opacity 0.1s;
+}
+
+.g-dragon .dg-sack {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 calc(var(--post) * 0.2);
+  border: 3px dashed var(--c-dark);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-sack { width: 100%; }
+.g-dragon .dg-loot {
+  flex: 1 1 0;
+  width: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--post) * 0.44);
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  transform: scale(0);
+}
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-loot { font-size: calc(var(--post) * 0.24); }
+.g-dragon .dg-loot.is-in { opacity: 1; transform: scale(1); transition: transform 0.25s cubic-bezier(.3, 1.7, .5, 1); }
+
+.g-dragon .dg-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.g-dragon .dg-gem {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: var(--cell);
+  height: var(--cell);
+  padding: 0;
+  border: 0;
+  background: none;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--cell) * 0.66);
+  line-height: 1;
+}
+.g-dragon .dg-jewel { display: block; transition: transform 0.12s ease-out; }
+.g-dragon .dg-zone.is-turn .dg-gem:not(.is-flying) .dg-jewel { animation: dg-bob 1.6s calc(var(--n) * -0.3s) ease-in-out infinite; }
+.g-dragon .dg-gem:active .dg-jewel { transform: scale(0.88); }
+.g-dragon .dg-gem.is-flying { z-index: 6; }
+.g-dragon .dg-gem.is-flying .dg-jewel {
+  transform: translate(var(--dx), var(--dy)) scale(0.5) rotate(200deg);
+  transition: transform 0.42s cubic-bezier(.4, -0.4, .6, 1);
+}
+.g-dragon .dg-gem.is-gone { visibility: hidden; }
+@keyframes dg-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7%); } }
+
+/* ------------------------------------------------------------ the dragon */
+
+.g-dragon .dg-den {
+  flex: 1 1 0;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  --tickle: 0;
+  --aim: 1;
+}
+.g-dragon .dg-svg { width: 100%; height: 100%; max-height: 100%; overflow: visible; }
+
+.g-dragon .dg-ink { stroke: var(--line); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+.g-dragon .dg-line { fill: none; }
+.g-dragon .dg-f-gold { fill: var(--dg-gold); }
+.g-dragon .dg-f-coin { fill: var(--dg-coin); }
+.g-dragon .dg-f-skin { fill: var(--dg-skin); }
+.g-dragon .dg-f-snout { fill: var(--dg-skin-light); }
+.g-dragon .dg-f-wing { fill: var(--dg-wing); }
+.g-dragon .dg-f-spike { fill: var(--dg-spike); }
+.g-dragon .dg-f-horn { fill: var(--dg-horn); }
+.g-dragon .dg-f-nose { fill: var(--dg-nose); }
+.g-dragon .dg-f-mouth { fill: var(--dg-mouth); }
+.g-dragon .dg-f-tongue { fill: var(--berry); }
+.g-dragon .dg-f-ink { fill: var(--line); }
+.g-dragon .dg-cheek { fill: var(--berry); opacity: 0.45; }
+.g-dragon .dg-nose-hot { fill: var(--berry); opacity: calc(var(--tickle) * 0.75); transition: opacity 0.4s; }
+
+.g-dragon .dg-body, .g-dragon .dg-bob, .g-dragon .dg-wing, .g-dragon .dg-tail, .g-dragon .dg-nose, .g-dragon .dg-maw {
+  transform-box: view-box;
+}
+.g-dragon .dg-body { transform-origin: 120px 176px; }
+.g-dragon .dg-bob { transform-origin: 120px 150px; transition: transform 0.22s cubic-bezier(.3, 1.4, .5, 1); }
+.g-dragon .dg-wing--l { transform-origin: 64px 110px; }
+.g-dragon .dg-wing--r { transform-origin: 176px 110px; }
+.g-dragon .dg-wing { transition: transform 0.2s ease-out; }
+.g-dragon .dg-tail { transform-origin: 184px 146px; }
+.g-dragon .dg-nose { transform-origin: 120px 129px; }
+.g-dragon .dg-maw { transform-origin: 120px 154px; }
+
+/* faces: one set of eyes, and either the smile or the open mouth */
+.g-dragon .dg-eyes, .g-dragon .dg-maw { display: none; }
+.g-dragon .dg-den[data-mood="sleep"] .dg-eyes--shut,
+.g-dragon .dg-den[data-mood="hush"] .dg-eyes--shut,
+.g-dragon .dg-den[data-mood="ah1"] .dg-eyes--shut,
+.g-dragon .dg-den[data-mood="phew"] .dg-eyes--shut,
+.g-dragon .dg-den[data-mood="yawn"] .dg-eyes--shut,
+.g-dragon .dg-den[data-mood="ah2"] .dg-eyes--tight,
+.g-dragon .dg-den[data-mood="ah3"] .dg-eyes--tight,
+.g-dragon .dg-den[data-mood="choo"] .dg-eyes--tight,
+.g-dragon .dg-den[data-mood="giggle"] .dg-eyes--joy { display: inline; }
+.g-dragon .dg-den[data-mood^="ah"] .dg-maw,
+.g-dragon .dg-den[data-mood="choo"] .dg-maw,
+.g-dragon .dg-den[data-mood="yawn"] .dg-maw { display: inline; }
+.g-dragon .dg-den[data-mood^="ah"] .dg-smile,
+.g-dragon .dg-den[data-mood="choo"] .dg-smile,
+.g-dragon .dg-den[data-mood="yawn"] .dg-smile { display: none; }
+
+/* asleep: slow breathing (3.4s, matched by the snore sound) and drifting z's */
+.g-dragon .dg-den[data-mood="sleep"] .dg-body { animation: dg-breathe 3.4s ease-in-out infinite; }
+.g-dragon .dg-den[data-mood="sleep"] .dg-bob { animation: dg-nod 3.4s ease-in-out infinite; }
+@keyframes dg-breathe { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.04, 1.07); } }
+@keyframes dg-nod { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-3px); } }
+
+.g-dragon .dg-zzz { opacity: 0; }
+.g-dragon .dg-z { fill: none; stroke: var(--ink-soft); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.g-dragon .dg-den[data-mood="sleep"] .dg-zzz { opacity: 1; }
+.g-dragon .dg-den[data-mood="sleep"] .dg-z { animation: dg-z 3.4s ease-in-out infinite; }
+.g-dragon .dg-den[data-mood="sleep"] .dg-z:nth-child(2) { animation-delay: 0.5s; }
+.g-dragon .dg-den[data-mood="sleep"] .dg-z:nth-child(3) { animation-delay: 1s; }
+@keyframes dg-z { 0%, 100% { opacity: 0.15; transform: translateY(3px); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+/* the build-up: head tips back a little more with each "ah", the nose glows */
+.g-dragon .dg-den[data-mood="ah1"] .dg-bob { transform: translateY(-5px) rotate(-3deg); }
+.g-dragon .dg-den[data-mood="ah2"] .dg-bob { transform: translateY(-10px) rotate(-6deg); }
+.g-dragon .dg-den[data-mood="ah3"] .dg-bob { transform: translateY(-16px) rotate(-9deg) scale(1.04); }
+.g-dragon .dg-den[data-mood="ah1"] .dg-maw { transform: scale(0.7); }
+.g-dragon .dg-den[data-mood="ah2"] .dg-maw { transform: scale(1); }
+.g-dragon .dg-den[data-mood="ah3"] .dg-maw { transform: scale(1.35); }
+.g-dragon .dg-den[data-mood="ah1"] .dg-nose-hot { opacity: 0.5; }
+.g-dragon .dg-den[data-mood="ah2"] .dg-nose-hot { opacity: 0.75; }
+.g-dragon .dg-den[data-mood="ah3"] .dg-nose-hot,
+.g-dragon .dg-den[data-mood="choo"] .dg-nose-hot { opacity: 1; }
+.g-dragon .dg-den[data-mood="ah2"] .dg-nose,
+.g-dragon .dg-den[data-mood="ah3"] .dg-nose { animation: dg-twitch 0.22s linear infinite; }
+.g-dragon .dg-den[data-mood="ah3"] .dg-wing--l { transform: rotate(-14deg); }
+.g-dragon .dg-den[data-mood="ah3"] .dg-wing--r { transform: rotate(14deg); }
+@keyframes dg-twitch { 0%, 100% { transform: translateX(-1.5px); } 50% { transform: translateX(1.5px); } }
+
+/* AH-CHOO: the head snaps down towards whoever grabbed */
+.g-dragon .dg-den[data-mood="choo"] .dg-bob {
+  transform: translate(calc(var(--aim) * 16px), 12px) rotate(calc(var(--aim) * 12deg)) scale(1.06);
+  transition-duration: 0.09s;
+}
+.g-dragon .dg-den[data-mood="choo"] .dg-maw { transform: scale(1.7); }
+.g-dragon .dg-den[data-mood="choo"] .dg-wing--l { transform: rotate(-26deg); }
+.g-dragon .dg-den[data-mood="choo"] .dg-wing--r { transform: rotate(26deg); }
+
+.g-dragon .dg-den[data-mood="phew"] .dg-bob { transform: translateY(4px); }
+.g-dragon .dg-den[data-mood="yawn"] .dg-bob { transform: translateY(-6px) rotate(4deg); }
+.g-dragon .dg-den[data-mood="yawn"] .dg-maw { transform: scale(1.5); }
+
+.g-dragon .dg-den[data-mood="giggle"] .dg-bob { animation: dg-giggle 0.26s ease-in-out infinite alternate; }
+.g-dragon .dg-den[data-mood="giggle"] .dg-tail { animation: dg-wag 0.3s ease-in-out infinite alternate; }
+.g-dragon .dg-den[data-mood="giggle"] .dg-cheek { opacity: 0.9; }
+@keyframes dg-giggle { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-6px) rotate(3deg); } }
+@keyframes dg-wag { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+
+/* sleepy fidgets (decoration only) */
+.g-dragon .dg-den[data-stir="sniff"] .dg-nose { animation: dg-twitch 0.16s linear 3; }
+.g-dragon .dg-den[data-stir="snort"] .dg-bob { animation: dg-snort 0.45s ease-out; }
+.g-dragon .dg-den[data-stir="flap"] .dg-wing--l { animation: dg-flap-l 0.16s ease-in-out 3 alternate; }
+.g-dragon .dg-den[data-stir="flap"] .dg-wing--r { animation: dg-flap-r 0.16s ease-in-out 3 alternate; }
+@keyframes dg-snort { 0%, 100% { transform: none; } 30% { transform: translateY(5px) rotate(3deg); } 60% { transform: translateY(-3px) rotate(-2deg); } }
+@keyframes dg-flap-l { from { transform: none; } to { transform: rotate(-20deg); } }
+@keyframes dg-flap-r { from { transform: none; } to { transform: rotate(20deg); } }
+
+/* ---------------------------------------------------------------- sneeze */
+
+.g-dragon .dg-glit {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  font-size: clamp(14px, calc(var(--cell) * 0.3), 26px);
+  line-height: 1;
+  opacity: 0;
+  animation: dg-glit var(--t, 0.7s) var(--d, 0s) cubic-bezier(.2, .7, .3, 1) both;
+}
+@keyframes dg-glit {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(var(--s, 1)) rotate(180deg); opacity: 0; }
+}
+.g-dragon .dg-scene.is-quaking { animation: dg-quake 0.4s linear; }
+@keyframes dg-quake {
+  0%, 100% { transform: none; }
+  20% { transform: translate(-5px, 3px); }
+  40% { transform: translate(5px, -3px); }
+  60% { transform: translate(-3px, -2px); }
+  80% { transform: translate(3px, 2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .g-dragon .dg-den .dg-body, .g-dragon .dg-den .dg-bob, .g-dragon .dg-den .dg-z,
+  .g-dragon .dg-den .dg-tail, .g-dragon .dg-den .dg-nose, .g-dragon .dg-wing,
+  .g-dragon .dg-zone.is-turn .dg-gem .dg-jewel, .g-dragon .dg-scene.is-quaking { animation: none !important; }
+  .g-dragon .dg-ava.is-blown { animation-duration: 0.2s; }
+}
