@@ -67,6 +67,21 @@ h.run(ID, async (t) => {
   await t.waitForWin(page, 30000);
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), 'team');
 
+  // --- every star earned stays visible in the HUD, on a small phone and on its side
+  for (const vp of ['small', 'phoneWide']) {
+    const p = await t.open(ID, { viewport: vp });
+    await t.fast(p, 8);
+    for (let n = 0; n < 6; n++) await spin(p);
+    const stars = await p.evaluate(() => {
+      const box = document.querySelector('.mg-hud__status').getBoundingClientRect();
+      const all = [...document.querySelectorAll('.mg-hud__status span span')].map((s) => s.getBoundingClientRect());
+      return { n: all.length, want: MG.current.api.stars, hidden: all.filter((r) => r.left < Math.max(0, box.left) - 1 || r.right > Math.min(window.innerWidth, box.right) + 1 || r.top < box.top - 1 || r.bottom > box.bottom + 1).length };
+    });
+    assert.ok(stars.n === stars.want && stars.n >= 6, 'one star drawn per star earned');
+    assert.strictEqual(stars.hidden, 0, `all ${stars.n} stars visible @${vp}`);
+    await t.shot(p, `wheel-stars-${vp}.png`);
+  }
+
   // --- mashing: drumming on the wheel is one spin; the clap cannot be hit early or twice
   page = await t.open(ID);
   await state(page, 'wait');

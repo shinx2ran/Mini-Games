@@ -87,6 +87,8 @@ h.run(ID, async (t) => {
   // --- every supported size mid-race: nothing clipped, big piles; rotate and keep playing
   for (const vp of ['small', 'phone', 'phoneWide', 'tabletTall', 'tablet']) {
     const p = await t.open(ID, { viewport: vp, dark: vp === 'phoneWide' || vp === 'tabletTall' });
+    await canPick(p);
+    assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-race .rc-racer__base, .g-race .rc-racer__mount'), [], `both racers on the mat at the start @${vp}`);
     await t.fast(p, 8);
     for (let k = 0; k < 4; k++) await turn(p, biggest);
     await canPick(p);

@@ -111,7 +111,8 @@
 
 .g-tower .to-star {
   position: absolute;
-  left: 0;
+  /* beside the tower, level with the tenth crate, so the cloud never covers it */
+  left: calc(var(--cw) * 1.5);
   bottom: calc(var(--ground) + 10 * var(--ch) + var(--cw) * 0.12);
   font-size: calc(var(--cw) * 0.8);
   line-height: 1;
@@ -121,6 +122,37 @@
 @keyframes to-twinkle { from { transform: translateX(-50%) rotate(-8deg) scale(0.92); } to { transform: translateX(-50%) rotate(8deg) scale(1.08); } }
 .g-tower .to-scene.is-star .to-star { animation: to-star 0.5s ease-in-out infinite alternate; }
 @keyframes to-star { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.5) rotate(20deg); } }
+.g-tower .to-star::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: calc(var(--cw) * 0.7);
+  border-top: 3px dashed var(--ink-soft);
+}
+
+/* the goal, pinned to the top edge until the real star scrolls into view */
+.g-tower .to-goal {
+  position: absolute;
+  top: 26px;
+  right: 16px;
+  font-size: clamp(24px, calc(var(--gmin) * 0.09), 44px);
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.g-tower .to-goal::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  border: 8px solid transparent;
+  border-bottom-color: var(--ink-soft);
+  transform: translateX(-50%);
+}
+.g-tower .to-scene.is-far .to-goal { opacity: 1; animation: to-goal 0.8s ease-in-out infinite alternate; }
+@keyframes to-goal { from { transform: translateY(0); } to { transform: translateY(-6px); } }
 
 .g-tower .to-flag {
   position: absolute;
@@ -137,8 +169,6 @@
   width: calc(var(--cw) * 0.5);
   border-top: 3px dashed var(--ink-soft);
 }
-
-.g-tower .to-count { font-size: 0.9em; }
 
 /* ------------------------------------------------- the crash and the heap */
 
@@ -158,6 +188,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .g-tower .to-star, .g-tower .to-scene.is-star .to-star, .g-tower .to-crate.is-landed { animation: none; transform: translateX(-50%); }
+  .g-tower .to-scene.is-far .to-goal { animation: none; }
   .g-tower .to-crate.is-landed { transform: none; }
   .g-tower .to-scene.is-toppling .to-tower { animation-duration: 0.3s; }
 }

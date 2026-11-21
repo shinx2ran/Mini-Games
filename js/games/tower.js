@@ -80,7 +80,9 @@
       var rider = ctx.sticker('', 'to-rider');
       var cloud = el('div', { class: 'to-cloud', 'aria-hidden': 'true' }, el('span', { class: 'to-puff', text: '☁️' }), rider, hang);
       var world = el('div', { class: 'to-world' }, el('div', { class: 'to-ground' }), flag, star, tower, cloud);
-      var scene = el('div', { class: 'to-scene' }, world);
+      // while the real star is still above the view, a little one at the top says "up there"
+      var goal = el('div', { class: 'to-goal', 'aria-hidden': 'true' }, ctx.sticker('⭐'));
+      var scene = el('div', { class: 'to-scene' }, world, goal);
       root.appendChild(scene);
 
       function crateFace(node, p, animal) {
@@ -99,6 +101,8 @@
         scale = heap
           ? Math.min(1, size.w / ((n * 0.62 + 1.2) * cw))
           : Math.min(1, size.h / (viewHeight(n) * cw));
+        var starTop = (GROUND_H + GOAL * CRATE_H + 0.12 + 0.85) * cw * scale;
+        scene.classList.toggle('is-far', !heap && starTop > size.h);
         scene.style.setProperty('--cw', cw.toFixed(1) + 'px');
         world.style.transform = 'scale(' + scale.toFixed(4) + ')';
         cloud.style.setProperty('--n', String(n));
@@ -182,7 +186,7 @@
           if (hit.kind === 'perfect') { sfx.play('star'); fx.burst(c.x, c.y, { emoji: '✨', count: 6, distance: 60 * scale + 20, size: 18 }); }
           else creak();
         }
-        ctx.setStatus(el('span', { class: 'to-count', 'aria-label': crates.length + ' crates' }, '📦', String.fromCharCode(215), String(crates.length)));
+        ctx.setStatus(el('span', { style: { whiteSpace: 'nowrap' }, 'aria-label': crates.length + ' crates' }, '📦', String.fromCharCode(215), String(crates.length)));
 
         if (crates.length >= GOAL) { ctx.after(350, reachStar); return; }
         if (wobble >= 100) { ctx.after(450, topple); return; }
@@ -239,16 +243,19 @@
           tower.style.transform = '';
           frameCamera(true);
           sfx.play('giggle');
+          // count them out, never for longer than a couple of seconds
+          var beat = Math.min(430, 2400 / n);
           crates.forEach(function (cr, k) {
-            ctx.after(700 + k * 430, function () {
+            ctx.after(700 + k * beat, function () {
               cr.node.classList.add('is-counted');
               fx.pop(cr.node);
               sfx.scale(k + 1);
-              ctx.say(k + 1);
+              // a voice cannot keep up with a fast count: then it just says how many
+              if (beat >= 400 || k === n - 1) ctx.say(k + 1);
             });
           });
-          ctx.after(700 + n * 430, function () { state = 'done'; });
-          ctx.win('team', { delay: 700 + n * 430 + 500, emoji: '📦' });
+          ctx.after(700 + n * beat, function () { state = 'done'; });
+          ctx.win('team', { delay: 700 + n * beat + 400, emoji: '📦' });
         });
       }
 
@@ -259,7 +266,8 @@
         }
         cloud.style.setProperty('--x', cloudX.toFixed(3));
         if (state === 'aim' || state === 'fall') {
-          var sway = MG.reducedMotion ? 0 : Math.sin(t * 2.3) * (wobble / 100) * 8;
+          // with reduced motion the danger still shows: a still lean that grows with the wobble
+          var sway = MG.reducedMotion ? (lean >= 0 ? 1 : -1) * (wobble / 100) * 6 : Math.sin(t * 2.3) * (wobble / 100) * 8;
           tower.style.transform = 'rotate(' + sway.toFixed(2) + 'deg)';
         }
       });
@@ -269,7 +277,7 @@
 
       /* ---- go ---- */
 
-      ctx.setStatus(el('span', { class: 'to-count' }, '📦', String.fromCharCode(215), '0'));
+      ctx.setStatus(el('span', { style: { whiteSpace: 'nowrap' } }, '📦', String.fromCharCode(215), '0'));
       newCrate();
       ctx.hint(scene, { delay: 900 });
 

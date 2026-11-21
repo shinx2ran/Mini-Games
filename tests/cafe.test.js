@@ -19,6 +19,9 @@ async function cookDish(page, plate, want) {
   const roles = { chef: await api(page, 'chef'), customer: await api(page, 'customer') };
   await page.locator(`.g-cafe .cf-pick[data-k="${plate}"]`).tap();
   await state(page, 'cook');
+  await page.waitForTimeout(450);
+  const foodWidth = await page.evaluate(() => document.querySelector('.g-cafe .cf-food .mg-sticker').getBoundingClientRect().width);
+  h.assert.ok(foodWidth > 30, `the food is on the plate while the Chef cooks (${Math.round(foodWidth)}px wide)`);
   const tray = await api(page, 'tray');
   for (const k of want(tray)) await top(page, k);
   const tops = await api(page, 'tops');

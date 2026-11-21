@@ -82,6 +82,55 @@ h.run(ID, async (t) => {
   assert.strictEqual(await page.locator('.g-tower .to-crate.is-counted').count(), 5, 'every stacked crate is counted');
   assert.strictEqual(await page.evaluate(() => MG.current.ctx.load('best', 0)), 5, 'the team record is saved');
 
+  // --- a tall tower that crashes is counted out quickly: the party is never more than ~5s away
+  page = await t.open(ID);
+  await t.fast(page, 8);
+  for (const off of [0, 0.6, -0.6, 0.3, 0, 0, 0, 0, 0]) await dropAt(page, off);
+  assert.strictEqual((await api(page, 'crates')).length, 9);
+  // time the finale inside the page, on the game's own clock
+  await page.evaluate(() => {
+    window.__finale = {};
+    (function watch() {
+      const cur = MG.current;
+      if (cur && cur.id === 'tower') {
+        if (cur.api.state === 'topple' && window.__finale.topple == null) window.__finale.topple = cur.ctx.time;
+        if (document.querySelector('.mg-win') && window.__finale.party == null) { window.__finale.party = cur.ctx.time; return; }
+      }
+      requestAnimationFrame(watch);
+    })();
+  });
+  for (let k = 0; k < 4 && (await api(page, 'state')) === 'aim'; k++) {
+    await aiming(page);
+    await page.evaluate(() => { const a = MG.current.api; a.rig(a.crates[a.crates.length - 1] + 0.9); });
+    await page.locator('.g-tower .to-scene').tap({ position: { x: 30, y: 40 } });
+    await page.waitForFunction(() => MG.current.api.state !== 'fall');
+    await page.waitForFunction(() => MG.current.api.state !== 'aim' || !MG.current.ctx.locked, null, { timeout: 30000 });
+  }
+  await t.waitForWin(page, 30000);
+  const finale = await page.evaluate(() => window.__finale.party - window.__finale.topple);
+  assert.ok(finale < 5, `crash to party in ${finale.toFixed(1)}s of game time`);
+  assert.strictEqual(await page.locator('.g-tower .to-crate.is-counted').count(), 9);
+
+  // --- the goal is always on screen: a pinned star until the real one comes into view
+  for (const vp of ['small', 'phoneWide', 'tablet']) {
+    const p = await t.open(ID, { viewport: vp });
+    await aiming(p);
+    const goal = await p.evaluate(() => {
+      const g = document.querySelector('#mg-game').getBoundingClientRect();
+      const inView = (s) => { const r = document.querySelector(s).getBoundingClientRect(); return r.top >= g.top && r.bottom <= g.bottom && r.left >= g.left && r.right <= g.right; };
+      return { far: document.querySelector('.g-tower .to-scene').classList.contains('is-far'), pinned: inView('.g-tower .to-goal'), real: inView('.g-tower .to-star') };
+    });
+    assert.ok(goal.real || (goal.far && goal.pinned), `a star to aim for is visible from the first crate @${vp}`);
+  }
+
+  // --- reduced motion: no swaying, but the danger still shows as a still lean
+  page = await t.open(ID, { reducedMotion: true });
+  await t.fast(page, 8);
+  await dropAt(page, 0); await dropAt(page, 0.6); await dropAt(page, 0.6);
+  await aiming(page);
+  const leanDeg = await page.evaluate(() => parseFloat((document.querySelector('.g-tower .to-tower').style.transform.match(/rotate\(([-\d.]+)deg/) || [0, 0])[1]));
+  assert.ok(Math.abs(leanDeg) > 2, `a wobbly tower leans even with reduced motion (${leanDeg}deg)`);
+
   // --- mashing: a five-finger slap drops ONE crate and cannot drop the next player's
   page = await t.open(ID);
   await aiming(page);

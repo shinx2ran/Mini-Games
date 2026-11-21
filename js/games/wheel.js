@@ -124,7 +124,11 @@
       /* ---- view ---- */
 
       function showStars() {
-        ctx.setStatus(el('span', { class: 'wh-stars', 'aria-label': stars + ' stars' }, util.range(stars).map(function () { return '⭐'; }).join('')));
+        // up to 12 stars: they wrap into rows so every one stays visible in the narrow HUD
+        ctx.setStatus(el('span', {
+          'aria-label': stars + ' stars',
+          style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', fontSize: '0.68em', lineHeight: '1.1' },
+        }, util.range(stars).map(function () { return el('span', { text: '⭐' }); })));
       }
 
       function setBoss(p) {

@@ -321,3 +321,13 @@
   .g-dragon .dg-zone.is-turn .dg-gem .dg-jewel, .g-dragon .dg-scene.is-quaking { animation: none !important; }
   .g-dragon .dg-ava.is-blown { animation-duration: 0.2s; }
 }
+
+/* dragon beside the heaps: the avatars sit close to the top edge, so the hat sits lower */
+.g-dragon .dg-scene[data-layout="side"] .dg-hat { top: -20%; }
+
+/* narrowest phones: the dragon is small between two columns, so it leans in for its big moments */
+.g-dragon .dg-svg { transition: transform 0.25s cubic-bezier(.3, 1.4, .5, 1); }
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-den { position: relative; z-index: 4; }
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-den[data-mood^="ah"] .dg-svg,
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-den[data-mood="choo"] .dg-svg,
+.g-dragon .dg-scene[data-layout="side"][data-cols="1"] .dg-den[data-mood="giggle"] .dg-svg { transform: scale(1.7); }

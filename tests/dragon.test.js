@@ -102,6 +102,21 @@ h.run(ID, async (t) => {
   await page.waitForTimeout(600);
   await t.shot(page, 'dragon-phone-sneezed.png');
 
+  // --- the hat lands inside the playmat at every size
+  for (const vp of ['small', 'phoneWide', 'phone', 'tablet']) {
+    const p = await t.open(ID, { viewport: vp });
+    await p.evaluate(() => MG.current.api.rig({ trigger: 3, fakes: [], steps: [0, 2, 2, 2] }));
+    await t.fast(p, 8);
+    await grab(p); await grab(p);
+    await idle(p);
+    await p.locator('.g-dragon .dg-zone.is-turn .dg-gem:not(.is-gone)').first().tap();
+    await p.waitForSelector('.g-dragon .dg-hat.is-on');
+    await p.evaluate(() => { MG.timeScale = 1; });
+    await p.waitForTimeout(700);
+    assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-dragon .dg-hat.is-on'), [], `the hat is in view @${vp}`);
+    if (vp !== 'phone') await t.shot(p, `dragon-hat-${vp}.png`);
+  }
+
   // --- leaving and coming back mid-animation leaves nothing behind
   page = await t.open(ID);
   for (let i = 0; i < 4; i++) {

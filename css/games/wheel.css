@@ -132,8 +132,6 @@
 @keyframes wh-dance { from { transform: translateY(0) rotate(-8deg); } to { transform: translateY(-14%) rotate(8deg); } }
 @keyframes wh-party { to { filter: hue-rotate(360deg); } }
 
-.g-wheel .wh-stars { font-size: 0.8em; letter-spacing: -0.12em; }
-
 /* ----------------------------------------- the card: do THIS, and who does */
 
 .g-wheel .wh-card {

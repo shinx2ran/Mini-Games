@@ -190,8 +190,6 @@
 .g-cafe .cf-bell.is-ready { visibility: visible; transform: none; transition: transform 0.3s cubic-bezier(.3, 1.8, .5, 1); }
 .g-cafe .cf-bell.is-ready:active { transform: translateY(5px); box-shadow: 0 0 0 var(--line); }
 
-.g-cafe .cf-served { font-size: 0.85em; letter-spacing: -0.08em; }
-
 /* ---------------------------------------------------------------- tray */
 
 .g-cafe .cf-tray {
@@ -200,7 +198,8 @@
   display: grid;
   grid-template-columns: repeat(4, var(--cell));
   grid-auto-rows: var(--cell);
-  gap: 8px;
+  /* on the narrowest phone the gaps give way before the playmat edge does */
+  gap: 8px clamp(2px, calc((var(--gw) - 24px - 4 * var(--cell)) / 3), 8px);
   justify-content: center;
   align-content: center;
 }

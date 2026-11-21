@@ -41,6 +41,8 @@ h.run('shell', async (t) => {
   assert.strictEqual(await page.locator('.mg-win__face.is-crowned').getAttribute('data-p'), '0');
   assert.deepStrictEqual(await page.evaluate(() => MG.current.ctx.scores), [3, 2]);
   assert.strictEqual(await page.evaluate(() => MG.stickers.length), 1, 'a finished round earns one shared sticker');
+  assert.strictEqual(await page.locator('#mg-stage[data-turn]').count(), 0, 'at the party it is nobody\'s turn');
+  assert.strictEqual(await page.locator('.mg-chip.is-waiting').count(), 0);
 
   // mashing during the arming window must not dismiss the celebration
   await page.locator('.mg-win .mg-btn--primary').tap({ force: true }).catch(() => {});
@@ -102,6 +104,24 @@ h.run('shell', async (t) => {
   await page.waitForTimeout(2700);
   await page.locator('.mg-night').tap();
   await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden);
+
+  // --- the party card fits every screen, a phone on its side included
+  for (const vp of ['phoneWide', 'small', 'phone', { width: 568, height: 320 }]) {
+    const p = await t.open('template', { ...PAGE, viewport: vp });
+    await t.fast(p, 8);
+    for (let i = 0; i < 5; i++) { await p.waitForFunction(() => !MG.current.api.busy && !MG.current.ctx.locked); await p.locator('.tpl-star').tap(); }
+    await p.waitForSelector('.mg-win__actions:not(.is-arming)');
+    await p.waitForTimeout(900);
+    const fit = await p.evaluate(() => {
+      const H = window.innerHeight, W = window.innerWidth;
+      return ['.mg-win__badge', '.mg-win .mg-btn--primary', '.mg-win .mg-btn--mid', '.mg-win__face'].map((s) => {
+        const r = document.querySelector(s).getBoundingClientRect();
+        return r.top >= -1 && r.bottom <= H + 1 && r.left >= -1 && r.right <= W + 1 ? null : `${s} [${Math.round(r.top)}..${Math.round(r.bottom)}] of ${H}`;
+      }).filter(Boolean);
+    });
+    assert.deepStrictEqual(fit, [], `party card fits @${JSON.stringify(vp)}`);
+    await t.shot(p, `shell-win-${typeof vp === 'string' ? vp : 'tiny-wide'}.png`);
+  }
 
   // --- layouts: no page scroll anywhere, both themes
   for (const [vp, dark] of [['small', false], ['phoneWide', true], ['tablet', false], ['phone', true]]) {

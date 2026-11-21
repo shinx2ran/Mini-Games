@@ -278,13 +278,21 @@
         node.style.top = L.nodes[i].y + '%';
       });
       trailPaths.forEach(function (path) { path.setAttribute('d', L.trail); });
+      seatRacers();
       racers.forEach(drawRacer);
     }
 
     /** Two racers on one stone stand side by side, each on their own player's side. */
     function seatRacers() {
       var together = racers[0].to === racers[1].to;
-      racers.forEach(function (r) { r.node.style.setProperty('--share', together ? (r.i === 0 ? '-1' : '1') : '0'); });
+      // on a stone in an edge column the pair shuffles inwards, so nobody hangs off the playmat
+      var shift = 0;
+      if (together && L) {
+        var x = L.nodes[racers[0].to].x / 100 * L.w;
+        if (x < L.unit * 0.95) shift = 1;
+        else if (x > L.w - L.unit * 0.95) shift = -1;
+      }
+      racers.forEach(function (r) { r.node.style.setProperty('--share', together ? String((r.i === 0 ? -1 : 1) + shift) : '0'); });
     }
 
     /* ---- motion ---- */

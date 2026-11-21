@@ -115,7 +115,10 @@ animation, decide with `ctx.after`).
   The chip shows a digit; that is a bonus for the grown-up, so ALSO show the
   count as things on that player's side (twins in a nest, treasures in a sack).
 - `ctx.setStatus(nodeOrString | null)` — small shared indicator in the middle
-  of the HUD (carrots found together, bowls won). Keep it short: it is ~120px wide on a phone.
+  of the HUD (carrots found together, bowls won). It is ~100px wide on a small
+  phone and a narrow column on a phone held sideways; long content wraps. The
+  node lives in the HUD, OUTSIDE your game's `.g-<id>` scope, so your
+  stylesheet cannot reach it: style it inline.
 - `ctx.chip(i)` → the player's chip element (aim flying things at it)
 
 **Endings**
@@ -126,7 +129,9 @@ animation, decide with `ctx.after`).
   - `0 | 1` → that player wears the crown
   - `'tie'` → both crowned
   - `'team'` → co-operative success or a game with no winner
-  Call it exactly once; input is ignored afterwards. There is no "you lost"
+  Call it exactly once; input is ignored afterwards and the turn highlight is
+  cleared for you. Keep the finale short (the `delay`): under ~4 seconds.
+  There is no "you lost"
   screen anywhere, and no parent-versus-child tally is kept.
 - `ctx.restart()`, `ctx.exit()`
 

@@ -195,5 +195,28 @@
 
 @media (prefers-reduced-motion: reduce) {
   .g-twins .tw-egg.is-twin .tw-baby, .g-twins .tw-egg.is-shimmer .tw-shell { animation: none; }
-  .g-twins .tw-egg.is-shimmer .tw-shell { box-shadow: 0 0 0 4px var(--sun); }
+  /* still a quiet hint: a small tilt, never a highlight both players can see */
+  .g-twins .tw-egg.is-shimmer .tw-shell { transform: rotate(calc(var(--tilt) + 7deg)) scale(1.04); }
+}
+
+/* the twins in a nest are the score she reads: keep them big enough to recognise */
+.g-twins[data-orient="landscape"] .tw-pair { font-size: calc(var(--gmin) * 0.085); }
+.g-twins[data-orient="portrait"] .tw-pair { font-size: max(20px, calc(var(--gmin) * 0.075)); }
+.g-twins[data-orient="portrait"] .tw-nest { position: relative; padding: 6px; }
+.g-twins[data-orient="portrait"] .tw-nest__who {
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  width: clamp(30px, calc(var(--gmin) * 0.1), 44px);
+  height: clamp(30px, calc(var(--gmin) * 0.1), 44px);
+  min-width: 0;
+  min-height: 0;
+  font-size: clamp(17px, calc(var(--gmin) * 0.058), 26px);
+}
+.g-twins[data-orient="portrait"] .tw-nest[data-p="0"] .tw-nest__who { left: -6px; }
+.g-twins[data-orient="portrait"] .tw-nest[data-p="1"] .tw-nest__who { right: -6px; }
+.g-twins[data-orient="portrait"] .tw-nest__row {
+  min-height: calc(var(--gmin) * 0.2);
+  justify-content: center;
+  padding: 14px 4px 4px;
 }

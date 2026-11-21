@@ -137,6 +137,8 @@ h.run(ID, async (t) => {
       assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-twins .tw-egg, .g-twins .tw-nest, .g-twins .tw-shell, .g-twins .tw-pair'), [], `all in view @${vp}/${n}`);
       const size = await t.minTargetSize(p, '.g-twins .tw-egg:not(.is-gone)');
       assert.ok(size.min >= 64, `eggs are big enough @${vp}/${n} (${size.min}px)`);
+      const pair = await t.minTargetSize(p, '.g-twins .tw-pair .mg-sticker');
+      assert.ok(pair.count === 4 && pair.min >= 20, `twins in the nests are recognisable @${vp}/${n} (${pair.min}px)`);
       if (n === 12) { await p.waitForTimeout(350); await t.shot(p, `twins-${vp}.png`); }
       if (vp === 'phone' && n === 12) {
         await p.setViewportSize({ width: 844, height: 390 });

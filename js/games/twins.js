@@ -218,6 +218,7 @@
             found[p]++;
             left--;
             nests[p].row.appendChild(el('span', { class: 'tw-pair' }, ctx.sticker(baby.emoji), ctx.sticker(baby.emoji)));
+            layout(); // a fuller nest can grow a row: keep the eggs fitted to what is left
             ctx.addScore(p, 1);
             sfx.scale(3 + found[0] + found[1]);
             fx.pop(nests[p].node);

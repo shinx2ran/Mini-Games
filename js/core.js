@@ -900,6 +900,9 @@
         if (!alive || over) return;
         over = true;
         clearHint();
+        // the round is over: it is nobody's turn any more, everybody celebrates
+        turn = null;
+        renderHud();
         o = o || {};
         addTimer(o.delay == null ? 700 : o.delay, function () { showWin(result, o); }, false);
       },
@@ -1022,7 +1025,7 @@
   }
 
   function showPause() {
-    if (!session || session.over || !dom.overlay.hidden) return;
+    if (!session || !dom.overlay.hidden) return; // (a finale before the party can be paused too)
     session.setPaused(true);
     var def = session.def;
     var needsRestart = false;

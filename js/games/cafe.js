@@ -95,7 +95,7 @@
       /* ---- view ---- */
 
       function showStatus() {
-        ctx.setStatus(el('span', { class: 'cf-served', 'aria-label': dishNo + ' dishes served' }, util.range(dishNo).map(function () { return '🍽️'; }).join('')));
+        ctx.setStatus(el('span', { 'aria-label': dishNo + ' dishes served' }, util.range(dishNo).map(function () { return '🍽️'; }).join('')));
       }
 
       function setRoles() {
@@ -131,6 +131,7 @@
         food.textContent = '';
         topsEl.textContent = '';
         dishBtn.className = 'cf-dish';
+        dishBtn.removeAttribute('data-bites');
         dishBtn.setAttribute('aria-disabled', 'true');
         bell.classList.remove('is-ready');
         bell.setAttribute('aria-disabled', 'true');
