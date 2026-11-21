@@ -1,7 +1,19 @@
-/* Shh! Tiptoe — styles. Every selector is scoped under .g-tiptoe.
-   The whole playmat says what the wolf is doing: night (asleep, go!),
-   dusk (stirring, careful...), bright (awake, FREEZE). --pos (0..1) is how
-   far up its lane a player has tiptoed. */
+/* Run & Freeze — styles. Every selector is scoped under .g-tiptoe.
+   The whole playmat says what the wolf is doing, in more ways than colour:
+   song  = bright, his BACK is turned, notes dance            -> run
+   look  = dark spotlight, his FACE and big eyes, lanes ringed -> freeze
+   --pos (0..1) is how far up its lane a player has run. */
+
+.g-tiptoe {
+  --tt-go: #C9F2B6;
+  --tt-stop: #3B2A6E;
+  --tt-fur: #9AA5BA;
+  --tt-fur-dark: #6D7890;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-tiptoe { --tt-go: #2F6B45; --tt-stop: #120C2E; }
+}
+:root[data-theme="dark"] .g-tiptoe { --tt-go: #2F6B45; --tt-stop: #120C2E; }
 
 .g-tiptoe .tt-scene {
   position: absolute;
@@ -12,14 +24,12 @@
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "wolf wolf" "l0 l1";
-  background: #2B2A6B;
-  transition: background-color 0.25s;
+  background: var(--tt-go);
+  transition: background-color 0.18s;
   --wolf: clamp(64px, calc(var(--gmin) * 0.22), 150px);
   --me: clamp(48px, calc(var(--gmin) * 0.17), 110px);
 }
-.g-tiptoe .tt-scene[data-phase="stir"] { background: #8A5BC4; }
-.g-tiptoe .tt-scene[data-phase="awake"] { background: #FFD45C; }
-.g-tiptoe .tt-scene[data-phase="yawn"] { background: #6A5BB0; }
+.g-tiptoe .tt-scene[data-phase="look"] { background: var(--tt-stop); }
 .g-tiptoe .tt-scene[data-phase="party"] { background: var(--sun-soft); }
 
 /* ----------------------------------------------------------------- wolf */
@@ -28,33 +38,85 @@
   grid-area: wolf;
   justify-self: center;
   position: relative;
-  margin-top: calc(var(--wolf) * 0.16); /* headroom for the eyes that pop up */
   width: var(--wolf);
   height: var(--wolf);
+  margin-top: calc(var(--wolf) * 0.16); /* headroom for the eyes that pop up */
+}
+.g-tiptoe .tt-back, .g-tiptoe .tt-face {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  font-size: calc(var(--wolf) * 0.84);
-  line-height: 1;
-  transition: filter 0.25s, transform 0.25s cubic-bezier(.3, 1.6, .5, 1);
+  transition: transform 0.16s ease-in;
 }
-.g-tiptoe .tt-scene[data-phase="sleep"] .tt-wolf { filter: saturate(0.55) brightness(0.8); transform: rotate(-8deg) translateY(6%); }
-.g-tiptoe .tt-scene[data-phase="yawn"] .tt-wolf { filter: saturate(0.7) brightness(0.9); transform: rotate(-4deg); }
-.g-tiptoe .tt-scene[data-phase="awake"] .tt-wolf { transform: scale(1.14); }
-.g-tiptoe .tt-scene[data-phase="party"] .tt-wolf { animation: tt-nod 0.3s ease-in-out infinite alternate; }
-@keyframes tt-nod { from { transform: rotate(-8deg); } to { transform: rotate(8deg) scale(1.08); } }
 
-.g-tiptoe .tt-eyes, .g-tiptoe .tt-zzz { position: absolute; line-height: 1; opacity: 0; pointer-events: none; }
-.g-tiptoe .tt-zzz { right: -22%; top: -6%; font-size: 0.42em; }
-.g-tiptoe .tt-scene[data-phase="sleep"] .tt-zzz { opacity: 1; animation: tt-zzz 1.7s ease-in-out infinite; }
-@keyframes tt-zzz { 0%, 100% { transform: translateY(0) scale(0.85); } 50% { transform: translateY(-20%) scale(1.1); } }
-.g-tiptoe .tt-eyes { left: 50%; top: -14%; font-size: 0.56em; transform: translateX(-50%) scale(0.2); }
-.g-tiptoe .tt-scene[data-phase="awake"] .tt-eyes {
-  opacity: 1;
-  transform: translateX(-50%) scale(1);
-  transition: transform 0.18s cubic-bezier(.3, 1.9, .5, 1);
-  animation: tt-look 0.9s 0.2s ease-in-out infinite alternate;
+/* his back: a round furry shape with two ears and a tail */
+.g-tiptoe .tt-back {
+  inset: 8% 8% 4%;
+  border: 3px solid var(--line);
+  border-radius: 46% 46% 42% 42%;
+  background: var(--tt-fur);
+  box-shadow: inset 0 calc(var(--wolf) * -0.12) 0 var(--tt-fur-dark);
 }
-@keyframes tt-look { from { transform: translateX(-74%); } to { transform: translateX(-26%); } }
+.g-tiptoe .tt-back::before, .g-tiptoe .tt-back::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  width: 30%;
+  height: 34%;
+  border: 3px solid var(--line);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: var(--tt-fur);
+}
+.g-tiptoe .tt-back::before { left: 6%; transform: rotate(-16deg); }
+.g-tiptoe .tt-back::after { right: 6%; transform: rotate(16deg); }
+.g-tiptoe .tt-tail {
+  position: absolute;
+  right: -22%;
+  bottom: 6%;
+  width: 34%;
+  height: 22%;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--tt-fur-dark);
+  transform-origin: 0 50%;
+}
+.g-tiptoe .tt-scene[data-phase="song"] .tt-back { animation: tt-sway 0.5s ease-in-out infinite alternate; }
+.g-tiptoe .tt-scene[data-phase="song"] .tt-tail { animation: tt-wag 0.25s ease-in-out infinite alternate; }
+/* the last two notes: he is about to turn */
+.g-tiptoe .tt-scene.is-ending .tt-back { animation: tt-ready 0.12s linear infinite alternate; }
+@keyframes tt-sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes tt-wag { from { transform: rotate(-20deg); } to { transform: rotate(24deg); } }
+@keyframes tt-ready { from { transform: translateX(-3%) scale(1.05); } to { transform: translateX(3%) scale(1.05); } }
+
+.g-tiptoe .tt-face { font-size: calc(var(--wolf) * 0.84); line-height: 1; transform: scaleX(0); }
+.g-tiptoe .tt-eyes {
+  position: absolute;
+  left: 50%;
+  top: -14%;
+  font-size: 0.56em;
+  line-height: 1;
+  transform: translateX(-50%);
+  animation: tt-scan 0.9s 0.2s ease-in-out infinite alternate;
+}
+@keyframes tt-scan { from { transform: translateX(-74%); } to { transform: translateX(-26%); } }
+
+/* the spin: back squeezes away, face squeezes in (and the other way round) */
+.g-tiptoe .tt-scene[data-phase="look"] .tt-back,
+.g-tiptoe .tt-scene[data-phase="party"] .tt-back { transform: scaleX(0); animation: none; }
+.g-tiptoe .tt-scene[data-phase="look"] .tt-face,
+.g-tiptoe .tt-scene[data-phase="party"] .tt-face { transform: scaleX(1.12) scaleY(1.12); transition: transform 0.2s 0.14s cubic-bezier(.3, 1.9, .5, 1); }
+.g-tiptoe .tt-scene[data-phase="party"] .tt-face { animation: tt-nod 0.3s 0.4s ease-in-out infinite alternate; }
+.g-tiptoe .tt-scene[data-phase="party"] .tt-eyes { display: none; }
+@keyframes tt-nod { from { transform: rotate(-8deg) scale(1.08); } to { transform: rotate(8deg) scale(1.08); } }
+
+.g-tiptoe .tt-notes { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.12s; }
+.g-tiptoe .tt-scene[data-phase="song"] .tt-notes { opacity: 1; }
+.g-tiptoe .tt-notes span { position: absolute; top: 0; font-size: calc(var(--wolf) * 0.36); line-height: 1; animation: tt-note 0.7s ease-in-out infinite alternate; }
+.g-tiptoe .tt-notes span:first-child { left: -42%; }
+.g-tiptoe .tt-notes span:last-child { right: -46%; animation-delay: -0.35s; }
+@keyframes tt-note { from { transform: translateY(20%) rotate(-12deg); } to { transform: translateY(-30%) rotate(12deg); } }
 
 /* ---------------------------------------------------------------- lanes */
 
@@ -71,7 +133,7 @@
 }
 .g-tiptoe .tt-lane[data-p="0"] { grid-area: l0; }
 .g-tiptoe .tt-lane[data-p="1"] { grid-area: l1; }
-.g-tiptoe .tt-scene[data-phase="awake"] .tt-lane { box-shadow: inset 0 0 0 5px var(--berry); }
+.g-tiptoe .tt-scene[data-phase="look"] .tt-lane { box-shadow: inset 0 0 0 6px var(--berry); }
 
 .g-tiptoe .tt-cake {
   position: absolute;
@@ -82,20 +144,19 @@
   transform: translateX(-50%);
   pointer-events: none;
 }
-.g-tiptoe .tt-marks {
+/* a running track: dashes up the middle of the lane */
+.g-tiptoe .tt-track {
   position: absolute;
   left: 50%;
   top: calc(var(--me) * 0.8);
-  bottom: calc(var(--me) * 0.62);
-  width: 10px;
-  margin-left: -5px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+  bottom: calc(var(--me) * 0.3);
+  width: 8px;
+  margin-left: -4px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(180deg, var(--c-dark) 0 14px, transparent 14px 30px);
+  opacity: 0.4;
   pointer-events: none;
 }
-.g-tiptoe .tt-mark { width: 10px; height: 10px; border-radius: 50%; background: var(--c-dark); opacity: 0.45; }
 
 .g-tiptoe .tt-climber {
   position: absolute;
@@ -113,15 +174,17 @@
   font-size: calc(var(--me) * 0.56);
   line-height: 1;
   pointer-events: none;
-  transition: bottom 0.4s cubic-bezier(.4, 1.5, .6, 1);
+  transition: bottom 0.26s linear;
 }
-.g-tiptoe .tt-climber.is-hop .mg-sticker { animation: tt-hop 0.42s ease-out; }
-@keyframes tt-hop { 0% { transform: none; } 40% { transform: translateY(-22%) rotate(-8deg) scale(1.08); } 100% { transform: none; } }
+.g-tiptoe .tt-climber.is-hop .mg-sticker { animation: tt-hop 0.26s ease-out; }
+@keyframes tt-hop { 0% { transform: none; } 50% { transform: translateY(-16%) rotate(-10deg); } 100% { transform: none; } }
+.g-tiptoe .tt-lane.is-running .tt-climber { box-shadow: 0 0 0 4px var(--edge); }
 .g-tiptoe .tt-climber.is-dizzy { animation: tt-dizzy 0.8s linear; }
 @keyframes tt-dizzy { to { transform: rotate(720deg); } }
 .g-tiptoe .tt-climber.is-champ { box-shadow: 0 0 0 5px var(--sun); }
-.g-tiptoe .tt-lane.is-zooming .tt-climber { transition-duration: 0.8s; }
+.g-tiptoe .tt-lane.is-zooming .tt-climber { transition: bottom 0.8s cubic-bezier(.4, 1.3, .6, 1); }
 
+/* the wordless tutorial: press and keep pressing */
 .g-tiptoe .tt-hand {
   position: absolute;
   left: 50%;
@@ -130,12 +193,17 @@
   line-height: 1;
   pointer-events: none;
   filter: drop-shadow(0 4px 0 rgba(12, 10, 38, 0.3));
-  animation: tt-hand 0.5s ease-in-out infinite alternate;
+  animation: tt-hand 1.1s ease-in-out infinite;
 }
 .g-tiptoe .tt-hand.is-done { display: none; }
-@keyframes tt-hand { from { transform: translateX(-50%) translateY(16%); } to { transform: translateX(-50%) translateY(-6%) scale(0.92); } }
+@keyframes tt-hand {
+  0%, 100% { transform: translateX(-50%) translateY(18%); }
+  25%, 80% { transform: translateX(-50%) translateY(-6%) scale(0.9); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .g-tiptoe .tt-hand, .g-tiptoe .tt-scene[data-phase="sleep"] .tt-zzz, .g-tiptoe .tt-scene[data-phase="party"] .tt-wolf,
-  .g-tiptoe .tt-scene[data-phase="awake"] .tt-eyes, .g-tiptoe .tt-climber.is-dizzy, .g-tiptoe .tt-climber.is-hop .mg-sticker { animation: none; }
+  .g-tiptoe .tt-hand, .g-tiptoe .tt-notes span, .g-tiptoe .tt-eyes, .g-tiptoe .tt-climber.is-dizzy,
+  .g-tiptoe .tt-climber.is-hop .mg-sticker, .g-tiptoe .tt-scene[data-phase="song"] .tt-back,
+  .g-tiptoe .tt-scene[data-phase="song"] .tt-tail, .g-tiptoe .tt-scene.is-ending .tt-back,
+  .g-tiptoe .tt-scene[data-phase="party"] .tt-face { animation: none; }
 }

@@ -24,7 +24,7 @@ an avatar and a colour each.
 | 🍕 **Yummy-Yucky Cafe** | One cooks anything at all, the other takes three bites and reacts. Swap. | Pretend play |
 | 📦 **Wobble Tower** | Take turns dropping animal crates to build one tower together. | Team |
 | 🎈 **Balloon Bop** | Keep the balloon up together: you can only bop it when it is over your side. | Team, both at once |
-| 🐺 **Shh! Tiptoe** | Tiptoe to the cupcakes while the wolf sleeps; freeze when his eyes open. | Both at once |
+| 🐺 **Run & Freeze** | The wolf sings with his back turned: run! The song stops and he spins round: freeze! | Both at once |
 | 🐞 **Wobble Tray** | Hold the phone flat between you and tip it together to roll the ladybird to the strawberries. | Team, tilt sensor |
 | 👋 **Wiggle Pop** | Prop the phone up, stand back, and wave at the bubbles to pop them. | Team, camera |
 
