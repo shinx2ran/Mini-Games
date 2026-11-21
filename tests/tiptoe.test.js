@@ -35,6 +35,8 @@ h.run(ID, async (t) => {
     const durs = new Set(); for (let i = 0; i < 300; i++) durs.add(a.makeSong().dur.toFixed(2));
     return { bad: bad.slice(0, 3), variety: durs.size,
       off: a.setup(0, 0), none: a.setup(1, -1), some: a.setup(1, 0), lots: a.setup(2, 1),
+      twoKids: a.setup(1, -1, true), twoKidsOff: a.setup(0, -1, true),
+      loss: [a.lossFor(4, 9), a.lossFor(4, 5), a.lossFor(8, 2), a.lossFor(8, 0), a.lossFor(10, 30)],
       j: [a.judge('song', 9, 0.3), a.judge('away', 9, 0.3), a.judge('look', 0.1, 0.65), a.judge('look', 0.7, 0.65), a.judge('look', 0.25, 0.2)],
       rules: a.rules, littleIdx: a.littleIdx };
   });
@@ -42,8 +44,11 @@ h.run(ID, async (t) => {
   assert.ok(r.variety >= 5, 'songs come in several lengths, so the freeze is a surprise');
   assert.deepStrictEqual(r.off, { len: [56, 56], grace: [0.35, 0.35], back: [6, 6] });
   assert.deepStrictEqual(r.none, r.off);
-  assert.deepStrictEqual(r.some, { len: [48, 64], grace: [0.65, 0.2], back: [4, 8] });
-  assert.deepStrictEqual(r.lots, { len: [68, 44], grace: [0.2, 0.9], back: [10, 3] });
+  assert.deepStrictEqual(r.some, { len: [48, 64], grace: [0.9, 0.2], back: [4, 8] });
+  assert.deepStrictEqual(r.lots, { len: [68, 44], grace: [0.2, 1.2], back: [10, 3] });
+  assert.deepStrictEqual(r.twoKids, { len: [48, 48], grace: [0.9, 0.9], back: [4, 4] }, 'two little players both get the gentle rules');
+  assert.deepStrictEqual(r.twoKidsOff, r.off, '...unless help is switched off');
+  assert.deepStrictEqual(r.loss, [4, 3, 0, 0, 10], 'being caught never takes more than the song gave, less two steps');
   assert.deepStrictEqual(r.j, ['run', 'run', 'ignore', 'caught', 'caught']);
   assert.strictEqual(r.littleIdx, 0); assert.deepStrictEqual(r.rules.len, [48, 64]);
 
@@ -78,26 +83,41 @@ h.run(ID, async (t) => {
   // --- he looks: a finger still down is forgiven for a moment, then huffed back ONCE
   await press(page, 0);
   const atLook = (await hold(page, 'look'))[0];
-  await waitGame(page, 0.4);
+  const ranThisSong = (await api(page, 'gained'))[0];
+  assert.ok(ranThisSong >= 5, `she has run a good way this song (${ranThisSong})`);
+  await waitGame(page, 0.5);
   assert.strictEqual((await api(page, 'pos'))[0], atLook, 'inside the forgiveness window nothing happens');
-  await waitGame(page, 0.6);
-  assert.strictEqual((await api(page, 'pos'))[0], atLook - 4, 'still running when he looks: back four steps');
+  await waitGame(page, 0.7);
+  const cost = Math.min(4, ranThisSong - 2);
+  assert.strictEqual((await api(page, 'pos'))[0], atLook - cost, 'still running when he looks: huffed back, but she keeps a couple of this song\'s steps');
   assert.deepStrictEqual(await api(page, 'caught'), [1, 0]);
   await waitGame(page, 1.5);
-  assert.strictEqual((await api(page, 'pos'))[0], atLook - 4, 'he does not keep huffing at the same player');
+  assert.strictEqual((await api(page, 'pos'))[0], atLook - cost, 'he does not keep huffing at the same player');
   await page.mouse.up();
-  // the grown-up pats while he is looking: back eight, but never past the start
+  assert.strictEqual(await page.locator('.g-tiptoe .tt-climber.is-dizzy').count(), 0, 'the spin is over');
+  // ...and when he sings again she is still dizzy for a beat: that is SHOWN, so a finger that does nothing never looks broken
+  await page.evaluate(() => MG.current.api.hold(null));
+  await press(page, 0);
+  assert.deepStrictEqual(await api(page, 'dizzy'), [true, false]);
+  assert.strictEqual(await page.locator('.g-tiptoe .tt-lane[data-p="0"] .tt-climber.is-dizzy').count(), 1, 'she is shown spinning');
+  await page.waitForTimeout(60);
+  assert.strictEqual(await page.locator('.g-tiptoe .tt-lane[data-p="0"].is-running').count(), 0, 'and not shown running while she cannot');
+  await waitGame(page, 0.75);
+  assert.strictEqual(await page.locator('.g-tiptoe .tt-climber.is-dizzy').count(), 0);
+  assert.strictEqual(await page.locator('.g-tiptoe .tt-lane[data-p="0"].is-running').count(), 1, 'then off she goes');
+  await page.mouse.up();
+  // the grown-up pats while he is looking: caught, but having run only two steps there is nothing to take
   await hold(page, 'look');
   await waitGame(page, 0.3);
   await tapLane(page, 1);
-  assert.strictEqual((await api(page, 'pos'))[1], 0, 'never below the start');
+  assert.strictEqual((await api(page, 'pos'))[1], 2, 'nobody is ever sent back past where the song found them');
   assert.deepStrictEqual(await api(page, 'caught'), [1, 1]);
 
   // --- turning back is safe; then a whole race: she runs to the cupcakes and the other is waved up too
   await hold(page, 'away');
   await waitGame(page, 0.9);
   await tapLane(page, 1);
-  assert.strictEqual((await api(page, 'pos'))[1], 1);
+  assert.strictEqual((await api(page, 'pos'))[1], 3);
   await hold(page, 'song');
   await t.fast(page, 8);
   await press(page, 0);
@@ -167,14 +187,70 @@ h.run(ID, async (t) => {
   assert.ok(careful.time >= 25 && careful.time <= 120, `a race lasts long enough to enjoy (${careful.time.toFixed(0)}s)`);
   await t.waitForWin(page, 30000);
 
-  // --- a dead heat (equal lanes, both arriving on the same step) is a tie with two crowns, decided once
-  page = await t.open(null, { page: 'tests/play.html?g=tiptoe' });
-  await page.evaluate(() => MG.store.set('help', 0));
-  await page.reload();
-  await page.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
-  await page.evaluate(() => MG.open('tiptoe'));
+  // --- pace: a little one who NEVER lets go is caught every single time, and still gets her cupcake (just later)
+  page = await t.open(ID);
   await ready(page);
-  assert.deepStrictEqual((await api(page, 'rules')).len, [56, 56]);
+  await t.fast(page, 8);
+  const stubborn = await page.evaluate(() => new Promise((resolve) => {
+    const lane = document.querySelector('.g-tiptoe .tt-lane[data-p="0"]'), r = lane.getBoundingClientRect();
+    lane.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 78, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height * 0.6 }));
+    let looks = 0, last = '', low = 0, worst = 0, at = 0;
+    (function bot() {
+      const a = MG.current && MG.current.api;
+      if (!a || a.state !== 'play') { window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 78, pointerType: 'touch' })); resolve({ looks, time: MG.current.ctx.time, caught: a.caught[0], worst }); return; }
+      if (a.phase !== last) {
+        if (a.phase === 'look') looks++;
+        // from one "he turns away" to the next: did she end up further back than she was?
+        if (a.phase === 'away') { worst = Math.min(worst, a.pos[0] - at); at = a.pos[0]; }
+        last = a.phase;
+      }
+      requestAnimationFrame(bot);
+    })();
+  }));
+  assert.ok(stubborn.caught >= 4 && stubborn.caught >= stubborn.looks - 1, `she is caught at every look (${stubborn.caught} of ${stubborn.looks})`);
+  assert.ok(stubborn.worst >= 0, `no song ever leaves her further back than it found her (${stubborn.worst})`);
+  assert.ok(stubborn.time > careful.time, `freezing in time is the quicker way (${stubborn.time.toFixed(0)}s against ${careful.time.toFixed(0)}s)`);
+  assert.ok(stubborn.time <= 300, `and even so the race ends in good time (${stubborn.time.toFixed(0)}s)`);
+  await t.waitForWin(page, 30000);
+  assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), '0');
+
+  // --- a dead heat (equal lanes, both arriving on the same step) is a tie with two crowns, decided once
+  const even = async () => {
+    const p = await t.open(null, { page: 'tests/play.html?g=tiptoe' });
+    await p.evaluate(() => MG.store.set('help', 0));
+    await p.reload();
+    await p.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
+    await p.evaluate(() => MG.open('tiptoe'));
+    await ready(p);
+    assert.deepStrictEqual((await api(p, 'rules')).len, [56, 56]);
+    return p;
+  };
+  // ...patting: both one step short, both pat in the same instant
+  page = await even();
+  await hold(page, 'song');
+  await t.fast(page, 8);
+  await page.evaluate(() => new Promise((resolve) => {
+    const mid = (p) => { const el = document.querySelector(`.g-tiptoe .tt-lane[data-p="${p}"]`), r = el.getBoundingClientRect(); return { el, x: r.left + r.width / 2, y: r.top + r.height * 0.6 }; };
+    const down = (p, id) => { const m = mid(p); m.el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: id, pointerType: 'touch', clientX: m.x, clientY: m.y })); };
+    const up = (id) => window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: id, pointerType: 'touch' }));
+    down(0, 60); down(1, 61);
+    let lifted = false, t0 = 0;
+    (function bot() {
+      const a = MG.current.api;
+      if (!lifted && a.pos[0] >= 55 && a.pos[1] >= 55) { up(60); up(61); lifted = true; t0 = MG.current.ctx.time; }
+      if (lifted && MG.current.ctx.time - t0 > 0.6) {
+        down(0, 62); down(1, 63); up(62); up(63); // two pats, one after the other, before the game draws again
+        resolve();
+        return;
+      }
+      requestAnimationFrame(bot);
+    })();
+  }));
+  assert.deepStrictEqual(await api(page, 'pos'), [56, 56]);
+  await t.waitForWin(page, 30000);
+  assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), 'tie', 'two pats in the same instant are a tie, whoever\'s finger the phone reported first');
+  // ...and holding
+  page = await even();
   await hold(page, 'song');
   await t.fast(page, 8);
   {
@@ -197,8 +273,16 @@ h.run(ID, async (t) => {
     const p = await t.open(ID, { viewport: vp, dark: vp === 'phoneWide' || vp === 'small' });
     await ready(p);
     await hold(p, 'song');
+    const top0 = await p.evaluate(() => document.querySelector('.g-tiptoe .tt-lane[data-p="0"] .tt-climber').getBoundingClientRect().top);
     for (let n = 0; n < 6; n++) { await tapLane(p, n % 2); await waitGame(p, 0.45); }
     await p.waitForTimeout(400);
+    const look = await p.evaluate(() => {
+      const box = (s) => document.querySelector(s).getBoundingClientRect();
+      const w = box('.g-tiptoe .tt-wolf'), hit = (a, b) => a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+      return { top: box('.g-tiptoe .tt-lane[data-p="0"] .tt-climber').top, onLane: [0, 1].some((i) => hit(w, box(`.g-tiptoe .tt-lane[data-p="${i}"]`))) };
+    });
+    assert.ok((top0 - look.top) / 3 >= 4, `one step is far enough to see @${vp} (${((top0 - look.top) / 3).toFixed(1)}px)`);
+    assert.ok(!look.onLane, `the wolf does not stand on a lane @${vp}`);
     assert.ok(await t.noPageScroll(p), `no page scroll @${vp}`);
     assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-tiptoe .tt-lane, .g-tiptoe .tt-wolf, .g-tiptoe .tt-back, .g-tiptoe .tt-notes span'), [], `all in view @${vp}`);
     assert.ok((await t.minTargetSize(p, '.g-tiptoe .tt-lane')).min >= 110, `lanes are huge @${vp}`);

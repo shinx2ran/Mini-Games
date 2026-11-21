@@ -29,21 +29,30 @@
   /** How fast a balloon falls over player i's half: floatier for a little player who gets help. */
   function gravityFor(help) { return GRAVITY * [1, 0.7, 0.5][help || 0]; }
 
-  /** May the player on `side` bop balloon b right now? Over their half, rested, and no longer shooting upwards. */
+  /**
+   * May the player on `side` bop balloon b right now? It must be over their
+   * half, rested, no longer shooting upwards, and not the one they just sent
+   * off themselves: a pass always comes from the other player.
+   */
   function canBop(b, side, now) {
-    return sideOf(b.x) === side && now >= b.cool && b.vy > RISING;
+    return sideOf(b.x) === side && b.from !== side && now >= b.cool && b.vy > RISING;
   }
 
-  /** One step of flight. Mutates and returns b: {x, y, vx, vy}. Walls and ceiling are soft. */
-  function fly(b, dt, g, top) {
+  /**
+   * One step of flight. Mutates and returns b: {x, y, vx, vy}. Walls and ceiling are soft.
+   * `hang`: it may rise but not fall yet (it waits at the top of its flight until it can be somebody's).
+   */
+  function fly(b, dt, g, top, wall, hang) {
     top = top == null ? CEILING : top;
+    wall = wall == null ? 0.1 : wall;
     b.vy += g * dt;
+    if (hang && b.vy > 0) b.vy = 0;
     b.vx *= Math.pow(0.6, dt); // sideways drift dies away, so it hangs over a half
     b.x += b.vx * dt;
     b.y += b.vy * dt;
-    if (b.x < 0.1) { b.x = 0.1; b.vx = Math.abs(b.vx) * 0.6; }
-    if (b.x > 0.9) { b.x = 0.9; b.vx = -Math.abs(b.vx) * 0.6; }
-    if (b.y < top) { b.y = top; b.vy = Math.abs(b.vy) * 0.3; }
+    if (b.x < wall) { b.x = wall; b.vx = Math.abs(b.vx) * 0.6; }
+    if (b.x > 1 - wall) { b.x = 1 - wall; b.vx = -Math.abs(b.vx) * 0.6; }
+    if (b.y < top) { b.y = top; b.vy = hang ? 0 : Math.abs(b.vy) * 0.3; }
     return b;
   }
 
@@ -87,15 +96,16 @@
         el('div', { class: 'bp-ladder', role: 'img', 'aria-label': 'Passes so far' }, dots), sky);
       root.appendChild(scene);
 
-      // The balloon's size is set here (not in the stylesheet) because the ceiling depends on it:
-      // a balloon at the top of its flight must still be whole, on the shortest screen too.
-      var ceiling = CEILING;
+      // The balloon's size is set here (not in the stylesheet) because the ceiling and the side walls
+      // depend on it: a balloon at the edge of its flight must still be whole, on the smallest screen too.
+      var ceiling = CEILING, wall = 0.1;
       function measure() {
         var s = ctx.size();
         var wide = s.w >= s.h;
         var size = util.clamp(Math.min(s.w, s.h) * (wide ? 0.24 : 0.3), 84, wide ? 150 : 190);
         scene.style.setProperty('--size', size.toFixed(1) + 'px');
-        ceiling = Math.max(CEILING, (size * 0.62 + 10) / s.h);
+        ceiling = Math.max(CEILING, (size * 0.7 + 10) / s.h); // (a leaning balloon reaches a little higher)
+        wall = Math.max(0.1, (size * 0.56 + 8) / s.w);
       }
       measure();
       ctx.onResize(measure);
@@ -138,9 +148,8 @@
           b.vx = v.vx;
           b.vy = v.vy;
           bops++;
-          // it only counts as a pass when it came from the other player (or is brand new)
-          if (b.from !== i) { b.from = i; pass(b); }
-          else sfx.play('hop');
+          b.from = i;
+          pass(b);
           if (b.node.animate && !MG.reducedMotion) {
             b.node.firstChild.animate([{ transform: 'scale(1.18, 0.82)' }, { transform: 'scale(0.94, 1.08)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'ease-out' });
           }
@@ -179,6 +188,7 @@
 
       function finish() {
         state = 'done';
+        sides.forEach(function (s) { s.pad.classList.remove('is-mine'); });
         balloons.filter(function (b) { return b.alive && !b.grounded; }).forEach(function (b, k) {
           ctx.after(200 + k * 220, function () {
             var c = fx.centerOf(b.node);
@@ -196,7 +206,8 @@
         balloons.forEach(function (b) {
           if (!b.alive || b.grounded) return;
           var over = sideOf(b.x);
-          fly(b, dt, gravityFor(ctx.helpFor(over)), ceiling);
+          // it hangs at the top of its flight until it can be somebody's: the whole fall is theirs to react in
+          fly(b, dt, gravityFor(ctx.helpFor(over)), ceiling, wall, ctx.time < b.cool);
           if (b.y >= FLOOR) { b.y = FLOOR; land(b); }
           draw(b);
         });
@@ -225,6 +236,7 @@
         get landings() { return landings; },
         get balloons() { return balloons.filter(function (b) { return b.alive && !b.grounded; }).map(function (b) { return { x: b.x, y: b.y, side: sideOf(b.x), ready: canBop(b, sideOf(b.x), ctx.time), from: b.from }; }); },
         get ceiling() { return ceiling; },
+        get wall() { return wall; },
         GOAL: GOAL, SECOND_AT: SECOND_AT, FLOOR: FLOOR,
         sideOf: sideOf, gravityFor: gravityFor, fly: fly, bopVelocity: bopVelocity, canBop: canBop,
       });

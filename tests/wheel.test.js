@@ -97,7 +97,13 @@ h.run(ID, async (t) => {
   assert.strictEqual(await api(page, 'state'), 'wait', 'a small wobble does not spin it');
   await page.evaluate(() => {
     const ev = (x) => window.dispatchEvent(new DeviceMotionEvent('devicemotion', { accelerationIncludingGravity: { x, y: 9.8, z: 0 } }));
-    ev(18); ev(-18);
+    ev(0); ev(18); ev(18.5); // put down with a bump: one hard jolt, nothing coming back
+  });
+  assert.strictEqual(await api(page, 'state'), 'wait', 'one jolt is not a shake');
+  await page.waitForTimeout(700);
+  await page.evaluate(() => {
+    const ev = (x) => window.dispatchEvent(new DeviceMotionEvent('devicemotion', { accelerationIncludingGravity: { x, y: 9.8, z: 0 } }));
+    ev(0); ev(18); ev(-18); // there and back again
   });
   assert.strictEqual(await api(page, 'state'), 'spin', 'a shake spins the wheel');
 

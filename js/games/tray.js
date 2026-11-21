@@ -14,7 +14,7 @@
 
   var GOAL = 12;
   var SETTLE_MS = 1500;     // tilt mode: time to lay the phone flat before that pose becomes "flat"
-  var RADIUS = 0.1;         // the ladybird: she stops this far from the rim, so all of her stays on the tray
+  var RADIUS = 0.11;        // the ladybird: she stops this far from the rim, so all of her stays on the tray
   var ACCEL = 1.7;          // short sides per s^2 at full push
   var FULL_TILT = 16;       // degrees of tip that count as a full push
   var DRAG = 1.6;           // how quickly it slows by itself (per second)
@@ -92,7 +92,7 @@
       var berry = null;
       var eaten = 0;
       var fingers = {};           // pointerId -> {x, y} in short sides
-      var settling = false, pinned = 0;
+      var settling = false, pinned = 0, settleId = 0;
       var reach = REACH[ctx.help] || REACH[1];
 
       /* ---- build ---- */
@@ -140,6 +140,24 @@
         sfx.play('pop');
       }
 
+      /**
+       * Tilt mode: a moment to lay the phone flat between them. THAT pose is
+       * "flat", not the one a button was tapped in. Also after every pause.
+       */
+      function settle() {
+        var id = ++settleId;
+        settling = true;
+        tip.hidden = false;
+        ctx.after(SETTLE_MS, function () {
+          if (id !== settleId) return;
+          ctx.motion.recenter();
+          settling = false;
+          pinned = 0;
+          tip.hidden = true;
+        });
+      }
+      ctx.onResume(function () { if (state === 'play' && mode === 'tilt') settle(); });
+
       function begin(how) {
         mode = how;
         state = 'play';
@@ -149,10 +167,7 @@
         ball.x = W / 2; ball.y = H / 2;
         newBerry();
         if (how === 'tilt') {
-          // a moment to lay the phone flat between them: THAT pose is "flat", not the one it was tapped in
-          settling = true;
-          tip.hidden = false;
-          ctx.after(SETTLE_MS, function () { ctx.motion.recenter(); settling = false; tip.hidden = true; });
+          settle();
         } else {
           ctx.hint(fruit, { delay: 400 });
         }
@@ -179,14 +194,20 @@
 
       ctx.frame(function (dt) {
         if (state !== 'play') return;
-        var push = pushFromFingers(ball, Object.keys(fingers).map(function (k) { return fingers[k]; }), berry);
+        var down = Object.keys(fingers).map(function (k) { return fingers[k]; });
+        var push = pushFromFingers(ball, down, berry);
         if (mode === 'tilt' && !settling) {
           var lean = ctx.motion.tilt;
-          // tipped right over for a while? Then that is simply how they hold it now: call it flat
-          pinned = Math.abs(lean.x) >= 30 || Math.abs(lean.y) >= 30 ? pinned + dt : 0;
-          if (pinned > 2) { ctx.motion.recenter(); pinned = 0; lean = ctx.motion.tilt; }
           var tipped = pushFromTilt(lean);
-          push = { x: util.clamp(push.x + tipped.x, -1, 1), y: util.clamp(push.y + tipped.y, -1, 1) };
+          // Tipped right over, or pressing her into the rim, for two seconds? That is not steering:
+          // it is simply how they are holding it now. Call that pose flat.
+          var over = Math.abs(lean.x) >= 30 || Math.abs(lean.y) >= 30;
+          var jammed = (tipped.x <= -1 && ball.x <= RADIUS + 0.002) || (tipped.x >= 1 && ball.x >= W - RADIUS - 0.002) ||
+            (tipped.y <= -1 && ball.y <= RADIUS + 0.002) || (tipped.y >= 1 && ball.y >= H - RADIUS - 0.002);
+          pinned = over || jammed ? pinned + dt : 0;
+          if (pinned > 2) { ctx.motion.recenter(); pinned = 0; tipped = { x: 0, y: 0 }; }
+          // a finger on the glass always has the last word
+          if (!down.length) push = tipped;
         }
         roll(ball, push, dt, W, H);
         // the tray leans the way she is being pushed, so the cause is visible

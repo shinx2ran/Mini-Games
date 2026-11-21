@@ -23,17 +23,22 @@ h.run(ID, async (t) => {
     const roof = a.fly({ x: 0.5, y: 0.13, vx: 0, vy: -2 }, 0.05, 0.2);
     const drop = a.fly({ x: 0.5, y: 0.5, vx: 0, vy: 0 }, 1, 0.2);
     const low = a.fly({ x: 0.5, y: 0.41, vx: 0, vy: -2 }, 0.05, 0.3, 0.4);
+    const hang = a.fly({ x: 0.5, y: 0.5, vx: 0, vy: 0 }, 1, 0.2, null, null, true), hangUp = a.fly({ x: 0.5, y: 0.5, vx: 0, vy: -0.3 }, 0.1, 0.2, null, null, true);
     return { sides: [a.sideOf(0.2), a.sideOf(0.5), a.sideOf(0.8)], g: [a.gravityFor(0), a.gravityFor(1), a.gravityFor(2)],
-      wall, roof, drop, low, v0: a.bopVelocity(0, 0.5), v1: a.bopVelocity(1, 0.5),
-      can: [a.canBop({ x: 0.2, vy: 0.1, cool: 0 }, 0, 5), a.canBop({ x: 0.2, vy: 0.1, cool: 0 }, 1, 5), a.canBop({ x: 0.2, vy: -0.4, cool: 0 }, 0, 5), a.canBop({ x: 0.2, vy: 0.1, cool: 9 }, 0, 5)] };
+      wall, roof, drop, low, hang, hangUp, v0: a.bopVelocity(0, 0.5), v1: a.bopVelocity(1, 0.5),
+      wide: a.fly({ x: 0.21, y: 0.5, vx: -2, vy: 0 }, 0.05, 0.2, null, 0.2), wideR: a.fly({ x: 0.79, y: 0.5, vx: 2, vy: 0 }, 0.05, 0.2, null, 0.2),
+      can: [a.canBop({ x: 0.2, vy: 0.1, cool: 0 }, 0, 5), a.canBop({ x: 0.2, vy: 0.1, cool: 0 }, 1, 5), a.canBop({ x: 0.2, vy: -0.4, cool: 0 }, 0, 5), a.canBop({ x: 0.2, vy: 0.1, cool: 9 }, 0, 5),
+        a.canBop({ x: 0.2, vy: 0.1, cool: 0, from: 0 }, 0, 5), a.canBop({ x: 0.2, vy: 0.1, cool: 0, from: 1 }, 0, 5)] };
   });
   assert.deepStrictEqual(r.sides, [0, 1, 1]);
   assert.ok(r.g[0] > r.g[1] && r.g[1] > r.g[2], 'the balloon is floatier over a helped player\'s half');
   assert.ok(r.wall.x >= 0.1 && r.wall.vx > 0, 'soft wall');
   assert.ok(r.roof.y >= 0.12 && r.roof.vy > 0, 'soft ceiling');
   assert.ok(r.low.y >= 0.4 && r.low.vy > 0, 'the ceiling can be lowered for a big balloon on a short screen');
-  assert.deepStrictEqual(r.can, [true, false, false, false], 'yours to bop only over your half, once it has stopped rising and rested');
+  assert.ok(r.wide.x >= 0.2 && r.wide.vx > 0 && r.wideR.x <= 0.8 && r.wideR.vx < 0, 'the side walls can be moved in for a big balloon on a narrow screen');
+  assert.deepStrictEqual(r.can, [true, false, false, false, false, true], 'yours to bop only over your half, once it has stopped rising and rested, and never your own bop coming back');
   assert.ok(r.drop.y > 0.5 && r.drop.vy > 0, 'it falls');
+  assert.ok(r.hang.y === 0.5 && r.hang.vy === 0 && r.hangUp.y < 0.5, 'while it rests after a bop it may rise but never fall');
   assert.ok(r.v0.vx > 0 && r.v0.vy < 0 && r.v1.vx < 0 && r.v1.vy < 0, 'a bop sends it up and across to the other player');
 
   // --- only the player it is over can bop it; a slap is one bop; a second bop before it crosses is not a second pass
@@ -45,6 +50,19 @@ h.run(ID, async (t) => {
   res = await fire(page, side, [10]);
   assert.strictEqual(res.passes, 1, 'mashing does not pass it to yourself');
   assert.strictEqual(await page.locator('.g-bop .bp-dot.is-on').count(), 1);
+  // while it rests after a bop it never starts to fall (it hangs at the top instead), and the bopper's half stays dark
+  const rest = await page.evaluate(([side]) => new Promise((resolve) => {
+    const t0 = MG.current.ctx.time; let last = null, fell = 0, lit = 0;
+    (function watch() {
+      const b = MG.current.api.balloons[0];
+      if (b && last != null) fell = Math.max(fell, b.y - last);
+      if (b) last = b.y;
+      if (document.querySelector(`.g-bop .bp-pad[data-p="${side}"]`).classList.contains('is-mine')) lit++;
+      if (MG.current.ctx.time - t0 > 0.8) resolve({ fell, lit }); else requestAnimationFrame(watch);
+    })();
+  }), [side]);
+  assert.ok(rest.fell <= 1e-9, `the balloon does not start falling before anyone may bop it (${rest.fell})`);
+  assert.strictEqual(rest.lit, 0, 'a half never lights up for the balloon its own player just sent away');
 
   // --- let it land: a rude noise, a fresh balloon, nothing lost, still playing
   await t.fast(page, 8);
@@ -65,6 +83,8 @@ h.run(ID, async (t) => {
     if ((await api(page, 'passes')) > before) tappers[b.side]++;
   }
   assert.strictEqual(await api(page, 'passes'), 24);
+  assert.strictEqual(await page.locator('.g-bop .bp-pad.is-mine').count(), 0, 'when the ladder is full no half is left lit');
+  assert.strictEqual(await page.locator('.g-bop .bp-dot.is-on').count(), 24);
   assert.ok(tappers[0] >= 8 && tappers[1] >= 8, `both players passed it (${tappers})`);
   const took = await page.evaluate(() => MG.current.ctx.time);
   // this bot has no reaction time at all; people take about twice as long
@@ -92,6 +112,32 @@ h.run(ID, async (t) => {
     }
     assert.ok((await t.minTargetSize(p, '.g-bop .bp-pad')).min >= 120, `pads are huge @${vp}`);
     await t.shot(p, `bop-${vp}.png`);
+    // ...and a whole rally, watched at every frame: no balloon is ever cut off at a side, the top or the bottom
+    await t.fast(p, 4);
+    const rally = await p.evaluate(() => new Promise((resolve) => {
+      const scene = document.querySelector('.g-bop .bp-scene');
+      const pad = (i) => document.querySelector(`.g-bop .bp-pad[data-p="${i}"]`);
+      let out = 0, frames = 0, id = 100, side = [0, 0];
+      (function bot() {
+        const a = MG.current.api, s = scene.getBoundingClientRect();
+        document.querySelectorAll('.g-bop .bp-balloon:not(.is-flat) .bp-body').forEach((el) => {
+          const r = el.getBoundingClientRect();
+          out = Math.max(out, s.left - r.left, r.right - s.right, s.top - r.top, r.bottom - s.bottom);
+          side = [Math.max(side[0], s.left - r.left), Math.max(side[1], r.right - s.right)];
+        });
+        frames++;
+        if (a.state !== 'play' || a.passes >= 12 || frames > 4000) { resolve({ out, frames, passes: a.passes, side }); return; }
+        a.balloons.forEach((b) => {
+          if (!b.ready) return;
+          const el = pad(b.side), r = el.getBoundingClientRect();
+          el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: id++, pointerType: 'touch', isPrimary: true, clientX: r.left + r.width / 2, clientY: r.top + r.height * 0.7 }));
+        });
+        requestAnimationFrame(bot);
+      })();
+    }));
+    assert.ok(rally.passes >= 12, `the rally got going @${vp} (${rally.passes})`);
+    assert.ok(rally.out <= 0.5, `no balloon is ever cut off during a rally @${vp} (${rally.out.toFixed(1)}px over; sides ${rally.side.map((v) => v.toFixed(1))})`);
+    await p.evaluate(() => { MG.timeScale = 1; });
     if (vp === 'phone') {
       await p.setViewportSize({ width: 844, height: 390 });
       await p.waitForTimeout(300);

@@ -240,6 +240,16 @@
         ctx.ui.button({ emoji: '👆', label: 'Fingers', color: 'sea', class: 'mg-btn--big', onTap: function () { if (state === 'ask' || state === 'asking') begin('touch'); } }),
         el('p', { class: 'wp-note', text: 'The camera picture stays on this device. Nothing is recorded or sent.' }));
 
+      // the camera could not be brought back after a pause: carry on with fingers, and show it
+      ctx.camera.onLost(function () {
+        if (mode !== 'camera') return;
+        mode = 'touch';
+        scene.dataset.mode = 'touch';
+        if (video) { video.remove(); video = null; }
+        sfx.play('boop');
+        if (state === 'play' && bubbles.length) ctx.hint(bubbles[0].node, { delay: 300 });
+      });
+
       ctx.setTurn(null);
       if (ctx.camera.supported) scene.appendChild(card);
       else begin('touch');

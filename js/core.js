@@ -749,9 +749,10 @@
     var SHAKE_WINDOW = 150;  // ms
     var tiltRaw = { x: 0, y: 0 }, tiltZero = { x: 0, y: 0 };
     var tiltOn = false, tiltSeen = false, motionWired = false;
-    var shakers = new Set(), lastShake = -1, accHist = [];
+    var shakers = new Set(), lastShake = -1, accHist = [], jerk = null;
     var CAMERA = { audio: false, video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } } };
-    var camStream = null, camVideo = null, camAsk = null, camGen = 0;
+    var camStream = null, camVideo = null, camAsk = null, askGen = 0, openGen = 0;
+    var camLost = new Set(), resumers = new Set();
 
     function screenAngle() {
       var a = 0;
@@ -768,24 +769,32 @@
       tiltSeen = true;
     }
     /**
-     * A shake is a big change in what the accelerometer feels within a moment.
-     * Readings come about 60 times a second, so two neighbours barely differ:
-     * compare with the reading from ~150ms ago instead.
+     * A shake is the phone being jerked one way and then back again. Readings
+     * come about 60 times a second, so two neighbours barely differ: each one
+     * is compared with the reading from ~150ms earlier, and it only counts as
+     * a shake when two big changes in OPPOSITE directions follow each other.
+     * (Picking the phone up is one big change in a single direction.)
      */
     function onMotion(ev) {
       var acc = ev.accelerationIncludingGravity;
       if (!acc || acc.x == null) return;
       var now = typeof ev.timeStamp === 'number' && ev.timeStamp > 0 ? ev.timeStamp : window.performance.now();
+      // after a gap in the readings the old pose says nothing about a jerk: start again
+      if (accHist.length && now - accHist[accHist.length - 1].t > SHAKE_WINDOW * 2) { accHist = []; jerk = null; }
       accHist.push({ t: now, x: acc.x, y: acc.y, z: acc.z });
       while (accHist.length > 1 && accHist[1].t <= now - SHAKE_WINDOW) accHist.shift();
       var o = accHist[0];
-      var d = Math.abs(acc.x - o.x) + Math.abs(acc.y - o.y) + Math.abs(acc.z - o.z);
-      if (!paused && d > SHAKE_FORCE && clock - lastShake > 0.4) {
-        lastShake = clock;
-        accHist = [];
-        shakers.forEach(function (fn) { if (alive) fn(); });
-      }
+      var dx = acc.x - o.x, dy = acc.y - o.y, dz = acc.z - o.z;
+      if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) <= SHAKE_FORCE) return;
+      var back = jerk && now - jerk.t < 450 && dx * jerk.x + dy * jerk.y + dz * jerk.z < 0;
+      jerk = { t: now, x: dx, y: dy, z: dz };
+      if (!back || paused || clock - lastShake <= 0.4) return;
+      lastShake = clock;
+      accHist = [];
+      jerk = null;
+      shakers.forEach(function (fn) { if (alive) fn(); });
     }
+
     /**
      * Some browsers ask the person before sharing their sensors, and only
      * inside a tap. Only a clear "no" stops us: anything else ("granted", an
@@ -853,29 +862,46 @@
       camVideo.srcObject = stream;
       try { var p = camVideo.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
     }
+    /** (Re)open the camera into the <video> the game already has. Gives up after one retry and tells the game. */
+    function reopenCamera(triesLeft) {
+      var gen = ++openGen;
+      var wanted = function () { return alive && !paused && gen === openGen && camVideo && !camStream; };
+      openCamera().then(function (stream) {
+        if (!wanted()) { stopStream(stream); return; }
+        showCamera(stream);
+      }, function () {
+        if (!wanted()) return;
+        if (triesLeft > 0) { window.setTimeout(function () { if (wanted()) reopenCamera(triesLeft - 1); }, 500); return; }
+        var told = Array.from(camLost);
+        camera.stop();
+        told.forEach(function (fn) { fn(); });
+      });
+    }
 
     var camera = {
       /** Could this page use a camera at all? (false in the sandboxed build) */
       get supported() { return !MG.noSensors && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); },
       /**
-       * Start the front camera. Resolves a playing, muted <video> (not in the
-       * DOM: place it yourself), or null if refused or unavailable. The picture
-       * stays on the device. The shell releases the camera while the game is
-       * paused and when it closes; stop() releases it for good.
+       * Start the front camera. Resolves a muted <video> (not in the DOM: place
+       * it yourself), or null if refused or unavailable. The picture stays on
+       * the device. The camera is only ever open while the game is being
+       * played: the shell lets it go during a pause and brings it back
+       * afterwards, and closes it for good when the game closes or on stop().
        */
       start: function () {
         if (!alive || !camera.supported) return Promise.resolve(null);
         if (camAsk) return camAsk;
-        var gen = ++camGen;
+        var gen = ++askGen;
         camAsk = openCamera().then(function (stream) {
-          // stopped, closed or paused while the question was open: this answer is not wanted any more
-          if (!alive || gen !== camGen) { stopStream(stream); return null; }
+          if (!alive || gen !== askGen) { stopStream(stream); return null; } // stopped or closed meanwhile
           var v = document.createElement('video');
           v.muted = true;
           v.autoplay = true;
           v.playsInline = true;
           v.setAttribute('playsinline', '');
           camVideo = v;
+          // they said yes while the game was paused: remember it, and open the camera when play resumes
+          if (paused) { stopStream(stream); return v; }
           showCamera(stream);
           return new Promise(function (res) {
             if (v.readyState >= 2) { res(v); return; }
@@ -883,13 +909,14 @@
             window.setTimeout(function () { res(v); }, 3000);
           });
         }, function () { return null; }).then(function (v) {
-          if (!v && gen === camGen) camAsk = null; // a later start() may try again
+          if (!v && gen === askGen) camAsk = null; // a later start() may try again
           return v;
         });
         return camAsk;
       },
       stop: function () {
-        camGen++;
+        askGen++;
+        openGen++;
         camAsk = null;
         if (camStream) stopStream(camStream);
         if (camVideo) { try { camVideo.srcObject = null; } catch (e) {} }
@@ -897,24 +924,19 @@
         camVideo = null;
       },
       get video() { return camVideo; },
+      /** fn() if the camera could not be brought back after a pause (it has then been stopped): switch to touch. Returns off(). */
+      onLost: function (fn) { camLost.add(fn); return function () { camLost.delete(fn); }; },
     };
 
     /** Paused: nobody is playing, so the camera is let go. Resumed: it comes back into the same <video>. */
     function restCamera(resting) {
       if (resting) {
-        if (!camStream && !camAsk) return;
-        camGen++;
-        if (!camVideo) camAsk = null; // the first question was still open: it is dropped
+        openGen++;
         if (camStream) { stopStream(camStream); camStream = null; }
         if (camVideo) { try { camVideo.srcObject = null; } catch (e) {} }
         return;
       }
-      if (!camVideo || camStream || !alive) return;
-      var gen = ++camGen;
-      openCamera().then(function (stream) {
-        if (!alive || paused || gen !== camGen || !camVideo) { stopStream(stream); return; }
-        showCamera(stream);
-      }, function () {});
+      if (camVideo && !camStream && alive) reopenCamera(1);
     }
 
     function measure() {
@@ -1089,6 +1111,9 @@
       /** Back to the home screen. */
       exit: function () { goHome(); },
 
+      /** fn() each time play resumes after a pause (the phone is rarely held the same way after a break). Returns off(). */
+      onResume: function (fn) { resumers.add(fn); return function () { resumers.delete(fn); }; },
+
       /* -- device sensors and camera: always optional, always with a touch fallback -- */
       motion: motion,
       camera: camera,
@@ -1134,7 +1159,7 @@
         paused = !!p;
         dom.stage.classList.toggle('is-paused', paused);
         restCamera(paused);
-        if (!paused && tiltOn) motion.recenter(); // it is rarely held the same way after a break
+        if (!paused) resumers.forEach(function (fn) { if (alive) fn(); });
       },
       get paused() { return paused; },
       get over() { return over; },
@@ -1144,7 +1169,7 @@
         window.cancelAnimationFrame(rafId);
         clearHint();
         camera.stop();
-        shakers.clear();
+        shakers.clear(); camLost.clear(); resumers.clear();
         timers.clear(); loops.clear(); resizers.clear();
         if (ro) { try { ro.disconnect(); } catch (e) {} }
         for (var i = 0; i < offs.length; i++) { try { offs[i](); } catch (e) {} }

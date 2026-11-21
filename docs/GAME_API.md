@@ -157,10 +157,15 @@ for hosts that run the page in a locked-down frame.
 - `ctx.motion.tilt` → `{x, y}` degrees from "flat" (`x` > 0: the screen's right
   edge dips; `y` > 0: its bottom edge dips), whichever way the screen is
   turned. `ctx.motion.recenter()` makes the current pose "flat": do it once
-  the device has been laid down to play, not when the button was tapped. The
-  shell also re-centres after every pause.
-- `ctx.motion.onShake(fn)` → `off()`; a child-sized wiggle counts (passing the
-  phone across does not), at most one every 0.4s.
+  the device has been laid down to play, not when the button was tapped, and
+  again a moment after every pause (`ctx.onResume`, below): the phone is
+  rarely put down the way it was. Re-centre too when a full tilt has been held
+  for a couple of seconds: that is how they hold it now, not steering.
+- `ctx.motion.onShake(fn)` → `off()`; a child-sized wiggle counts: there AND
+  back again. One jolt (putting the phone down) or a slow swing (passing it
+  across) does not. At most one every 0.4s.
+- `ctx.onResume(fn)` → `off()`; called each time play goes on after a pause.
+  Use it to give the players a moment to settle again before a sensor steers.
 - `ctx.camera.supported`, `ctx.camera.start()` → Promise<video | null>: the
   front camera as a playing, muted `<video>` (video only, never the
   microphone). Put it in your scene yourself (mirror it with `scaleX(-1)`).
@@ -168,6 +173,9 @@ for hosts that run the page in a locked-down frame.
   game is paused (or the page is in the background) and brings it back into
   the same `<video>` on resume, and switches it off when the game closes.
   Never store, upload or record a frame, and say so on the screen that asks.
+- `ctx.camera.onLost(fn)` → `off()`; the camera could not be brought back
+  after a pause (another app has it, or permission was taken away). Remove
+  the frozen picture and carry on with fingers, there and then.
 - A sensor question can stay unanswered for ever. Never make the touch choice
   wait for it: let "Finger" win at any time, and drop a late answer.
 - In tests: dispatch `DeviceOrientationEvent` / `DeviceMotionEvent` on

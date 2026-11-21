@@ -179,6 +179,26 @@ async function popOne(page) {
     await cam.evaluate(() => MG.home());
     assert.deepStrictEqual(await tracks(cam), ['ended', 'ended'], 'left: off');
 
+    // --- the camera cannot be brought back after a pause (another app took it): carry on with fingers, and show it
+    cam = await spy();
+    await cam.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();
+    await playing(cam);
+    assert.strictEqual(await api(cam, 'mode'), 'camera');
+    await t.pause(cam);
+    await cam.evaluate(() => { navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('busy', 'NotReadableError')); });
+    await cam.locator('.mg-pausecard .mg-btn--primary').tap();
+    await cam.waitForFunction(() => MG.current.api.mode === 'touch', null, { timeout: 15000 });
+    assert.strictEqual(await cam.locator('.g-wiggle .wp-video').count(), 0, 'the frozen picture is taken away');
+    assert.strictEqual(await cam.evaluate(() => document.querySelector('.g-wiggle .wp-scene').dataset.mode), 'touch');
+    assert.strictEqual(await api(cam, 'state'), 'play', 'and the round goes on');
+    assert.deepStrictEqual(await tracks(cam), ['ended']);
+    {
+      const before = await api(cam, 'popped');
+      await cam.waitForFunction(() => { const b = document.querySelector('.g-wiggle .wp-bubble'); return b && b.getBoundingClientRect().top < window.innerHeight - 140; }, null, { timeout: 30000 });
+      for (let guard = 0; guard < 100 && (await api(cam, 'popped')) === before; guard++) { if (!(await popOne(cam))) await cam.waitForTimeout(60); }
+      assert.ok((await api(cam, 'popped')) > before, 'fingers pop the bubbles from here on');
+    }
+
     // --- "Fingers" tapped while the camera question was still open: a late yes must not leave the camera on
     cam = await spy(700);
     await cam.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();

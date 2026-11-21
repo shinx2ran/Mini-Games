@@ -41,15 +41,23 @@
    * are none, or two). -> {len: steps to the cupcakes, grace: seconds after
    * he turns in which still-running feet are forgiven, back: steps lost when caught}
    */
-  function setup(help, littleIdx) {
+  function setup(help, littleIdx, bothLittle) {
     // Long enough for five or six freezes; being caught costs about half of what one song lets you run,
     // so stopping in time always beats ploughing on.
+    var kid = help >= 2 ? { len: 44, grace: 1.2, back: 3 } : { len: 48, grace: 0.9, back: 4 };
+    if (bothLittle && help) return { len: [kid.len, kid.len], grace: [kid.grace, kid.grace], back: [kid.back, kid.back] };
     if (littleIdx < 0 || !help) return { len: [56, 56], grace: [0.35, 0.35], back: [6, 6] };
-    var kid = help >= 2 ? { len: 44, grace: 0.9, back: 3 } : { len: 48, grace: 0.65, back: 4 };
     var big = help >= 2 ? { len: 68, grace: 0.2, back: 10 } : { len: 64, grace: 0.2, back: 8 };
     var a = littleIdx === 0 ? [kid, big] : [big, kid];
     return { len: [a[0].len, a[1].len], grace: [a[0].grace, a[1].grace], back: [a[0].back, a[1].back] };
   }
+
+  /**
+   * Steps lost when caught: never more than this song has given, less two, so
+   * even a runner who is always too late still gets somewhere, and nobody is
+   * ever sent backwards overall.
+   */
+  function lossFor(back, gained) { return Math.min(back, Math.max(0, gained - 2)); }
 
   /** What moving means right now: 'run', 'ignore' (he has only just turned: forgiven) or 'caught'. */
   function judge(phase, sinceLook, grace) {
@@ -80,7 +88,7 @@
       var el = ctx.el, sfx = ctx.sfx, fx = ctx.fx, util = ctx.util;
       var players = ctx.players;
       var littleIdx = players[0].little !== players[1].little ? (players[0].little ? 0 : 1) : -1;
-      var rules = setup(ctx.help, littleIdx);
+      var rules = setup(ctx.help, littleIdx, players[0].little && players[1].little);
 
       var state = 'play';
       var phase = 'away';
@@ -88,6 +96,7 @@
       var pos = [0, 0];
       var nextStep = [0, 0], dizzyUntil = [0, 0];
       var caught = [0, 0], caughtNow = [false, false];
+      var gained = [0, 0];       // steps each has run since the wolf last turned away
       var fingers = {};          // pointerId -> lane: whose side each finger is resting on
       var song = null, songs = 0, notesPlayed = 0;
       var held = false;          // tests freeze the wolf's cycle
@@ -147,7 +156,11 @@
         song = makeSong(Math.random, behind > 0.3);
         songs++;
         // whoever was caught is still dizzy for the first beat of the song: freezing in time is always quicker
-        for (var c = 0; c < 2; c++) if (caughtNow[c]) dizzyUntil[c] = Math.max(dizzyUntil[c], ctx.time + SPIN_ON);
+        [0, 1].forEach(function (c) {
+          if (!caughtNow[c]) return;
+          dizzyUntil[c] = Math.max(dizzyUntil[c], ctx.time + SPIN_ON);
+          spin(c, dizzyUntil[c] - ctx.time); // ...and it shows: a finger that does nothing must never look broken
+        });
         caughtNow = [false, false];
         if (held) return;
         var n = 0;
@@ -176,6 +189,7 @@
         schedule(util.randf(LOOK_MS[0], LOOK_MS[1]), function () {
           if (state !== 'play') return;
           setPhase('away');
+          gained = [0, 0];
           schedule(AWAY_MS, startSong);
         });
       }
@@ -189,6 +203,7 @@
 
       function step(i) {
         pos[i]++;
+        gained[i]++;
         nextStep[i] = ctx.time + STEP;
         place(i);
         footstep(i);
@@ -196,6 +211,17 @@
         void lanes[i].climber.offsetWidth;
         lanes[i].climber.classList.add('is-hop');
         if (tutorial[i]) { tutorial[i] = false; lanes[i].hand.classList.add('is-done'); }
+      }
+
+      /** Show player i spinning for `secs`: they cannot run until it stops. */
+      var spinId = [0, 0];
+      function spin(i, secs) {
+        var id = ++spinId[i], c = lanes[i].climber;
+        c.classList.remove('is-dizzy');
+        void c.offsetWidth;
+        c.style.setProperty('--spin', secs.toFixed(2) + 's');
+        c.classList.add('is-dizzy');
+        ctx.after(secs * 1000, function () { if (id === spinId[i]) c.classList.remove('is-dizzy'); });
       }
 
       /** Once everyone has moved this instant: has anybody arrived? Both on the very same step is a tie. */
@@ -213,15 +239,14 @@
       function catchOut(i) {
         caughtNow[i] = true; // once per look: he does not keep huffing at the same player
         caught[i]++;
-        pos[i] = Math.max(0, pos[i] - rules.back[i]);
+        pos[i] = Math.max(0, pos[i] - lossFor(rules.back[i], gained[i]));
         dizzyUntil[i] = ctx.time + DIZZY;
         place(i);
         awoo();
         sfx.play('whoosh');
         var c = fx.centerOf(lanes[i].climber);
         fx.burst(c.x, c.y, { emoji: '💨', count: 5, distance: 60, size: 22 });
-        lanes[i].climber.classList.add('is-dizzy');
-        ctx.after(DIZZY * 1000, function () { lanes[i].climber.classList.remove('is-dizzy'); });
+        spin(i, DIZZY);
         fx.shake(wolf);
       }
 
@@ -260,8 +285,7 @@
         ctx.tap(lane.node, function (ev) {
           if (state !== 'play') return;
           if (ev.pointerId != null) fingers[ev.pointerId] = i;
-          moving(i);
-          arrivals();
+          moving(i); // (who has arrived is decided once per frame, after both lanes have moved: a dead heat is a tie)
         });
       });
       ['pointerup', 'pointercancel'].forEach(function (type) {
@@ -273,7 +297,7 @@
         if (state !== 'play') return;
         for (var i = 0; i < 2; i++) {
           var down = isDown(i);
-          lanes[i].node.classList.toggle('is-running', down && phase !== 'look');
+          lanes[i].node.classList.toggle('is-running', down && phase !== 'look' && ctx.time >= dizzyUntil[i]);
           if (down) moving(i);
         }
         arrivals();
@@ -290,13 +314,14 @@
         get phase() { return phase; },
         get pos() { return pos.slice(); },
         get caught() { return caught.slice(); },
+        get gained() { return gained.slice(); },
         get dizzy() { return [ctx.time < dizzyUntil[0], ctx.time < dizzyUntil[1]]; },
         get down() { return [isDown(0), isDown(1)]; },
         get song() { return song; },
         get songs() { return songs; },
         get notesPlayed() { return notesPlayed; },
         rules: rules, littleIdx: littleIdx, STEP: STEP,
-        setup: setup, judge: judge, makeSong: makeSong,
+        setup: setup, judge: judge, makeSong: makeSong, lossFor: lossFor,
         /** Tests only: freeze the wolf in one phase (or pass null to let the cycle run again). */
         hold: function (p) {
           if (cancelPhase) cancelPhase();

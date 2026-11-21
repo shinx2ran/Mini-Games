@@ -87,20 +87,59 @@ h.run(ID, async (t) => {
     assert.ok((await api(page, 'eaten')) >= n, `tilting reaches strawberry ${n}`);
   }
 
-  // --- tipped right over for a while: that is simply how they hold it now, so it becomes "flat"
+  // --- after a pause the phone is rarely held as before: a moment to lay it down again, and THAT pose is flat
   await page.evaluate(() => { MG.timeScale = 1; });
+  for (let i = 0, was = null; i < 60; i++) { // held level until she has rolled to a stop
+    await tilt(page, 20, 0);
+    await page.waitForTimeout(80);
+    const at = await api(page, 'ball');
+    if (was && Math.hypot(at.x - was.x, at.y - was.y) < 0.0005) break;
+    was = at;
+  }
+  await t.pause(page);
+  await tilt(page, -25, 10); // picked up, looked at, put down differently
+  await page.locator('.mg-pausecard .mg-btn--primary').tap();
+  await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden && !MG.current.ctx.paused);
+  assert.ok(await api(page, 'settling'), 'resuming gives a moment to lay it down again');
+  assert.ok(await page.locator('.g-tray .ty-tip').isVisible(), '...and shows it');
+  {
+    const held = await api(page, 'ball');
+    for (let i = 0; i < 80 && (await api(page, 'settling')); i++) { await tilt(page, -25, 10); await page.waitForTimeout(50); }
+    assert.ok(!(await api(page, 'settling')), 'then play goes on');
+    const now = await api(page, 'ball');
+    assert.ok(Math.hypot(now.x - held.x, now.y - held.y) < 0.02, 'she waits where she was while it is laid down');
+    await tilt(page, -25, 10);
+    const lean = await page.evaluate(() => MG.current.ctx.motion.tilt);
+    assert.ok(Math.abs(lean.x) < 2 && Math.abs(lean.y) < 2, `the new pose is flat (${lean.x.toFixed(0)}, ${lean.y.toFixed(0)})`);
+    assert.ok(!(await page.locator('.g-tray .ty-tip').isVisible()));
+  }
+
+  // --- leaning it one way until she is pressed against the rim, and keeping it there: also "how they hold it now"
+  for (let i = 0; i < 110; i++) {
+    await tilt(page, -5, 10); // 20 degrees further over: a full push, but nowhere near "tipped right over"
+    await page.waitForTimeout(50);
+    if (i > 20 && Math.abs(await page.evaluate(() => MG.current.ctx.motion.tilt.y)) < 5) break;
+  }
+  assert.ok(Math.abs(await page.evaluate(() => MG.current.ctx.motion.tilt.y)) < 5, 'pinned against the rim for two seconds re-centres too');
+
+  // --- tipped right over for a while: that is simply how they hold it now, so it becomes "flat"
   for (let i = 0; i < 60; i++) { await tilt(page, 85, 0); await page.waitForTimeout(50); }
   assert.ok(Math.abs(await page.evaluate(() => MG.current.ctx.motion.tilt.y)) < 5, 'a stuck tilt re-centres itself');
 
-  // --- and a finger always works, in tilt mode too
+  // --- and a finger always works, in tilt mode too: it has the last word, even with the phone tipped hard the other way
   {
     const e0 = await api(page, 'eaten');
-    const b = await spot(page, await api(page, 'berry'));
+    const s = await page.evaluate(() => ({ ball: MG.current.api.ball, berry: MG.current.api.berry }));
+    await page.evaluate(([away]) => {
+      window.__against = setInterval(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 85, gamma: away })), 30);
+    }, [s.berry.x > s.ball.x ? -20 : 20]);
+    const b = await spot(page, s.berry);
     await page.mouse.move(b.x, b.y);
     await page.mouse.down();
     await t.fast(page, 4);
     await page.waitForFunction((n) => MG.current.api.eaten > n, e0, { timeout: 30000 });
     await page.mouse.up();
+    await page.evaluate(() => clearInterval(window.__against));
   }
 
   // --- the phone never answers the sensor question: Finger still starts the game; and a resting thumb does not hold her back
@@ -165,6 +204,13 @@ h.run(ID, async (t) => {
       return { berry: off('.g-tray .ty-berry', a.berry), bug: off('.g-tray .ty-bug', a.ball) };
     });
     assert.ok(drawn.berry < 12 && drawn.bug < 4, `strawberry and ladybird are drawn where they are @${vp} (${drawn.berry.toFixed(0)}px, ${drawn.bug.toFixed(0)}px off)`);
+    // ...and she is no bigger than the room the rim leaves her: pressed into a corner, all of her is still on the tray
+    const fit = await p.evaluate(() => {
+      const board = document.querySelector('.g-tray .ty-board'), a = MG.current.api;
+      const r = document.querySelector('.g-tray .ty-bug .mg-sticker').getBoundingClientRect();
+      return { half: Math.max(r.width, r.height) / 2, room: Math.min(a.RADIUS / a.size.W * board.clientWidth, a.RADIUS / a.size.H * board.clientHeight) };
+    });
+    assert.ok(fit.half <= fit.room + 1, `the ladybird stays inside the rim @${vp} (${fit.half.toFixed(0)}px of her, ${fit.room.toFixed(0)}px of room)`);
     // ...so even a strawberry in the far corner is whole
     const corner = await p.evaluate(() => {
       const a = MG.current.api, fruit = document.querySelector('.g-tray .ty-berry'), g = document.querySelector('#mg-game').getBoundingClientRect();

@@ -141,7 +141,7 @@
   left: 50%;
   top: 10px;
   bottom: 10px;
-  width: clamp(18px, calc(var(--gmin) * 0.06), 30px);
+  width: clamp(24px, calc(var(--gmin) * 0.07), 32px);
   display: flex;
   flex-direction: column-reverse;
   justify-content: space-between;
@@ -155,14 +155,15 @@
 }
 .g-bop .bp-dot {
   flex: 0 1 auto;
-  width: 58%;
+  width: 68%;
   aspect-ratio: 1;
   min-height: 0;
   border-radius: 50%;
   background: var(--surface-2);
   box-shadow: inset 0 0 0 2px var(--ink-soft);
 }
-.g-bop .bp-dot.is-on { background: var(--sun); box-shadow: inset 0 0 0 2px var(--line); animation: bp-dot 0.3s cubic-bezier(.3, 1.9, .5, 1); }
+/* lit: a solid dot, so it reads as "on" even when it is only a few pixels across */
+.g-bop .bp-dot.is-on { background: var(--tangerine); box-shadow: 0 0 0 1px var(--line); animation: bp-dot 0.3s cubic-bezier(.3, 1.9, .5, 1); }
 @keyframes bp-dot { from { transform: scale(0.3); } }
 
 @media (prefers-reduced-motion: reduce) {

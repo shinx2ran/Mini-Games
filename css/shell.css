@@ -586,6 +586,8 @@ button { font: inherit; color: inherit; }
   line-height: 1.1;
   cursor: pointer;
 }
+/* four or more choices: two to a line rather than a ragged wrap (browsers without :has just wrap) */
+.mg-seg:has(> :nth-child(4)) .mg-seg__btn { flex-basis: calc(50% - 4px); }
 .mg-seg__btn.is-on { background: var(--sun); color: #2A2356; box-shadow: inset 0 -4px 0 rgba(42, 35, 86, 0.22); }
 .mg-seg__emoji { font-size: 1.2em; line-height: 1; }
 

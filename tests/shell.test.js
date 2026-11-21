@@ -69,13 +69,21 @@ h.run('shell', async (t) => {
   assert.ok(await page.evaluate(() => document.querySelector('#mg-overlay').hidden), 'quick tap must not pause');
   await hold(page, '.mg-hud__pause');
   await page.waitForSelector('.mg-overlay--pause');
-  const t0 = await page.evaluate(() => MG.current.ctx.time);
+  const t0 = await page.evaluate(() => { window.__resumed = 0; window.__off = MG.current.ctx.onResume(() => window.__resumed++); return MG.current.ctx.time; });
   await page.waitForTimeout(450);
   const t1 = await page.evaluate(() => MG.current.ctx.time);
   assert.strictEqual(t0, t1, 'clock frozen while paused');
+  assert.strictEqual(await page.evaluate(() => window.__resumed), 0);
   await page.locator('.mg-pausecard .mg-btn--primary').tap();
   await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden);
   await page.waitForFunction((v) => MG.current.ctx.time > v, t1);
+  assert.strictEqual(await page.evaluate(() => window.__resumed), 1, 'a game is told when play resumes');
+  // ...and can stop listening
+  await page.evaluate(() => window.__off());
+  await t.pause(page);
+  await page.locator('.mg-pausecard .mg-btn--primary').tap();
+  await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden && !MG.current.ctx.paused);
+  assert.strictEqual(await page.evaluate(() => window.__resumed), 1);
 
   // --- switching away mid-game pauses it (nothing runs, and no camera stays on, behind their back)
   await page.evaluate(() => {
