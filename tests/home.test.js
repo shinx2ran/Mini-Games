@@ -34,7 +34,8 @@ h.run('home', async (t) => {
   for (const id of EXPECTED) {
     await page.evaluate((g) => MG.open(g), id);
     await page.waitForFunction((g) => MG.current && MG.current.id === g, id);
-    assert.strictEqual(await page.evaluate(() => document.querySelector('#mg-game').className), `mg-game g-${id}`);
+    const scopes = await page.evaluate(() => [...document.querySelector('#mg-game').classList].filter((c) => c.startsWith('g-')));
+    assert.deepStrictEqual(scopes, [`g-${id}`], 'exactly one game scope on the play area');
   }
   await page.evaluate(() => MG.home());
 

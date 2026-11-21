@@ -100,6 +100,25 @@ h.run(ID, async (t) => {
   assert.deepStrictEqual(both.counted, [1, 2], 'two players at the same instant both count');
   assert.ok(Math.abs(both.moved - (both.step - both.step * both.h)) < 0.01, 'her tap pulled further than his');
 
+  // --- real touches (not synthetic events): two fingers landing in the same instant, one per side,
+  //     while a third finger rests on the screen the whole time
+  page = await t.open(ID);
+  await slurping(page);
+  {
+    const cdp = await page.context().newCDPSession(page);
+    const mid = async (sel) => { const b = await page.locator(sel).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height * 0.8 }; };
+    const a = await mid('.g-slurp .sl-pad[data-p="0"]'), b = await mid('.g-slurp .sl-pad[data-p="1"]');
+    const pt = (p, id) => ({ x: p.x, y: p.y, id, radiusX: 8, radiusY: 8, force: 1 });
+    const rest = { x: a.x, y: a.y - 200 };
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt(rest, 0)] });
+    await page.waitForFunction(() => MG.current.api.counted[0] === 1);
+    await page.waitForTimeout(250);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt(rest, 0), pt(a, 1), pt(b, 2)] });
+    await page.waitForFunction(() => MG.current.api.counted[0] === 2 && MG.current.api.counted[1] === 1, null, { timeout: 5000 });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    assert.deepStrictEqual(await api(page, 'counted'), [2, 1], 'a resting finger never blocks either player');
+  }
+
   // --- every supported size: nothing clipped, each half is a huge button; rotate mid-bowl
   for (const vp of ['small', 'phone', 'phoneWide', 'tabletTall', 'tablet']) {
     const p = await t.open(ID, { viewport: vp, dark: vp === 'phoneWide' || vp === 'small' });

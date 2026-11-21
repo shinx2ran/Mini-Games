@@ -71,6 +71,8 @@ h.run(ID, async (t) => {
       const p = await t.open(null, { viewport: vp, dark: vp === 'phoneWide' || vp === 'small', page: 'tests/play.html?g=dragon' });
       await p.evaluate((each) => { MG.store.set('opt:dragon:each', each); MG.open('dragon'); }, each);
       await idle(p);
+      // the sneeze is random (as early as grab 2 with three each): pin it to the last grab for this check
+      await p.evaluate((n) => MG.current.api.rig({ trigger: n, fakes: [], steps: new Array(n + 1).fill(2) }), each * 2);
       assert.ok(await t.noPageScroll(p), `no page scroll @${vp}/${each}`);
       assert.ok((await api(p, 'layout')).fits, `layout fits @${vp}/${each}`);
       assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-dragon .dg-zone, .g-dragon .dg-gem, .g-dragon .dg-den'), [], `all in view @${vp}/${each}`);

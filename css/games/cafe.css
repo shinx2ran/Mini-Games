@@ -1,1 +1,236 @@
-/* Yummy-Yucky Cafe — styles. Every selector is scoped under .g-cafe */
+/* Yummy-Yucky Cafe — styles. Every selector is scoped under .g-cafe.
+   Top: the two seats with the dish between them. Bottom: the tray, which
+   holds whatever the acting player may tap right now. */
+
+.g-cafe {
+  --cf-table: #FFE8C2;
+  --cf-plate: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-cafe { --cf-table: #4A3B2A; }
+}
+:root[data-theme="dark"] .g-cafe { --cf-table: #4A3B2A; }
+
+.g-cafe .cf-scene {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  --seat: clamp(56px, calc(var(--gmin) * 0.2), 120px);
+  --dish: clamp(110px, min(calc(var(--gw) * 0.4), calc(var(--gh) * 0.26)), 240px);
+  --cell: clamp(64px, calc((var(--gw) - 24px - 24px) / 4), 120px);
+}
+.g-cafe[data-orient="landscape"] .cf-scene {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+  --dish: clamp(100px, min(calc(var(--gw) * 0.19), calc(var(--gh) * 0.42)), 240px);
+  --seat: clamp(52px, min(calc(var(--gw) * 0.09), calc(var(--gh) * 0.22)), 120px);
+  --cell: clamp(64px, min(calc((var(--gw) * 0.54 - 60px) / 4), calc((var(--gh) - 50px) / 2)), 130px);
+}
+
+/* ---------------------------------------------------------------- stage */
+
+.g-cafe .cf-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "s0 dish s1" "bell bell bell";
+  align-items: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--cf-table);
+}
+
+.g-cafe .cf-seat {
+  position: relative;
+  width: var(--seat);
+  height: var(--seat);
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--c);
+  font-size: calc(var(--seat) * 0.56);
+  line-height: 1;
+  transition: transform 0.3s cubic-bezier(.3, 1.6, .5, 1), filter 0.3s;
+}
+.g-cafe .cf-seat[data-p="0"] { grid-area: s0; }
+.g-cafe .cf-seat[data-p="1"] { grid-area: s1; }
+.g-cafe .cf-seat.is-eating { transform: scale(1.18); }
+.g-cafe .cf-seat.is-bouncing { transform: translateY(-8%); }
+.g-cafe .cf-seat.is-green { filter: hue-rotate(70deg) saturate(1.3); }
+.g-cafe .cf-seat.is-wobbly .cf-face { animation: cf-wobble 0.22s ease-in-out infinite alternate; }
+@keyframes cf-wobble { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+
+/* the Chef's hat: three puffs on a band */
+.g-cafe .cf-hat {
+  position: absolute;
+  left: 50%;
+  top: -34%;
+  width: 62%;
+  height: 46%;
+  border: 3px solid var(--line);
+  border-radius: 46% 46% 12% 12% / 70% 70% 12% 12%;
+  background: #FFFFFF;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-40%) rotate(-12deg);
+}
+.g-cafe .cf-seat.is-chef .cf-hat {
+  opacity: 1;
+  transform: translateX(-50%) rotate(-6deg);
+  transition: transform 0.3s cubic-bezier(.3, 1.8, .5, 1), opacity 0.1s;
+}
+
+.g-cafe .cf-bubble, .g-cafe .cf-topper {
+  position: absolute;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0;
+}
+.g-cafe .cf-bubble {
+  left: 50%;
+  top: -52%;
+  z-index: 3;
+  font-size: 0.9em;
+  transform: translateX(-50%) scale(0.2);
+  filter: drop-shadow(0 3px 0 rgba(12, 10, 38, 0.3));
+}
+.g-cafe .cf-bubble.is-on { opacity: 1; animation: cf-bubble 0.9s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes cf-bubble {
+  0% { transform: translateX(-50%) scale(0.2); }
+  30% { transform: translateX(-50%) scale(1.15) rotate(-8deg); }
+  100% { transform: translateX(-50%) scale(1) rotate(6deg); }
+}
+.g-cafe .cf-topper { left: 50%; top: -40%; font-size: 0.7em; transform: translateX(-50%) translateY(-120%) rotate(-40deg); }
+.g-cafe .cf-topper.is-on { opacity: 1; transform: translateX(-50%) rotate(14deg); transition: transform 0.4s cubic-bezier(.3, 1.9, .5, 1), opacity 0.1s; }
+
+/* --------------------------------------------------------------- the dish */
+
+.g-cafe .cf-dish {
+  appearance: none;
+  grid-area: dish;
+  position: relative;
+  width: var(--dish);
+  height: var(--dish);
+  padding: 0;
+  border: 0;
+  background: none;
+  transition: transform 0.5s cubic-bezier(.4, 1.3, .5, 1);
+}
+.g-cafe .cf-plate {
+  position: absolute;
+  inset: 4%;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--cf-plate);
+  box-shadow: inset 0 0 0 calc(var(--dish) * 0.07) #EDE7F6, 0 5px 0 var(--line);
+}
+.g-cafe .cf-food {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--dish) * 0.56);
+  line-height: 1;
+  transform: scale(0);
+  transition: transform 0.3s cubic-bezier(.3, 1.7, .5, 1);
+}
+.g-cafe .cf-dish.is-plated .cf-food { transform: scale(1); }
+.g-cafe .cf-dish[data-bites="1"] .cf-food { transform: scale(0.82); }
+.g-cafe .cf-dish[data-bites="2"] .cf-food { transform: scale(0.58); }
+.g-cafe .cf-dish[data-bites="3"] .cf-food,
+.g-cafe .cf-dish.is-empty .cf-food { transform: scale(0); }
+
+.g-cafe .cf-tops { position: absolute; inset: 0; pointer-events: none; }
+.g-cafe .cf-top {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: calc(var(--dish) * 0.24);
+  line-height: 1;
+  transform: translate(calc(-50% + var(--x) * var(--dish)), calc(-50% + var(--y) * var(--dish))) rotate(var(--r));
+  animation: cf-plop 0.3s cubic-bezier(.3, 1.9, .5, 1) backwards;
+  transition: opacity 0.15s, margin-top 0.15s;
+  filter: drop-shadow(0 2px 0 rgba(12, 10, 38, 0.25));
+}
+.g-cafe .cf-top.is-eaten { opacity: 0; }
+@keyframes cf-plop {
+  from { transform: translate(calc(-50% + var(--x) * var(--dish)), calc(-150% + var(--y) * var(--dish))) rotate(var(--r)) scale(1.6); opacity: 0; }
+}
+
+/* served: it slides over to whoever is eating */
+.g-cafe .cf-scene[data-customer="0"] .cf-dish.is-served { transform: translateX(-22%) scale(1.06); }
+.g-cafe .cf-scene[data-customer="1"] .cf-dish.is-served { transform: translateX(22%) scale(1.06); }
+
+.g-cafe .cf-bell {
+  appearance: none;
+  grid-area: bell;
+  width: clamp(72px, calc(var(--gmin) * 0.2), 108px);
+  height: clamp(64px, calc(var(--gmin) * 0.16), 88px);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--sun);
+  box-shadow: 0 5px 0 var(--line);
+  font-size: clamp(32px, calc(var(--gmin) * 0.1), 52px);
+  line-height: 1;
+  visibility: hidden;
+  transform: scale(0.4);
+}
+.g-cafe .cf-bell.is-ready { visibility: visible; transform: none; transition: transform 0.3s cubic-bezier(.3, 1.8, .5, 1); }
+.g-cafe .cf-bell.is-ready:active { transform: translateY(5px); box-shadow: 0 0 0 var(--line); }
+
+.g-cafe .cf-served { font-size: 0.85em; letter-spacing: -0.08em; }
+
+/* ---------------------------------------------------------------- tray */
+
+.g-cafe .cf-tray {
+  min-width: 0;
+  min-height: calc(var(--cell) * 2 + 8px);
+  display: grid;
+  grid-template-columns: repeat(4, var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: 8px;
+  justify-content: center;
+  align-content: center;
+}
+.g-cafe .cf-tray[data-kind="plates"] { grid-template-columns: repeat(3, calc(var(--cell) * 1.25)); grid-auto-rows: calc(var(--cell) * 1.25); }
+
+.g-cafe .cf-pick, .g-cafe .cf-item {
+  appearance: none;
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 5px 0 var(--line);
+  line-height: 1;
+  animation: cf-in 0.3s calc(var(--i) * 45ms) cubic-bezier(.3, 1.6, .5, 1) backwards;
+}
+.g-cafe .cf-item { font-size: calc(var(--cell) * 0.56); }
+.g-cafe .cf-pick { font-size: calc(var(--cell) * 0.72); border-radius: 50%; }
+.g-cafe .cf-pick:active, .g-cafe .cf-item:active { transform: translateY(5px); box-shadow: 0 0 0 var(--line); }
+@keyframes cf-in { from { transform: scale(0.3); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-cafe .cf-seat.is-wobbly .cf-face { animation: none; }
+  .g-cafe .cf-pick, .g-cafe .cf-item, .g-cafe .cf-top, .g-cafe .cf-bubble.is-on { animation-duration: 0.01s; }
+}
+
+/* eating time on a wide screen: the tray is empty, so the table takes the whole mat */
+.g-cafe[data-orient="landscape"] .cf-scene[data-state="serve"],
+.g-cafe[data-orient="landscape"] .cf-scene[data-state="done"] { grid-template-columns: minmax(0, 1fr); }
+.g-cafe[data-orient="landscape"] .cf-scene[data-state="serve"] .cf-tray,
+.g-cafe[data-orient="landscape"] .cf-scene[data-state="done"] .cf-tray { display: none; }
