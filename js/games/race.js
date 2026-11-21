@@ -3,6 +3,8 @@
  * Tap one of three leaf piles to see how many hops you get (1, 2 or 3 dots);
  * your slowpoke then hops that many stepping stones towards the picnic.
  * Pure luck, so a 4-year-old wins honestly, and a quiet boost keeps races close.
+ * Every race is somewhere new (meadow, pond, snow, beach) with its surprise
+ * stones shuffled: two boosts, one present of extra hops, one slip back.
  *
  * Round state machine (`state`):
  *   intro -> pick -> reveal -> hop -> [special] -> swap -> pick -> ...
@@ -12,12 +14,8 @@
 (function () {
   'use strict';
 
-  var STONES = 14;
-  var FINISH = STONES + 1;          // node 0 is the start mat, node 15 the picnic
-  var NODE_COUNT = FINISH + 1;
-  var RAINBOWS = [4, 9];
-  var RAINBOW_SLIDE = 2;
-  var BANANA = 12;
+  var LENGTHS = { short: 10, normal: 14, long: 18 }; // stepping stones between the start mat and the feast
+  var BOOST_SLIDE = 2;
   var BOOST_GAP = 4;
 
   var HOP_MS = 340;                 // with the rest below: one hop every ~460ms, slow enough to count along
@@ -29,10 +27,17 @@
   var ZONE_PAD = 6;                 // px between the path and whatever is beside it
   var ROW_PITCH = 1.25;             // row spacing (in stone units) that keeps a rider clear of the row above
   var HEADROOM = 0.4;               // spare stone units above the first row, for the hop arc
-  var GRID_COLUMNS = [3, 4, 5, 6, 8];
+  var GRID_COLUMNS = [3, 4, 5, 6, 7, 8, 10];
 
-  var MOUNTS = ['🐌', '🐢'];
-  var LEAVES = ['🍂', '🍁', '🍃'];
+  /* Where the race is run. cover: what the three piles are heaped with; boost and slip: the
+     surprise stones; feast: what waits at the end; mounts: the two slowpokes. Colours are in the css. */
+  var TRACKS = {
+    meadow: { cover: ['🍂', '🍁', '🍃'], blooms: ['🌼', '🌷', '🌸'], boost: '🌈', slip: '🍌', feast: ['🧺', '🍓'], mounts: ['🐌', '🐢'] },
+    pond: { cover: ['🍃', '🌿', '☘️'], blooms: ['🌿', '🌾', '💧'], boost: '🐸', slip: '💦', feast: ['🍰', '🍒'], mounts: ['🐢', '🦆'] },
+    snow: { cover: ['❄️', '☁️', '❄️'], blooms: ['🌲', '⛄', '❄️'], boost: '🛷', slip: '⛸️', feast: ['☕', '🍪'], mounts: ['🐧', '🐌'] },
+    beach: { cover: ['🐚', '🌴', '🐚'], blooms: ['🐚', '🌴', '☀️'], boost: '🌊', slip: '🦀', feast: ['🍉', '🍦'], mounts: ['🐢', '🐌'] },
+  };
+  var TRACK_IDS = ['meadow', 'pond', 'snow', 'beach'];
   var CRITTERS = ['🐞', '🐛', '🐜', '🦔', '🦋'];
   // Six leaves heaped into a mound, back to front: x, y (fractions of the pile), tilt, leaf.
   var HEAP = [[0, -0.2, 8, 0], [-0.15, -0.02, 32, 1], [0.15, -0.03, -28, 0], [-0.27, 0.19, -16, 0], [0.27, 0.2, 22, 1], [0, 0.23, 4, 2]];
@@ -54,11 +59,60 @@
     return boosted ? [2, 3, 3] : [1, 2, 3];
   }
 
-  /** Where a racer that STOPS on stone `at` ends up: {kind, to}, or null for a plain stone. */
-  function landing(at, banana) {
-    if (RAINBOWS.indexOf(at) >= 0) return { kind: 'rainbow', to: at + RAINBOW_SLIDE };
-    if (banana && at === BANANA) return { kind: 'banana', to: at - 1 };
-    return null;
+  /**
+   * The surprises of one race: {stones, finish, count, specials: {stone: kind}}.
+   * Two boosts (forward 2), one gift (a lucky dip of 1-3 extra hops) and, if
+   * allowed, one slip (back 1). Nothing in the first two stones, nothing that
+   * sends you onto another surprise or onto the feast: no chains, and a race
+   * is only ever won by your own hops. (The gift keeps that promise when it is
+   * opened: see giftHops.)
+   */
+  function makeCourse(stones, slip, rnd) {
+    rnd = rnd || Math.random;
+    var want = slip ? 4 : 3;
+    var specials;
+    // a tight course can paint itself into a corner: shuffle again until every surprise has a home
+    for (var attempt = 0; attempt < 40; attempt++) {
+      specials = {};
+      var taken = {};
+      var place = function (kind, lo, hi, reach) {
+        var free = [];
+        for (var i = lo; i <= hi; i++) {
+          if (taken[i]) continue;
+          if (reach.some(function (d) { return specials[i + d]; })) continue;
+          free.push(i);
+        }
+        if (!free.length) return;
+        var at = free[Math.floor(rnd() * free.length)];
+        specials[at] = kind;
+        taken[at] = true;
+        reach.forEach(function (d) { taken[at + d] = true; });
+      };
+      var half = Math.floor(stones / 2);
+      place('boost', 3, half, [BOOST_SLIDE]);
+      place('boost', half + 1, stones - 3, [BOOST_SLIDE]);
+      if (slip) place('slip', Math.max(5, half), stones - 1, [-1]);
+      place('gift', 3, stones - 2, []);
+      if (Object.keys(specials).length === want) break;
+    }
+    return { stones: stones, finish: stones + 1, count: stones + 2, specials: specials };
+  }
+
+  /** The hop counts a gift on stone `at` may hold: 1-3, never onto another surprise or the feast. */
+  function giftHops(at, course) {
+    return [1, 2, 3].filter(function (h) { return at + h <= course.stones && !course.specials[at + h]; });
+  }
+
+  /** Where a racer that STOPS on stone `at` ends up: {kind, to, hops?}, or null for a plain stone. */
+  function landing(at, course, rnd) {
+    var kind = course.specials[at];
+    if (!kind) return null;
+    if (kind === 'boost') return { kind: kind, to: at + BOOST_SLIDE };
+    if (kind === 'slip') return { kind: kind, to: at - 1 };
+    var choices = giftHops(at, course);
+    if (!choices.length) return null;
+    var hops = choices[Math.floor((rnd || Math.random)() * choices.length)];
+    return { kind: 'gift', hops: hops, to: at + hops };
   }
 
   /**
@@ -67,7 +121,8 @@
    * column at each player's edge; the path snakes through what is left.
    * Node coordinates are percentages of the play area, so pure scaling needs nothing redone.
    */
-  function layoutFor(w, h) {
+  function layoutFor(w, h, count) {
+    var NODE_COUNT = count, FINISH = count - 1;
     var landscape = w >= h;
     var gmin = Math.min(w, h);
     var badge = clamp(gmin * 0.105, 34, 58);
@@ -144,14 +199,26 @@
 
   function mount(root, ctx) {
     var el = ctx.el, util = ctx.util, sfx = ctx.sfx, fx = ctx.fx;
-    var banana = ctx.opt('banana');
     var calm = prefersCalm();
+
+    /** "Surprise" is a different place every race, carrying on from wherever the last visit stopped. */
+    function pickTrack(choice) {
+      if (TRACKS[choice]) return choice;
+      var next = TRACK_IDS[(TRACK_IDS.indexOf(ctx.load('track', '')) + 1) % TRACK_IDS.length];
+      ctx.save('track', next);
+      return next;
+    }
+    var trackId = pickTrack(ctx.opt('track'));
+    var track = TRACKS[trackId];
+    var course = makeCourse(LENGTHS[ctx.opt('length')] || LENGTHS.normal, ctx.opt('banana'));
+    var FINISH = course.finish, NODE_COUNT = course.count; // node 0 is the start mat, the last one the feast
 
     var state = 'intro';
     var turn = ctx.firstPlayer;
     var pos = [0, 0];
     var turnsTaken = [0, 0];
     var hand = null;   // this turn's piles: {values, piles, picked, critter}
+    var lastSpecial = null;
     var L = null;      // current layout, see layoutFor()
 
     /* ---- sounds: the game's own little orchestra ---- */
@@ -206,24 +273,23 @@
     trail.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path class="rc-trail__sand"/><path class="rc-trail__steps"/></svg>';
     var trailPaths = Array.prototype.slice.call(trail.querySelectorAll('path'));
 
-    var blooms = el('div', { class: 'rc-blooms', 'aria-hidden': 'true' }, BLOOMS.map(function (b) {
-      return el('span', { class: 'rc-bloom', text: b[2], style: { left: b[0] + '%', top: b[1] + '%' } });
+    var blooms = el('div', { class: 'rc-blooms', 'aria-hidden': 'true' }, BLOOMS.map(function (b, k) {
+      return el('span', { class: 'rc-bloom', text: track.blooms[k % track.blooms.length], style: { left: b[0] + '%', top: b[1] + '%' } });
     }));
 
     var nodes = util.range(NODE_COUNT).map(function (i) {
-      var special = landing(i, banana);
-      var kind = i === 0 ? 'start' : i === FINISH ? 'picnic' : special ? special.kind : 'stone';
+      var kind = i === 0 ? 'start' : i === FINISH ? 'picnic' : course.specials[i] || 'stone';
       var node = el('div', { class: 'rc-node rc-node--' + kind, style: { '--tilt': ((i * 37) % 13 - 6) + 'deg' } });
       if (kind === 'start') {
         node.appendChild(el('span', { class: 'rc-pad' }));
         node.appendChild(ctx.sticker('🏁', 'rc-flag'));
       } else if (kind === 'picnic') {
         node.appendChild(el('span', { class: 'rc-blanket' }));
-        node.appendChild(ctx.sticker('🧺', 'rc-basket'));
-        node.appendChild(ctx.sticker('🍓', 'rc-berry'));
+        node.appendChild(ctx.sticker(track.feast[0], 'rc-basket'));
+        node.appendChild(ctx.sticker(track.feast[1], 'rc-berry'));
       } else {
         node.appendChild(el('span', { class: 'rc-stone' }));
-        if (special) node.appendChild(ctx.sticker(kind === 'rainbow' ? '🌈' : '🍌', 'rc-mark'));
+        if (kind !== 'stone') node.appendChild(ctx.sticker(kind === 'boost' ? track.boost : kind === 'slip' ? track.slip : '🎁', 'rc-mark'));
       }
       return node;
     });
@@ -231,7 +297,7 @@
     var racers = ctx.players.map(function (p, i) {
       var look = el('div', { class: 'rc-racer__look' },
         el('span', { class: 'rc-racer__base' }),
-        el('span', { class: 'rc-racer__flip' }, ctx.sticker(MOUNTS[i], 'rc-racer__mount'), ctx.sticker(p.emoji, 'rc-racer__rider')),
+        el('span', { class: 'rc-racer__flip' }, ctx.sticker(track.mounts[i], 'rc-racer__mount'), ctx.sticker(p.emoji, 'rc-racer__rider')),
         el('span', { class: 'rc-racer__zzz', text: '💤' }),
         el('span', { class: 'rc-racer__crown', text: '👑' }));
       var hop = el('div', { class: 'rc-racer__hop' }, el('div', { class: 'rc-racer__seat' }, look));
@@ -249,7 +315,7 @@
       return { node: node, list: list };
     });
 
-    var scene = el('div', { class: 'rc-scene' }, blooms, trail, nodes,
+    var scene = el('div', { class: 'rc-scene', 'data-track': trackId }, blooms, trail, nodes,
       racers.map(function (r) { return r.node; }),
       trays.map(function (t) { return t.node; }));
     root.appendChild(scene);
@@ -268,7 +334,7 @@
     }
 
     function applyLayout(size) {
-      L = layoutFor(size.w, size.h);
+      L = layoutFor(size.w, size.h, NODE_COUNT);
       ['unit', 'pile', 'side', 'band', 'badge', 'gap'].forEach(function (key) {
         scene.style.setProperty('--' + key, L[key].toFixed(2) + 'px');
       });
@@ -345,7 +411,7 @@
         var angle = Math.atan2(h[1] - 0.25, h[0]) + util.randf(-0.5, 0.5);
         var far = util.randf(0.8, 1.3);
         return el('span', {
-          class: 'rc-leaf', text: LEAVES[h[3]],
+          class: 'rc-leaf', text: track.cover[h[3]],
           style: {
             '--x': h[0], '--y': h[1], '--r': h[2] + 'deg',
             '--bx': (Math.cos(angle) * far).toFixed(2), '--by': (Math.sin(angle) * far - 0.2).toFixed(2), '--br': util.rand(540) - 270 + 'deg',
@@ -359,7 +425,7 @@
 
     function leafPuff(pile, count) {
       var c = fx.centerOf(pile);
-      fx.burst(c.x, c.y, { emoji: util.pick(LEAVES), count: count, distance: L.pile * 0.75, size: L.pile * 0.2 });
+      fx.burst(c.x, c.y, { emoji: util.pick(track.cover), count: count, distance: L.pile * 0.75, size: L.pile * 0.2 });
     }
 
     /** The leaves fly off and the dots underneath show. `aside` = one of the piles that was not picked. */
@@ -390,7 +456,7 @@
     function tease(p) {
       nodes.forEach(function (node, i) {
         var ahead = i - pos[p];
-        var special = i === FINISH || landing(i, banana);
+        var special = i === FINISH || course.specials[i];
         node.classList.toggle('is-eager', !!special && p != null && ahead >= 1 && ahead <= 3);
       });
     }
@@ -468,11 +534,13 @@
         await settle(me, HOP_REST_MS);
       }
 
-      var special = landing(pos[p], banana);
+      var special = landing(pos[p], course);
       if (special) {
         state = 'special';
+        lastSpecial = special;
         await ctx.wait(160);
-        if (special.kind === 'rainbow') await rideRainbow(me, special.to);
+        if (special.kind === 'boost') await rideRainbow(me, special.to);
+        else if (special.kind === 'gift') await openGift(me, special);
         else await slipOnBanana(me, special.to);
       }
 
@@ -500,6 +568,26 @@
       await settle(r, 200);
     }
 
+    /** The present: a lucky dip of extra hops, shown as dots and hopped out like any others. */
+    async function openGift(r, special) {
+      var mark = nodes[r.to].querySelector('.rc-mark');
+      var c = fx.centerOf(mark);
+      sfx.play('boost');
+      fx.pop(mark);
+      fx.burst(c.x, c.y, { emoji: '✨', count: 8, distance: L.unit * 0.7, size: L.unit * 0.22 });
+      fx.float(c.x, c.y - L.unit * 0.5, '●●●'.slice(0, special.hops), { size: L.unit * 0.3, color: 'var(--berry)', duration: 1200 });
+      mark.classList.add('is-open');
+      await ctx.wait(520);
+      for (var n = 1; pos[r.i] < special.to; n++) {
+        pos[r.i]++;
+        snd.boing(n);
+        sfx.scale(5 + n);
+        await travel(r, pos[r.i], HOP_MS, 0.34);
+        snd.thud();
+        await settle(r, HOP_REST_MS);
+      }
+    }
+
     async function slipOnBanana(r, to) {
       var stone = nodes[r.to];
       snd.whistle();
@@ -518,7 +606,7 @@
 
     function finish(winner) {
       state = 'finish';
-      ctx.win(winner, { delay: FINALE_MS, emoji: '🍓' });
+      ctx.win(winner, { delay: FINALE_MS, emoji: track.feast[1] });
       finale(winner);
     }
 
@@ -532,7 +620,7 @@
       champ.node.classList.add('is-champ');
       snd.tada();
       var c = fx.centerOf(picnic);
-      fx.burst(c.x, c.y, { emoji: '🍓', count: 8, distance: L.unit * 0.9, size: L.unit * 0.24 });
+      fx.burst(c.x, c.y, { emoji: track.feast[1], count: 8, distance: L.unit * 0.9, size: L.unit * 0.24 });
       await settle(champ, 300);
       await ctx.wait(260);
 
@@ -553,7 +641,7 @@
         snd.nom();
         racers.forEach(function (r) { fx.pop(r.look); });
         var b = spot(racers[bite % 2]);
-        fx.float(b.x, b.y - L.unit * 0.3, '🍓', { size: L.unit * 0.3, duration: 700 });
+        fx.float(b.x, b.y - L.unit * 0.3, track.feast[1], { size: L.unit * 0.3, duration: 700 });
         await ctx.wait(230);
       }
       state = 'done';
@@ -570,10 +658,11 @@
     ctx.after(600, function () { beginTurn(ctx.firstPlayer); });
 
     ctx.expose({
-      FINISH: FINISH, RAINBOWS: RAINBOWS, RAINBOW_SLIDE: RAINBOW_SLIDE, BANANA: BANANA,
-      banana: banana,
+      FINISH: FINISH, course: course, track: trackId, tracks: TRACK_IDS, LENGTHS: LENGTHS,
+      get lastSpecial() { return lastSpecial; },
       pileSet: pileSet,
       landing: landing,
+      makeCourse: makeCourse,
       layoutFor: layoutFor,
       shuffle: util.shuffle,
       get state() { return state; },
@@ -592,9 +681,13 @@
     name: 'Super Slow Race',
     emoji: '🐌',
     color: 'tangerine',
-    howTo: 'Take turns tapping a leaf pile: the dots are how many stones your slowpoke hops. Rainbows slide you forward, the banana slips you back one. First to the picnic wins, and everybody eats.',
+    howTo: 'Take turns tapping a pile: the dots are how many stones your slowpoke hops. Some stones are surprises: a ride forward, a present with extra hops, or a slip back one. First to the feast wins, and everybody eats. Every race is somewhere new.',
     options: [
-      { key: 'banana', label: 'Banana peel', default: true, choices: [{ value: true, label: 'On' }, { value: false, label: 'Off' }] },
+      { key: 'track', label: 'Where', default: 'surprise', choices: [
+        { value: 'surprise', label: 'Surprise', emoji: '🎲' }, { value: 'meadow', label: 'Meadow', emoji: '🌼' }, { value: 'pond', label: 'Pond', emoji: '🐸' },
+        { value: 'snow', label: 'Snow', emoji: '⛄' }, { value: 'beach', label: 'Beach', emoji: '🐚' }] },
+      { key: 'length', label: 'Race', default: 'normal', choices: [{ value: 'short', label: 'Short' }, { value: 'normal', label: 'Normal' }, { value: 'long', label: 'Long' }] },
+      { key: 'banana', label: 'Slip-back stone', default: true, choices: [{ value: true, label: 'On' }, { value: false, label: 'Off' }] },
     ],
     mount: mount,
   });

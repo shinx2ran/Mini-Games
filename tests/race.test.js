@@ -26,29 +26,56 @@ h.run(ID, async (t) => {
   let page = await t.open(ID);
   const rules = await page.evaluate(() => {
     const a = MG.current.api;
+    const bad = [];
+    for (const stones of [10, 14, 18]) for (const slip of [true, false]) for (let n = 0; n < 400; n++) {
+      const c = a.makeCourse(stones, slip);
+      const at = Object.keys(c.specials).map(Number);
+      const kinds = at.map((i) => c.specials[i]).sort().join(',');
+      if (kinds !== (slip ? 'boost,boost,gift,slip' : 'boost,boost,gift')) bad.push(`kinds ${kinds}`);
+      if (c.finish !== stones + 1 || c.count !== stones + 2) bad.push('size');
+      for (const i of at) {
+        if (i < 3 || i > stones - 1) bad.push(`special at ${i}/${stones}`);
+        if (c.specials[i] === 'gift') {
+          const seen = new Set();
+          for (let k = 0; k < 30; k++) { const l = a.landing(i, c); if (!l) { bad.push(`empty gift at ${i}`); break; } seen.add(l.to); if (l.to !== i + l.hops) bad.push('gift maths'); }
+          for (const to of seen) { if (c.specials[to]) bad.push(`chain ${i}->${to}`); if (to > stones || to <= i || to > i + 3) bad.push(`gift to ${to}`); }
+          continue;
+        }
+        const reach = c.specials[i] === 'boost' ? [2] : [-1];
+        for (const d of reach) { if (c.specials[i + d]) bad.push(`chain ${i}->${i + d}`); if (i + d > stones || i + d < 1) bad.push(`off the path ${i + d}`); }
+      }
+    }
+    const c = { stones: 14, finish: 15, count: 16, specials: { 4: 'boost', 7: 'gift', 12: 'slip' } };
+    const gifts = new Set(); for (let n = 0; n < 200; n++) gifts.add(a.landing(7, c).hops);
     return {
+      bad: bad.slice(0, 5),
       plain: a.pileSet(0, 1, 1), far: a.pileSet(4, 1, 0), near: a.pileSet(3, 1, 0),
       lots: a.pileSet(1, 2, 2), lotsAhead: a.pileSet(0, 2, 2), off: a.pileSet(9, 0, 0),
-      rainbow: a.landing(4, true), banana: a.landing(12, true), noBanana: a.landing(12, false), stone: a.landing(5, true),
-      nodes: a.path.length, finish: a.FINISH,
+      boost: a.landing(4, c), slip: a.landing(12, c), stone: a.landing(5, c), gift: a.landing(7, c, () => 0.99), gifts: [...gifts].sort(),
+      nodes: a.path.length, course: a.course, track: a.track, tracks: a.tracks,
     };
   });
+  assert.deepStrictEqual(rules.bad, [], 'every shuffled course is fair: right surprises, in range, no chains');
   assert.deepStrictEqual(rules.plain, [1, 2, 3]);
   assert.deepStrictEqual(rules.far, [2, 3, 3], 'whoever trails by 4+ gets better piles');
   assert.deepStrictEqual(rules.near, [1, 2, 3]);
   assert.deepStrictEqual(rules.lots, [2, 3, 3], 'at "Lots" the little player is boosted whenever she is behind');
   assert.deepStrictEqual(rules.lotsAhead, [1, 2, 3]);
   assert.deepStrictEqual(rules.off, [1, 2, 3], 'no boost for anyone when help is off');
-  assert.deepStrictEqual(rules.rainbow, { kind: 'rainbow', to: 6 });
-  assert.deepStrictEqual(rules.banana, { kind: 'banana', to: 11 });
-  assert.strictEqual(rules.noBanana, null);
+  assert.deepStrictEqual(rules.boost, { kind: 'boost', to: 6 });
+  assert.deepStrictEqual(rules.slip, { kind: 'slip', to: 11 });
+  assert.deepStrictEqual(rules.gift, { kind: 'gift', hops: 3, to: 10 });
+  assert.deepStrictEqual(rules.gifts, [1, 2, 3], 'a present is 1, 2 or 3 extra hops');
   assert.strictEqual(rules.stone, null);
   assert.strictEqual(rules.nodes, 16);
-  assert.strictEqual(rules.finish, 15);
+  assert.strictEqual(rules.course.stones, 14);
+  assert.strictEqual(rules.track, 'meadow', 'the first ever race is in the meadow');
+  assert.deepStrictEqual(rules.tracks, ['meadow', 'pond', 'snow', 'beach']);
 
   // --- a whole race through real taps; every move obeys the rules; both racers finish
   await t.fast(page, 8);
   const first = await page.evaluate(() => MG.current.ctx.firstPlayer);
+  const course = rules.course;
   let last = null, turns = 0, expected = first;
   for (;;) {
     last = await turn(page, biggest);
@@ -56,17 +83,38 @@ h.run(ID, async (t) => {
     assert.strictEqual(last.player, expected, 'turns strictly alternate');
     expected = 1 - expected;
     assert.deepStrictEqual([...last.piles].sort().join(''), last.piles.includes(1) ? '123' : '233');
-    let want = Math.min(15, last.from + last.steps);
-    const special = await page.evaluate(([at]) => MG.current.api.landing(at, MG.current.api.banana), [want]);
-    if (special && want < 15) want = special.to;
-    assert.strictEqual(last.to, want, `hopped ${last.steps} from ${last.from}`);
-    if (last.to === 15) break;
+    const base = Math.min(course.finish, last.from + last.steps);
+    const kind = base < course.finish ? course.specials[base] : undefined;
+    if (kind === 'boost') assert.strictEqual(last.to, base + 2, 'a boost rides forward 2');
+    else if (kind === 'slip') assert.strictEqual(last.to, base - 1, 'a slip goes back 1');
+    else if (kind === 'gift') assert.ok(last.to >= base + 1 && last.to <= Math.min(base + 3, course.stones) && !course.specials[last.to], 'a present gives 1-3 extra hops');
+    else assert.strictEqual(last.to, base, `hopped ${last.steps} from ${last.from}`);
+    if (last.to === course.finish) break;
     assert.ok(turns < 40, 'the race ends');
   }
   await t.waitForWin(page, 30000);
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), String(last.player));
   assert.strictEqual(await page.locator('.mg-win__face.is-crowned').getAttribute('data-p'), String(last.player));
-  assert.deepStrictEqual(await api(page, 'positions'), [15, 15], 'the other racer is zoomed to the picnic too');
+  assert.deepStrictEqual(await api(page, 'positions'), [course.finish, course.finish], 'the other racer is zoomed to the feast too');
+
+  // --- "Surprise" visits a new place each race; short and long races fit every screen in every place
+  await page.waitForSelector('.mg-win__actions:not(.is-arming)');
+  await page.locator('.mg-win .mg-btn--primary').tap();
+  await page.waitForFunction(() => MG.current && MG.current.ctx.round === 1 && MG.current.api);
+  assert.strictEqual(await api(page, 'track'), 'pond', 'the next race is somewhere else');
+  for (const [track, length, vp] of [['pond', 'long', 'small'], ['snow', 'short', 'phone'], ['beach', 'long', 'phoneWide'], ['snow', 'long', 'tabletTall'], ['beach', 'short', 'tablet'], ['pond', 'short', 'phoneWide']]) {
+    const p = await t.open(null, { viewport: vp, dark: vp === 'phoneWide', page: 'tests/play.html?g=race' });
+    await p.evaluate(([track, length]) => { MG.store.set('opt:race:track', track); MG.store.set('opt:race:length', length); MG.open('race'); }, [track, length]);
+    await canPick(p);
+    await p.waitForTimeout(700);
+    const info = await p.evaluate(() => ({ track: document.querySelector('.g-race .rc-scene').dataset.track, stones: MG.current.api.course.stones, marks: document.querySelectorAll('.g-race .rc-mark').length }));
+    assert.deepStrictEqual(info, { track, stones: { short: 10, normal: 14, long: 18 }[length], marks: 4 });
+    assert.deepStrictEqual(await t.outsidePlayArea(p, PIECES + ', .g-race .rc-racer__base'), [], `all in view: ${track}/${length} @${vp}`);
+    assert.ok((await t.minTargetSize(p, '.g-race .rc-tray.is-open .rc-pile')).min >= 64);
+    const stone = await t.minTargetSize(p, '.g-race .rc-stone');
+    assert.ok(stone.min >= 14, `stones still readable: ${track}/${length} @${vp} (${stone.min}px tall)`);
+    await t.shot(p, `race-${track}-${length}-${vp}.png`);
+  }
 
   // --- mashing: slapping all three piles at once picks one, and the turn passes once
   page = await t.open(ID);

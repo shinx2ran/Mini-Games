@@ -67,8 +67,11 @@
   transform: translate(-50%, -44%) rotate(var(--tilt, 0deg)) scale(1.05, 0.9);
   box-shadow: 0 1px 0 var(--line);
 }
-.g-race .rc-node--rainbow .rc-stone { background: var(--sea-soft); }
-.g-race .rc-node--banana .rc-stone { background: var(--sun); }
+.g-race .rc-node--boost .rc-stone { background: var(--sea-soft); }
+.g-race .rc-node--slip .rc-stone { background: var(--sun); }
+.g-race .rc-node--gift .rc-stone { background: var(--berry-soft); }
+.g-race .rc-mark.is-open { animation: rc-gift 0.5s cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes rc-gift { 0% { transform: translate(-50%, -64%); } 50% { transform: translate(-50%, -120%) scale(1.5) rotate(-12deg); } 100% { transform: translate(-50%, -64%); } }
 
 .g-race .rc-mark {
   position: absolute;
@@ -351,3 +354,20 @@
   .g-race .rc-pile.is-rustling .rc-heap, .g-race .rc-node.is-slipped .rc-mark { animation: none; }
   .g-race .rc-pile { animation-duration: 0.01s; }
 }
+
+/* ---------------------------------------------------- other places to race */
+
+.g-race .rc-scene[data-track="pond"] { --rc-grass: #BDE7F6; --rc-sand: #9AD6EE; --rc-sand-dot: #6FBBDB; --rc-stone: #8FDD92; }
+.g-race .rc-scene[data-track="snow"] { --rc-grass: #EFF6FF; --rc-sand: #D3E4F9; --rc-sand-dot: #AFC9EA; --rc-stone: #BFE6FF; }
+.g-race .rc-scene[data-track="beach"] { --rc-grass: #FCE9B6; --rc-sand: #F2D38A; --rc-sand-dot: #D9B25E; --rc-stone: #FFFFFF; }
+.g-race .rc-scene[data-track="pond"] .rc-pad { background: var(--leaf); }
+.g-race .rc-scene[data-track="snow"] .rc-pad { background: var(--sea); }
+.g-race .rc-scene[data-track="beach"] .rc-pad { background: var(--tangerine); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-race .rc-scene[data-track="pond"] { --rc-grass: #163E5C; --rc-sand: #1F567A; --rc-sand-dot: #3A7CA3; --rc-stone: #2F8A4E; }
+  :root:not([data-theme="light"]) .g-race .rc-scene[data-track="snow"] { --rc-grass: #2B3566; --rc-sand: #3C4A85; --rc-sand-dot: #6474B5; --rc-stone: #5C7FC0; }
+  :root:not([data-theme="light"]) .g-race .rc-scene[data-track="beach"] { --rc-grass: #5A4A2A; --rc-sand: #77633A; --rc-sand-dot: #A58B55; --rc-stone: #4B478F; }
+}
+:root[data-theme="dark"] .g-race .rc-scene[data-track="pond"] { --rc-grass: #163E5C; --rc-sand: #1F567A; --rc-sand-dot: #3A7CA3; --rc-stone: #2F8A4E; }
+:root[data-theme="dark"] .g-race .rc-scene[data-track="snow"] { --rc-grass: #2B3566; --rc-sand: #3C4A85; --rc-sand-dot: #6474B5; --rc-stone: #5C7FC0; }
+:root[data-theme="dark"] .g-race .rc-scene[data-track="beach"] { --rc-grass: #5A4A2A; --rc-sand: #77633A; --rc-sand-dot: #A58B55; --rc-stone: #4B478F; }
