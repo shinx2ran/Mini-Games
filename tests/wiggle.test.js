@@ -199,6 +199,36 @@ async function popOne(page) {
       assert.ok((await api(cam, 'popped')) > before, 'fingers pop the bubbles from here on');
     }
 
+    // --- lost before the first picture had even arrived (paused straight after "yes", and then it cannot be reopened):
+    //     a finger round starts there and then, with no dead picture and no camera light
+    cam = await t.open(null, { page: 'tests/play.html?g=wiggle' });
+    await cam.addInitScript(() => {
+      const md = navigator.mediaDevices; if (!md) return;
+      const real = md.getUserMedia.bind(md); let calls = 0; window.__streams = [];
+      md.getUserMedia = (c) => {
+        calls++;
+        if (calls > 1) return Promise.reject(new DOMException('busy', 'NotReadableError'));
+        return real(c).then((s) => { window.__streams.push(s); setTimeout(() => MG.pause(), 0); return s; });
+      };
+    });
+    await cam.reload();
+    await cam.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
+    await cam.evaluate(() => MG.open('wiggle'));
+    await cam.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();
+    await cam.waitForSelector('.mg-overlay--pause');
+    assert.strictEqual(await api(cam, 'state'), 'asking');
+    await cam.waitForTimeout(450);
+    await cam.locator('.mg-pausecard .mg-btn--primary').tap();
+    await cam.waitForFunction(() => MG.current.api.state === 'play', null, { timeout: 2500 });
+    assert.strictEqual(await api(cam, 'mode'), 'touch');
+    assert.strictEqual(await cam.locator('.g-wiggle .wp-ask').count(), 0, 'the question is gone');
+    assert.strictEqual(await cam.locator('.g-wiggle .wp-video').count(), 0, 'no dead picture');
+    assert.strictEqual(await cam.evaluate(() => document.querySelector('.g-wiggle .wp-scene').dataset.mode), 'touch');
+    assert.deepStrictEqual(await tracks(cam), ['ended']);
+    await cam.waitForTimeout(3200); // the first picture's own wait runs out: it must not turn the round into a camera round
+    assert.strictEqual(await api(cam, 'mode'), 'touch');
+    assert.strictEqual(await cam.locator('.g-wiggle .wp-video').count(), 0);
+
     // --- "Fingers" tapped while the camera question was still open: a late yes must not leave the camera on
     cam = await spy(700);
     await cam.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();

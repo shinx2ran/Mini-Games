@@ -124,6 +124,18 @@ h.run(ID, async (t) => {
     await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 10, gamma: 0 })));
     await page.waitForTimeout(120);
   }
+  // put down with a bump: one hard jolt for a few readings, then still again (it settles back, it does not swing past)
+  const bump = await page.evaluate(async () => {
+    const t0 = performance.now();
+    for (;;) {
+      const t = performance.now() - t0;
+      if (t > 1100) break;
+      window.dispatchEvent(new DeviceMotionEvent('devicemotion', { accelerationIncludingGravity: { x: 0, y: 9.8, z: t > 300 && t < 345 ? 19.6 : 0 } }));
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    return MG.current.api.state;
+  });
+  assert.strictEqual(bump, 'wait', 'putting the phone down with a bump is not a shake');
   assert.strictEqual(await wave(page, 0.3, 1.5, 900), 'wait', 'passing the phone across is not a shake');
   assert.strictEqual(await wave(page, 1.5, 3, 900), 'spin', 'a child-sized wiggle is');
 

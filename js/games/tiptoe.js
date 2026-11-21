@@ -20,6 +20,7 @@
   var LOOK_MS = [1700, 2700];
   var AWAY_MS = 450;
   var SPIN_ON = 0.6;        // seconds someone who was caught is still spinning when the next song starts
+                            // (they also spin all through the wolf turning away: no sneaky head start)
 
   /* The wolf's song: an original tune. A song is one or two of these bars,
      at one of three speeds, and always ends on the same two notes ("ta-DAA"),
@@ -156,11 +157,7 @@
         song = makeSong(Math.random, behind > 0.3);
         songs++;
         // whoever was caught is still dizzy for the first beat of the song: freezing in time is always quicker
-        [0, 1].forEach(function (c) {
-          if (!caughtNow[c]) return;
-          dizzyUntil[c] = Math.max(dizzyUntil[c], ctx.time + SPIN_ON);
-          spin(c, dizzyUntil[c] - ctx.time); // ...and it shows: a finger that does nothing must never look broken
-        });
+        [0, 1].forEach(function (c) { if (caughtNow[c]) daze(c, SPIN_ON); });
         caughtNow = [false, false];
         if (held) return;
         var n = 0;
@@ -190,6 +187,8 @@
           if (state !== 'play') return;
           setPhase('away');
           gained = [0, 0];
+          // whoever he caught is still dizzy while he turns away, and into the first beat of the song
+          [0, 1].forEach(function (c) { if (caughtNow[c]) daze(c, AWAY_MS / 1000 + SPIN_ON); });
           schedule(AWAY_MS, startSong);
         });
       }
@@ -213,7 +212,14 @@
         if (tutorial[i]) { tutorial[i] = false; lanes[i].hand.classList.add('is-done'); }
       }
 
-      /** Show player i spinning for `secs`: they cannot run until it stops. */
+      /** Player i is dizzy for at least `secs` more: they cannot run until it wears off, and it shows. */
+      function daze(i, secs) {
+        if (ctx.time + secs <= dizzyUntil[i] + 0.02) return; // already spinning at least that long
+        dizzyUntil[i] = ctx.time + secs;
+        spin(i, secs); // a finger that does nothing must never look broken
+      }
+
+      /** Show player i spinning for `secs`. */
       var spinId = [0, 0];
       function spin(i, secs) {
         var id = ++spinId[i], c = lanes[i].climber;

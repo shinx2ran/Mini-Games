@@ -206,6 +206,8 @@
   .g-tiptoe .tt-climber.is-hop .mg-sticker, .g-tiptoe .tt-scene[data-phase="song"] .tt-back,
   .g-tiptoe .tt-scene[data-phase="song"] .tt-tail, .g-tiptoe .tt-scene.is-ending .tt-back,
   .g-tiptoe .tt-scene[data-phase="party"] .tt-face { animation: none; }
+  /* dizzy without the spin: tipped over, faded and ringed, so a finger that does nothing never looks broken */
+  .g-tiptoe .tt-climber.is-dizzy { transform: rotate(28deg); opacity: 0.6; box-shadow: 0 0 0 4px var(--surface), 0 0 0 7px var(--ink-soft); }
 }
 
 /* a phone on its side: the wolf sits BETWEEN the lanes, so the track gets the whole height
@@ -217,4 +219,4 @@
   align-items: stretch;
   --me: clamp(40px, calc(var(--gmin) * 0.13), 110px);
 }
-.g-tiptoe[data-orient="landscape"] .tt-wolf { align-self: center; margin: 0 calc(var(--wolf) * 0.34); }
+.g-tiptoe[data-orient="landscape"] .tt-wolf { align-self: center; margin: 0 calc(var(--wolf) * 0.56); } /* room for his notes */

@@ -72,7 +72,7 @@
 .g-tray .ty-bug { z-index: 2; font-size: calc(var(--short) * 0.15); }
 .g-tray .ty-bug .mg-sticker { transform: rotate(var(--turn, 0deg)); transition: transform 0.15s linear; }
 .g-tray .ty-bug.is-full .mg-sticker { animation: ty-full 0.3s ease-in-out infinite alternate; }
-@keyframes ty-full { from { transform: scale(1) rotate(-10deg); } to { transform: scale(1.3) rotate(10deg); } }
+@keyframes ty-full { from { transform: scale(1) rotate(-10deg); } to { transform: scale(1.18) rotate(10deg); } }
 
 .g-tray .ty-berry { font-size: calc(var(--short) * 0.14); }
 .g-tray .ty-berry.is-in .mg-sticker { animation: ty-in 0.35s cubic-bezier(.3, 1.9, .5, 1) backwards, ty-bob 0.7s 0.35s ease-in-out infinite alternate; }

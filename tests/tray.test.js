@@ -30,7 +30,7 @@ h.run(ID, async (t) => {
       one: a.pushFromFingers({ x: 0.2, y: 0.5 }, [{ x: 0.9, y: 0.5 }]),
       toRight: a.pushFromFingers({ x: 0.5, y: 0.5 }, [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }], { x: 0.95, y: 0.5 }),
       toLeft: a.pushFromFingers({ x: 0.5, y: 0.5 }, [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }], { x: 0.05, y: 0.5 }),
-      spotsOk: spots.every((s) => s.x >= 0.14 && s.x <= 0.86 && s.y >= 0.14 && s.y <= 1.46),
+      spotsOk: spots.every((s) => s.x >= a.MARGIN && s.x <= 1 - a.MARGIN && s.y >= a.MARGIN && s.y <= 1.6 - a.MARGIN),
       far: spots.filter((s) => Math.hypot(s.x - 0.5, s.y - 0.8) > 0.3).length / spots.length,
     };
   });
@@ -142,6 +142,48 @@ h.run(ID, async (t) => {
     await page.evaluate(() => clearInterval(window.__against));
   }
 
+  // --- rolling ALONG the rim towards a strawberry is steering, not "how they hold it now": no re-centring under her
+  page = await t.open(ID);
+  await page.evaluate(() => { window.__random = Math.random; Math.random = () => 0; }); // the first strawberry: top left
+  await page.locator('.g-tray .ty-ask .mg-btn').nth(0).click();
+  for (let i = 0; i < 4; i++) { await tilt(page, 20, 0); await page.waitForTimeout(60); }
+  await playing(page);
+  await page.evaluate(() => { Math.random = window.__random; });
+  assert.deepStrictEqual(await api(page, 'berry'), { x: 0.14, y: 0.14 });
+  for (let i = 0; i < 80 && (await api(page, 'settling')); i++) { await tilt(page, 20, 0); await page.waitForTimeout(50); }
+  await page.evaluate(() => {
+    const m = MG.current.ctx.motion, orig = m.recenter; window.__recentred = 0;
+    m.recenter = function () { window.__recentred++; return orig.apply(this, arguments); };
+  });
+  {
+    // hard into the left rim, gently up along it: she reaches the rim at once, then slides up it for a few seconds
+    let ate = false;
+    for (let i = 0; i < 200 && !ate; i++) { await tilt(page, 17, -20); await page.waitForTimeout(50); ate = (await api(page, 'eaten')) >= 1; }
+    assert.ok(ate, 'sliding along the rim, she gets to the strawberry');
+    assert.strictEqual(await page.evaluate(() => window.__recentred), 0, 'and the tilt is not re-centred under her on the way');
+  }
+
+  // --- a thumb resting on the tray: she goes to it, and after that tilting works again (it does not switch tilting off)
+  await tilt(page, 20, 0);
+  {
+    const r = await page.evaluate(() => { const b = document.querySelector('.g-tray .ty-board').getBoundingClientRect(); return { x: b.right - 4, y: b.bottom - 4 }; });
+    await page.evaluate((r) => document.querySelector('.g-tray .ty-scene').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 93, pointerType: 'touch', clientX: r.x, clientY: r.y })), r);
+    assert.strictEqual(await api(page, 'steering'), 1, 'a new finger steers');
+    await page.waitForFunction(() => MG.current.api.steering === 0, null, { timeout: 15000 });
+    assert.strictEqual(await api(page, 'fingers'), 1, 'the thumb is still down');
+    const s = await api(page, 'size');
+    const at = await api(page, 'ball');
+    assert.ok(Math.abs(at.x - (s.W - 0.12)) < 0.06 && Math.abs(at.y - (s.H - 0.12)) < 0.06, 'she went to the thumb in the corner (a finger on the rim means "as far as she can go")');
+    for (let guard = 0; guard < 400 && (await api(page, 'eaten')) < 2; guard++) {
+      const q = await page.evaluate(() => ({ ball: MG.current.api.ball, berry: MG.current.api.berry }));
+      const dx = q.berry.x - q.ball.x, dy = q.berry.y - q.ball.y;
+      await tilt(page, 20 + Math.max(-14, Math.min(14, dy * 60)), Math.max(-14, Math.min(14, dx * 60)));
+      await page.waitForTimeout(20);
+    }
+    assert.ok((await api(page, 'eaten')) >= 2, 'with the thumb still resting there, tilting reaches the next strawberry');
+    await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 93, pointerType: 'touch' })));
+  }
+
   // --- the phone never answers the sensor question: Finger still starts the game; and a resting thumb does not hold her back
   page = await t.open(null, { page: 'tests/play.html?g=tray' });
   await page.addInitScript(() => { if (window.DeviceOrientationEvent) window.DeviceOrientationEvent.requestPermission = () => new Promise(() => {}); });
@@ -210,7 +252,8 @@ h.run(ID, async (t) => {
       const r = document.querySelector('.g-tray .ty-bug .mg-sticker').getBoundingClientRect();
       return { half: Math.max(r.width, r.height) / 2, room: Math.min(a.RADIUS / a.size.W * board.clientWidth, a.RADIUS / a.size.H * board.clientHeight) };
     });
-    assert.ok(fit.half <= fit.room + 1, `the ladybird stays inside the rim @${vp} (${fit.half.toFixed(0)}px of her, ${fit.room.toFixed(0)}px of room)`);
+    // (she grows by a quarter for a moment when she eats, right up against the rim too)
+    assert.ok(fit.half * 1.25 <= fit.room + 1, `the ladybird stays inside the rim, even mid-gulp @${vp} (${(fit.half * 1.25).toFixed(0)}px of her, ${fit.room.toFixed(0)}px of room)`);
     // ...so even a strawberry in the far corner is whole
     const corner = await p.evaluate(() => {
       const a = MG.current.api, fruit = document.querySelector('.g-tray .ty-berry'), g = document.querySelector('#mg-game').getBoundingClientRect();
@@ -227,7 +270,11 @@ h.run(ID, async (t) => {
       await p.setViewportSize({ width: 844, height: 390 });
       await p.waitForTimeout(300);
       const after = await p.evaluate(() => ({ b: MG.current.api.berry, s: MG.current.api.size }));
-      assert.ok(Math.abs(before.b.x / before.s.W - after.b.x / after.s.W) < 0.01, 'the strawberry keeps its place when the screen turns');
+      assert.ok(Math.abs(before.b.x / before.s.W - after.b.x / after.s.W) < 0.01 || after.b.x <= 0.14 + 1e-9 || after.b.x >= after.s.W - 0.14 - 1e-9, 'the strawberry keeps its place when the screen turns');
+      // ...but never ends up on the rim of the new shape (a strawberry in a corner of the tall tray, then turned)
+      const turned = await p.evaluate(() => { const a = MG.current.api; return { b: a.berry, ball: a.ball, s: a.size, m: a.MARGIN, r: a.RADIUS }; });
+      assert.ok(turned.b.x >= turned.m - 1e-9 && turned.b.x <= turned.s.W - turned.m + 1e-9 && turned.b.y >= turned.m - 1e-9 && turned.b.y <= turned.s.H - turned.m + 1e-9, 'the strawberry is off the rim after the turn');
+      assert.ok(turned.ball.x >= turned.r - 1e-9 && turned.ball.x <= turned.s.W - turned.r + 1e-9 && turned.ball.y >= turned.r - 1e-9 && turned.ball.y <= turned.s.H - turned.r + 1e-9, 'so is she');
       assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-tray .ty-berry .mg-sticker, .g-tray .ty-bug .mg-sticker'), [], 'still in view after rotating');
     }
   }

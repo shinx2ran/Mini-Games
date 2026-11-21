@@ -11,14 +11,16 @@
 (function () {
   'use strict';
 
-  var GOAL = 24;              // passes to fill the ladder: about 45 seconds of rallying
-  var SECOND_AT = 10;         // a second balloon joins after this many passes
+  var GOAL = 30;              // passes to fill the ladder: about a minute of rallying at a family's pace
+  var SECOND_AT = 14;         // a second balloon joins after this many passes
   var GRAVITY = 0.3;          // per s^2: a bit over two seconds from the top to the ground
   var FLOOR = 0.84;           // where a balloon touches down
   var CEILING = 0.12;         // highest a balloon's middle may go (raised for big balloons on short screens)
   var BOP_UP = -0.5;
   var COOLDOWN = 0.9;         // seconds before the same balloon can be bopped again
   var RISING = -0.08;         // still going up faster than this: not yours to bop yet
+  var DRAG = 0.6;             // share of its sideways speed a balloon keeps each second
+  var STRING = 0.5;           // string length, in balloon widths
   var COLORS = ['berry', 'sun', 'sea', 'leaf', 'grape', 'tangerine'];
 
   /* ---------------------------------------------------------- pure rules */
@@ -40,14 +42,14 @@
 
   /**
    * One step of flight. Mutates and returns b: {x, y, vx, vy}. Walls and ceiling are soft.
-   * `hang`: it may rise but not fall yet (it waits at the top of its flight until it can be somebody's).
+   * `hang`: it may rise but not fall yet (it waits up there until it can be somebody's).
    */
   function fly(b, dt, g, top, wall, hang) {
     top = top == null ? CEILING : top;
     wall = wall == null ? 0.1 : wall;
     b.vy += g * dt;
     if (hang && b.vy > 0) b.vy = 0;
-    b.vx *= Math.pow(0.6, dt); // sideways drift dies away, so it hangs over a half
+    b.vx *= Math.pow(DRAG, dt); // sideways drift dies away, so it hangs over a half
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     if (b.x < wall) { b.x = wall; b.vx = Math.abs(b.vx) * 0.6; }
@@ -56,10 +58,15 @@
     return b;
   }
 
-  /** The push a bop from player i gives: up, and across to the other half. */
-  function bopVelocity(i, rnd) {
+  /**
+   * The push a bop from player i gives: up, and across to the other half.
+   * Bopped from far out by a wall (x), it is pushed harder, so it still
+   * drifts well over the middle instead of creeping across.
+   */
+  function bopVelocity(i, rnd, x) {
     var r = rnd == null ? Math.random() : rnd;
-    return { vx: (i === 0 ? 1 : -1) * (0.26 + r * 0.12), vy: BOP_UP - r * 0.08 };
+    var need = x == null ? 0 : (Math.abs(x - 0.5) + 0.3) * -Math.log(DRAG); // drifts to 0.3 past the middle
+    return { vx: (i === 0 ? 1 : -1) * Math.max(0.26 + r * 0.12, need), vy: BOP_UP - r * 0.08 };
   }
 
   MG.registerGame({
@@ -91,21 +98,33 @@
         return { pad: pad, who: who, hand: hand };
       });
       var dots = util.range(GOAL).map(function () { return el('span', { class: 'bp-dot' }); });
+      var ladder = el('div', { class: 'bp-ladder', role: 'img', 'aria-label': 'Passes so far' }, dots);
       var sky = el('div', { class: 'bp-sky', 'aria-hidden': 'true' });
       var scene = el('div', { class: 'bp-scene' }, sides[0].pad, sides[1].pad,
-        el('div', { class: 'bp-ladder', role: 'img', 'aria-label': 'Passes so far' }, dots), sky);
+        ladder, sky);
       root.appendChild(scene);
 
       // The balloon's size is set here (not in the stylesheet) because the ceiling and the side walls
       // depend on it: a balloon at the edge of its flight must still be whole, on the smallest screen too.
-      var ceiling = CEILING, wall = 0.1;
+      var ceiling = CEILING, wall = 0.1, size = 110, high = 600;
       function measure() {
         var s = ctx.size();
         var wide = s.w >= s.h;
-        var size = util.clamp(Math.min(s.w, s.h) * (wide ? 0.24 : 0.3), 84, wide ? 150 : 190);
+        size = util.clamp(Math.min(s.w, s.h) * (wide ? 0.24 : 0.3), 84, wide ? 150 : 190);
+        high = s.h;
         scene.style.setProperty('--size', size.toFixed(1) + 'px');
         ceiling = Math.max(CEILING, (size * 0.7 + 10) / s.h); // (a leaning balloon reaches a little higher)
         wall = Math.max(0.1, (size * 0.56 + 8) / s.w);
+        // round dots that all fit up the ladder, however short the screen
+        var lw = ladder.clientWidth, lh = ladder.clientHeight - 10;
+        if (lw > 0 && lh > 0) ladder.style.setProperty('--dot', Math.max(4, Math.min(lw * 0.68, lh / GOAL - 3)).toFixed(1) + 'px');
+        // the screen turned: everything in the air moves inside the new walls straight away (also while paused)
+        balloons.forEach(function (b) {
+          if (!b.alive || b.grounded) return;
+          b.x = util.clamp(b.x, wall, 1 - wall);
+          b.y = Math.max(b.y, ceiling);
+          draw(b);
+        });
       }
       measure();
       ctx.onResize(measure);
@@ -136,6 +155,9 @@
         b.node.style.left = (b.x * 100).toFixed(2) + '%';
         b.node.style.top = (b.y * 100).toFixed(2) + '%';
         b.node.style.setProperty('--lean', (b.vx * 28).toFixed(1) + 'deg');
+        // near the ground the string curls up on the grass instead of poking through the bottom
+        var room = (1 - b.y) * high - size * 0.68 - 6;
+        b.node.style.setProperty('--str', util.clamp(room, 0, size * STRING).toFixed(1) + 'px');
       }
 
       function bop(i) {
@@ -144,7 +166,7 @@
           if (!b.alive || b.grounded || !canBop(b, i, ctx.time)) return;
           hit = true;
           b.cool = ctx.time + COOLDOWN;
-          var v = bopVelocity(i);
+          var v = bopVelocity(i, null, b.x);
           b.vx = v.vx;
           b.vy = v.vy;
           bops++;
@@ -206,8 +228,10 @@
         balloons.forEach(function (b) {
           if (!b.alive || b.grounded) return;
           var over = sideOf(b.x);
-          // it hangs at the top of its flight until it can be somebody's: the whole fall is theirs to react in
-          fly(b, dt, gravityFor(ctx.helpFor(over)), ceiling, wall, ctx.time < b.cool);
+          // It hangs up there until it can be somebody's: rested, and over the other player's half.
+          // So the whole fall is theirs to react in, and it never sinks where nobody may touch it.
+          var hang = ctx.time < b.cool || (b.from >= 0 && over === b.from);
+          fly(b, dt, gravityFor(ctx.helpFor(over)), ceiling, wall, hang);
           if (b.y >= FLOOR) { b.y = FLOOR; land(b); }
           draw(b);
         });

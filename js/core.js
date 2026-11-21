@@ -747,12 +747,18 @@
 
     var SHAKE_FORCE = 14;    // m/s^2 of change within the window: a wiggle is enough, passing the phone is not
     var SHAKE_WINDOW = 150;  // ms
+    var SWING_PAST = 4;      // m/s^2: how far past where it rests the phone must swing back for a shake
     var tiltRaw = { x: 0, y: 0 }, tiltZero = { x: 0, y: 0 };
     var tiltOn = false, tiltSeen = false, motionWired = false;
-    var shakers = new Set(), lastShake = -1, accHist = [], jerk = null;
+    var shakers = new Set(), lastShake = -1, accHist = [], jerk = null, rest = null;
     var CAMERA = { audio: false, video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } } };
     var camStream = null, camVideo = null, camAsk = null, askGen = 0, openGen = 0;
     var camLost = new Set(), resumers = new Set();
+
+    /** Call a game's listener; if it throws, report it without stopping the shell (or the next listener). */
+    function safely(fn) {
+      try { fn(); } catch (e) { window.setTimeout(function () { throw e; }, 0); }
+    }
 
     function screenAngle() {
       var a = 0;
@@ -769,30 +775,43 @@
       tiltSeen = true;
     }
     /**
-     * A shake is the phone being jerked one way and then back again. Readings
-     * come about 60 times a second, so two neighbours barely differ: each one
-     * is compared with the reading from ~150ms earlier, and it only counts as
-     * a shake when two big changes in OPPOSITE directions follow each other.
-     * (Picking the phone up is one big change in a single direction.)
+     * A shake is the phone being jerked one way and then back again, PAST
+     * where it rests. Readings come about 60 times a second, so two
+     * neighbours barely differ: each one is compared with the reading from
+     * ~150ms earlier, and a big change counts as a jerk. It is a shake when a
+     * jerk is followed by one in the opposite direction that takes the phone
+     * beyond its resting reading (a slow average, i.e. gravity). Picking the
+     * phone up is one jerk; putting it down with a bump is a jerk that only
+     * settles back to rest. Neither is a shake.
      */
     function onMotion(ev) {
       var acc = ev.accelerationIncludingGravity;
       if (!acc || acc.x == null) return;
       var now = typeof ev.timeStamp === 'number' && ev.timeStamp > 0 ? ev.timeStamp : window.performance.now();
       // after a gap in the readings the old pose says nothing about a jerk: start again
-      if (accHist.length && now - accHist[accHist.length - 1].t > SHAKE_WINDOW * 2) { accHist = []; jerk = null; }
+      if (accHist.length && now - accHist[accHist.length - 1].t > SHAKE_WINDOW * 2) { accHist = []; jerk = null; rest = null; }
+      if (!rest) rest = { t: now, x: acc.x, y: acc.y, z: acc.z };
+      else {
+        var k = 1 - Math.exp(-Math.max(0, now - rest.t) / 800);
+        rest = { t: now, x: rest.x + (acc.x - rest.x) * k, y: rest.y + (acc.y - rest.y) * k, z: rest.z + (acc.z - rest.z) * k };
+      }
       accHist.push({ t: now, x: acc.x, y: acc.y, z: acc.z });
       while (accHist.length > 1 && accHist[1].t <= now - SHAKE_WINDOW) accHist.shift();
       var o = accHist[0];
       var dx = acc.x - o.x, dy = acc.y - o.y, dz = acc.z - o.z;
       if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) <= SHAKE_FORCE) return;
-      var back = jerk && now - jerk.t < 450 && dx * jerk.x + dy * jerk.y + dz * jerk.z < 0;
+      if (jerk && now - jerk.t < 450 && dx * jerk.x + dy * jerk.y + dz * jerk.z < 0) {
+        // it has turned round: has it swung past where it rests? (until it has, the first jerk stays the reference)
+        var n = Math.sqrt(jerk.x * jerk.x + jerk.y * jerk.y + jerk.z * jerk.z);
+        var past = ((acc.x - rest.x) * jerk.x + (acc.y - rest.y) * jerk.y + (acc.z - rest.z) * jerk.z) / n;
+        if (past >= -SWING_PAST || paused || clock - lastShake <= 0.4) return;
+        lastShake = clock;
+        accHist = [];
+        jerk = null;
+        shakers.forEach(function (fn) { if (alive) fn(); });
+        return;
+      }
       jerk = { t: now, x: dx, y: dy, z: dz };
-      if (!back || paused || clock - lastShake <= 0.4) return;
-      lastShake = clock;
-      accHist = [];
-      jerk = null;
-      shakers.forEach(function (fn) { if (alive) fn(); });
     }
 
     /**
@@ -874,7 +893,7 @@
         if (triesLeft > 0) { window.setTimeout(function () { if (wanted()) reopenCamera(triesLeft - 1); }, 500); return; }
         var told = Array.from(camLost);
         camera.stop();
-        told.forEach(function (fn) { fn(); });
+        told.forEach(function (fn) { if (alive) safely(fn); });
       });
     }
 
@@ -909,6 +928,7 @@
             window.setTimeout(function () { res(v); }, 3000);
           });
         }, function () { return null; }).then(function (v) {
+          if (v && (gen !== askGen || !alive)) v = null; // stopped (or lost) while waiting for the first picture
           if (!v && gen === askGen) camAsk = null; // a later start() may try again
           return v;
         });
@@ -1159,7 +1179,8 @@
         paused = !!p;
         dom.stage.classList.toggle('is-paused', paused);
         restCamera(paused);
-        if (!paused) resumers.forEach(function (fn) { if (alive) fn(); });
+        // each listener is told on its own: one that throws, or pauses again, does not stop the others being told
+        if (!paused) Array.from(resumers).forEach(function (fn) { if (alive && !paused) safely(fn); });
       },
       get paused() { return paused; },
       get over() { return over; },

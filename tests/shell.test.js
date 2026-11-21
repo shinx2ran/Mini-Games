@@ -84,6 +84,19 @@ h.run('shell', async (t) => {
   await page.locator('.mg-pausecard .mg-btn--primary').tap();
   await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden && !MG.current.ctx.paused);
   assert.strictEqual(await page.evaluate(() => window.__resumed), 1);
+  // one listener that throws does not stop the next one being told, nor play going on
+  await page.evaluate(() => {
+    window.__second = 0;
+    window.__offs = [MG.current.ctx.onResume(() => { throw new Error('boom from a test listener'); }), MG.current.ctx.onResume(() => window.__second++)];
+  });
+  await t.pause(page);
+  await page.locator('.mg-pausecard .mg-btn--primary').tap();
+  await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden && !MG.current.ctx.paused);
+  await page.waitForTimeout(100);
+  assert.strictEqual(await page.evaluate(() => window.__second), 1, 'the other listener is still told');
+  assert.ok(t.errors.some((e) => /boom from a test listener/.test(e)), 'the throw is still reported');
+  for (let i = t.errors.length - 1; i >= 0; i--) if (/boom from a test listener/.test(t.errors[i])) t.errors.splice(i, 1);
+  await page.evaluate(() => window.__offs.forEach((off) => off()));
 
   // --- switching away mid-game pauses it (nothing runs, and no camera stays on, behind their back)
   await page.evaluate(() => {

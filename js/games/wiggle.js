@@ -242,6 +242,7 @@
 
       // the camera could not be brought back after a pause: carry on with fingers, and show it
       ctx.camera.onLost(function () {
+        if (state === 'asking') { sfx.play('boop'); begin('touch'); return; } // lost before the first picture
         if (mode !== 'camera') return;
         mode = 'touch';
         scene.dataset.mode = 'touch';

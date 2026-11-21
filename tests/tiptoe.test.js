@@ -194,10 +194,12 @@ h.run(ID, async (t) => {
   const stubborn = await page.evaluate(() => new Promise((resolve) => {
     const lane = document.querySelector('.g-tiptoe .tt-lane[data-p="0"]'), r = lane.getBoundingClientRect();
     lane.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 78, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height * 0.6 }));
-    let looks = 0, last = '', low = 0, worst = 0, at = 0;
+    let looks = 0, last = '', low = 0, worst = 0, at = 0, awaySteps = 0, prevPos = 0;
     (function bot() {
       const a = MG.current && MG.current.api;
-      if (!a || a.state !== 'play') { window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 78, pointerType: 'touch' })); resolve({ looks, time: MG.current.ctx.time, caught: a.caught[0], worst }); return; }
+      if (!a || a.state !== 'play') { window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 78, pointerType: 'touch' })); resolve({ looks, time: MG.current.ctx.time, caught: a.caught[0], worst, awaySteps }); return; }
+      if (a.phase === 'away' && last === 'away' && looks > 0 && a.pos[0] > prevPos) awaySteps++; // (before the first song everyone may run)
+      prevPos = a.pos[0];
       if (a.phase !== last) {
         if (a.phase === 'look') looks++;
         // from one "he turns away" to the next: did she end up further back than she was?
@@ -209,7 +211,8 @@ h.run(ID, async (t) => {
   }));
   assert.ok(stubborn.caught >= 4 && stubborn.caught >= stubborn.looks - 1, `she is caught at every look (${stubborn.caught} of ${stubborn.looks})`);
   assert.ok(stubborn.worst >= 0, `no song ever leaves her further back than it found her (${stubborn.worst})`);
-  assert.ok(stubborn.time > careful.time, `freezing in time is the quicker way (${stubborn.time.toFixed(0)}s against ${careful.time.toFixed(0)}s)`);
+  assert.strictEqual(stubborn.awaySteps, 0, 'a runner he caught is still dizzy while he turns away: no sneaky head start');
+  assert.ok(stubborn.time > careful.time * 1.2, `freezing in time is clearly the quicker way (${stubborn.time.toFixed(0)}s against ${careful.time.toFixed(0)}s)`);
   assert.ok(stubborn.time <= 300, `and even so the race ends in good time (${stubborn.time.toFixed(0)}s)`);
   await t.waitForWin(page, 30000);
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), '0');
@@ -283,6 +286,16 @@ h.run(ID, async (t) => {
     });
     assert.ok((top0 - look.top) / 3 >= 4, `one step is far enough to see @${vp} (${((top0 - look.top) / 3).toFixed(1)}px)`);
     assert.ok(!look.onLane, `the wolf does not stand on a lane @${vp}`);
+    // his notes are not hidden behind a lane either (they bob: sample a few times)
+    for (let k = 0; k < 4; k++) {
+      const under = await p.evaluate(() => {
+        const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+        const lanes = [...document.querySelectorAll('.g-tiptoe .tt-lane')].map((n) => n.getBoundingClientRect());
+        return [...document.querySelectorAll('.g-tiptoe .tt-notes span')].filter((n) => lanes.some((l) => hit(n.getBoundingClientRect(), l))).length;
+      });
+      assert.strictEqual(under, 0, `the wolf's notes are not cut off by a lane @${vp}`);
+      await p.waitForTimeout(170);
+    }
     assert.ok(await t.noPageScroll(p), `no page scroll @${vp}`);
     assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-tiptoe .tt-lane, .g-tiptoe .tt-wolf, .g-tiptoe .tt-back, .g-tiptoe .tt-notes span'), [], `all in view @${vp}`);
     assert.ok((await t.minTargetSize(p, '.g-tiptoe .tt-lane')).min >= 110, `lanes are huge @${vp}`);
@@ -306,6 +319,20 @@ h.run(ID, async (t) => {
       assert.strictEqual((await api(p, 'pos'))[0], 4);
     }
   }
+
+  // --- with reduced motion there is no spin, but being dizzy still shows
+  page = await t.open(ID, { reducedMotion: true });
+  await ready(page);
+  await hold(page, 'song');
+  await press(page, 0);
+  await waitGame(page, 0.5);
+  await hold(page, 'look');
+  await waitGame(page, 1.1);
+  assert.deepStrictEqual(await api(page, 'dizzy'), [true, false]);
+  const still = await page.evaluate(() => { const c = getComputedStyle(document.querySelector('.g-tiptoe .tt-lane[data-p="0"] .tt-climber')); return { anim: c.animationName, transform: c.transform, opacity: +c.opacity }; });
+  assert.strictEqual(still.anim, 'none', 'no spinning');
+  assert.ok(still.transform !== 'none' && still.opacity < 1, `but she is shown tipped over and faded (${still.transform}, ${still.opacity})`);
+  await page.mouse.up();
 
   // --- leaving and coming back leaves nothing behind
   page = await t.open(ID);
