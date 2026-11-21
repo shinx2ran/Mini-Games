@@ -47,12 +47,14 @@ const metas = [...head.matchAll(/<meta\b[^>]*>/g)].map((m) => m[0]);
 const fragmentMetas = metas.filter((m) => /name=["']claude:/.test(m));
 const style = `<style>\n${css.join('\n\n')}\n</style>`;
 
+// The fragment is for a host that runs the page in a locked-down frame: the
+// camera and motion sensors are refused there, so the games must not ask.
 const fragment = [
   `<title>${title}</title>`,
   ...fragmentMetas,
   ...remoteLinks,
   style,
-  body,
+  body.replace('<script>', '<script>window.MG_SANDBOX = true;</script>\n<script>'),
   '',
 ].join('\n');
 

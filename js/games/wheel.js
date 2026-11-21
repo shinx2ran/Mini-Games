@@ -75,7 +75,7 @@
     name: 'Bossy Wheel',
     emoji: '🎡',
     color: 'sun',
-    howTo: 'The Boss (wearing the crown) taps the wheel. Whoever the card shows has to do the action for real! Then the Boss claps to give a star. Three spins each. Put the phone down for the jumpy ones.',
+    howTo: 'The Boss (wearing the crown) taps the wheel, or gives the phone a shake. Whoever the card shows has to do the action for real! Then the Boss claps to give a star. Three spins each. Put the phone down for the jumpy ones.',
     options: [
       { key: 'pool', label: 'Actions', default: 'mixed', choices: [{ value: 'mixed', label: 'Mixed' }, { value: 'active', label: 'Jumpy' }, { value: 'cosy', label: 'Cosy' }] },
     ],
@@ -250,6 +250,22 @@
       ctx.tap(wheel, spin);
       ctx.tap(clap, award);
 
+      // Where the device can feel it, a shake spins the wheel too. Some phones
+      // only hand over their sensors inside a tap, so it is tried once now and
+      // once more on the first touch of the wheel.
+      var shakeTries = 0, shakeOn = false;
+      function listenForShakes() {
+        if (shakeOn || shakeTries >= 2) return;
+        shakeTries++;
+        ctx.motion.start().then(function (ok) {
+          if (!ok || shakeOn) return;
+          shakeOn = true;
+          ctx.motion.onShake(spin);
+        });
+      }
+      ctx.on(wheel, 'click', listenForShakes);
+      listenForShakes();
+
       /* ---- go ---- */
 
       drawWheel();
@@ -267,6 +283,7 @@
         get who() { return who; },
         get target() { return target; },
         get used() { return used.slice(); },
+        get shakeOn() { return shakeOn; },
         slices: slices.map(function (s) { return s.emoji; }),
         sliceAt: sliceAt, landingRot: landingRot, pickWho: pickWho, drawSlices: drawSlices,
         SLICES: SLICES, total: SPINS_EACH * 2,

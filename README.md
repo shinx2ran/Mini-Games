@@ -18,11 +18,35 @@ an avatar and a colour each.
 | 🙈 **Hide & Peek** | One hides the critter while the other covers their eyes; then peek into hiding places full of silly surprises. Swap. | Take turns hiding |
 | 🐉 **Sneezy Dragon** | Take turns sneaking one treasure from the sleeping dragon. Nobody knows which grab sets off the glitter sneeze. | Pure luck, pure suspense |
 | 🍜 **Noodle Slurp** | Both tap your own side as fast as you can to slurp the noodle. | Both at once |
-| 🎡 **Bossy Wheel** | Spin the wheel and the *other* person does the silly action for real. | Off-screen silliness |
+| 🎡 **Bossy Wheel** | Spin the wheel (or shake the phone) and the *other* person does the silly action for real. | Off-screen silliness |
 | 🥚 **Egg Twins** | Take turns cracking two eggs to find the baby animals that match. | Memory |
-| 🐌 **Super Slow Race** | Pick a leaf pile to see how many hops you get, and hop to the picnic. | Luck and counting |
+| 🐌 **Super Slow Race** | Pick a pile to see how many hops you get, and hop to the feast. Meadow, pond, snow or beach, with the surprise stones shuffled every race. | Luck and counting |
 | 🍕 **Yummy-Yucky Cafe** | One cooks anything at all, the other takes three bites and reacts. Swap. | Pretend play |
 | 📦 **Wobble Tower** | Take turns dropping animal crates to build one tower together. | Team |
+| 🎈 **Balloon Bop** | Keep the balloon up together: you can only bop it when it is over your side. | Team, both at once |
+| 🐺 **Shh! Tiptoe** | Tiptoe to the cupcakes while the wolf sleeps; freeze when his eyes open. | Both at once |
+| 🐞 **Wobble Tray** | Hold the phone flat between you and tip it together to roll the ladybird to the strawberries. | Team, tilt sensor |
+| 👋 **Wiggle Pop** | Prop the phone up, stand back, and wave at the bubbles to pop them. | Team, camera |
+
+### Camera, tilt and shake
+
+Three games use the device itself: **Wobble Tray** (tilt), **Wiggle Pop**
+(camera) and **Bossy Wheel** (a shake spins it). Each one asks first and works
+without: steer the ladybird with a finger, pop bubbles with fingers, tap the
+wheel.
+
+- Browsers only allow the camera and motion sensors on a real web page served
+  over **https** (or opened on the same computer). The easiest way is GitHub
+  Pages: in the repository, *Settings → Pages → Deploy from a branch*, pick the
+  branch and `/ (root)`. The games are then at
+  `https://<user>.github.io/<repository>/`.
+- Pages that embed the playroom in a locked-down frame (the claude.ai artifact
+  built by `tools/build.mjs`) cannot use them at all, so that build never asks
+  and always uses the finger controls.
+- **Privacy:** the camera picture never leaves the device. Each frame is shrunk
+  to a 48 x 36 grid of grey values, compared with the previous one to see where
+  something moved, and discarded. Nothing is stored, recorded or sent, the
+  microphone is never opened, and the camera goes off the moment the game ends.
 
 ### For the grown-up
 

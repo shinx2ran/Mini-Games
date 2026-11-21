@@ -37,8 +37,11 @@ const VIEWPORTS = {
   tabletTall: { width: 768, height: 1024 },
 };
 
-async function run(name, fn) {
-  const browser = await chromium.launch();
+/** opts.args: extra Chromium flags, e.g. FAKE_CAMERA. */
+const FAKE_CAMERA = ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'];
+
+async function run(name, fn, opts = {}) {
+  const browser = await chromium.launch({ args: opts.args || [] });
   const contexts = [];
   const errors = [];
   const t = {
@@ -147,4 +150,4 @@ async function run(name, fn) {
   if (failed) process.exitCode = 1;
 }
 
-module.exports = { run, VIEWPORTS, ROOT, INDEX_URL, assert };
+module.exports = { run, VIEWPORTS, ROOT, INDEX_URL, FAKE_CAMERA, assert };

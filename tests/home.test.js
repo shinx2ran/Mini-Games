@@ -2,7 +2,7 @@
 'use strict';
 const h = require('./harness');
 
-const EXPECTED = ['hide', 'dragon', 'slurp', 'wheel', 'twins', 'race', 'cafe', 'tower'];
+const EXPECTED = ['hide', 'dragon', 'slurp', 'wheel', 'twins', 'race', 'cafe', 'tower', 'bop', 'tiptoe', 'tray', 'wiggle'];
 
 h.run('home', async (t) => {
   const { assert } = t;

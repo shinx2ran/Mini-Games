@@ -13,6 +13,10 @@
   var MG = (window.MG = window.MG || {});
   MG.version = '1.0.0';
   MG.timeScale = 1; // tests raise this to fast-forward the game clock
+  // Some hosts run the page in a locked-down frame where the camera and motion
+  // sensors are refused. The bundle for such a host sets MG_SANDBOX, and games
+  // then use their touch controls without ever asking.
+  MG.noSensors = !!window.MG_SANDBOX;
   MG.games = [];
   MG.current = null; // { id, ctx, api } for the mounted game (tests read this)
 
@@ -739,6 +743,141 @@
       return function () { offDown(); offKey(); };
     }
 
+    /* ---- device sensors and camera (see docs/GAME_API.md) ---- */
+
+    var SHAKE_FORCE = 14; // m/s^2 of change between two readings: a gentle wiggle is enough
+    var tiltRaw = { x: 0, y: 0 }, tiltZero = { x: 0, y: 0 };
+    var tiltOn = false, tiltSeen = false, motionWired = false;
+    var shakers = new Set(), lastShake = -1, lastAcc = null;
+    var camStream = null, camVideo = null;
+
+    function screenAngle() {
+      var a = 0;
+      try {
+        a = window.screen.orientation && typeof window.screen.orientation.angle === 'number' ? window.screen.orientation.angle : (window.orientation || 0);
+      } catch (e) {}
+      return ((a % 360) + 360) % 360;
+    }
+    /** Device tilt -> screen directions: x > 0 when the screen's right edge dips, y > 0 when its bottom edge dips. */
+    function onOrient(ev) {
+      if (ev.beta == null || ev.gamma == null) return;
+      var b = ev.beta, g = ev.gamma, a = screenAngle();
+      tiltRaw = a === 90 ? { x: b, y: -g } : a === 270 ? { x: -b, y: g } : a === 180 ? { x: -g, y: -b } : { x: g, y: b };
+      tiltSeen = true;
+    }
+    function onMotion(ev) {
+      var acc = ev.accelerationIncludingGravity;
+      if (!acc || acc.x == null) return;
+      if (lastAcc && !paused) {
+        var d = Math.abs(acc.x - lastAcc.x) + Math.abs(acc.y - lastAcc.y) + Math.abs(acc.z - lastAcc.z);
+        if (d > SHAKE_FORCE && clock - lastShake > 0.4) {
+          lastShake = clock;
+          shakers.forEach(function (fn) { if (alive) fn(); });
+        }
+      }
+      lastAcc = { x: acc.x, y: acc.y, z: acc.z };
+    }
+    /**
+     * Some browsers ask the person before sharing their sensors, and only
+     * inside a tap. Only a clear "no" stops us: anything else ("granted", an
+     * unanswered "prompt", a browser that never asks) is worth trying, and
+     * whether real readings then arrive is what decides.
+     */
+    function askSensor(Type) {
+      try {
+        if (Type && typeof Type.requestPermission === 'function') {
+          return Type.requestPermission().then(function (r) { return r !== 'denied'; }, function () { return true; });
+        }
+      } catch (e) {}
+      return Promise.resolve(true);
+    }
+    function stopStream(s) { try { s.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
+
+    var motion = {
+      /** Could this device have a tilt sensor at all? (false in the sandboxed build) */
+      get supported() { return !MG.noSensors && typeof window.DeviceOrientationEvent !== 'undefined'; },
+      /** True once start() has seen real readings. */
+      get active() { return tiltOn; },
+      /**
+       * Turn the tilt and shake sensors on. Call it from a click/tap (iOS only
+       * asks then). Resolves true when real readings arrive, false if there is
+       * no sensor, no permission, or the page is sandboxed.
+       */
+      start: function () {
+        if (!alive || !motion.supported) return Promise.resolve(false);
+        if (tiltOn) return Promise.resolve(true);
+        return Promise.all([askSensor(window.DeviceOrientationEvent), askSensor(window.DeviceMotionEvent)]).then(function (ok) {
+          if (!alive || !ok[0]) return false;
+          if (!motionWired) {
+            motionWired = true;
+            on(window, 'deviceorientation', onOrient);
+            on(window, 'devicemotion', onMotion);
+          }
+          // a laptop has the API but nothing behind it: wait briefly for a real reading
+          return new Promise(function (res) {
+            var tries = 0;
+            var iv = window.setInterval(function () {
+              if (!tiltSeen && ++tries <= 15 && alive) return;
+              window.clearInterval(iv);
+              tiltOn = alive && tiltSeen;
+              if (tiltOn) motion.recenter();
+              res(tiltOn);
+            }, 100);
+          });
+        });
+      },
+      /** Treat the way the device is held right now as "flat". */
+      recenter: function () { tiltZero = { x: tiltRaw.x, y: tiltRaw.y }; },
+      /** {x, y} in degrees from "flat", each clamped to +-35. */
+      get tilt() {
+        return { x: util.clamp(tiltRaw.x - tiltZero.x, -35, 35), y: util.clamp(tiltRaw.y - tiltZero.y, -35, 35) };
+      },
+      /** fn() on each shake (at most one every 0.4s of game time). Needs start(). Returns off(). */
+      onShake: function (fn) { shakers.add(fn); return function () { shakers.delete(fn); }; },
+    };
+
+    var camera = {
+      /** Could this page use a camera at all? (false in the sandboxed build) */
+      get supported() { return !MG.noSensors && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); },
+      /**
+       * Start the front camera. Resolves a playing, muted <video> (not in the
+       * DOM: place it yourself), or null if refused or unavailable. The picture
+       * stays on the device; the shell switches the camera off when the game closes.
+       */
+      start: function () {
+        if (!alive || !camera.supported) return Promise.resolve(null);
+        if (camVideo) return Promise.resolve(camVideo);
+        var asked;
+        try {
+          asked = navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } } });
+        } catch (e) { return Promise.resolve(null); }
+        return asked.then(function (stream) {
+          if (!alive) { stopStream(stream); return null; }
+          camStream = stream;
+          var v = document.createElement('video');
+          v.muted = true;
+          v.autoplay = true;
+          v.playsInline = true;
+          v.setAttribute('playsinline', '');
+          v.srcObject = stream;
+          camVideo = v;
+          try { var p = v.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+          return new Promise(function (res) {
+            if (v.readyState >= 2) { res(v); return; }
+            v.addEventListener('loadeddata', function () { res(v); }, { once: true });
+            window.setTimeout(function () { res(v); }, 3000);
+          });
+        }, function () { return null; });
+      },
+      stop: function () {
+        if (camStream) stopStream(camStream);
+        if (camVideo) { try { camVideo.srcObject = null; } catch (e) {} }
+        camStream = null;
+        camVideo = null;
+      },
+      get video() { return camVideo; },
+    };
+
     function measure() {
       var r = root.getBoundingClientRect();
       var w = Math.max(1, r.width), h = Math.max(1, r.height);
@@ -911,6 +1050,10 @@
       /** Back to the home screen. */
       exit: function () { goHome(); },
 
+      /* -- device sensors and camera: always optional, always with a touch fallback -- */
+      motion: motion,
+      camera: camera,
+
       /* -- conveniences -- */
       sfx: sfx, say: MG.say, fx: fx, ui: MG.ui, util: util, el: el, sticker: sticker,
       /** Expose state/actions to tests: available as MG.current.api */
@@ -959,6 +1102,8 @@
         alive = false;
         window.cancelAnimationFrame(rafId);
         clearHint();
+        camera.stop();
+        shakers.clear();
         timers.clear(); loops.clear(); resizers.clear();
         if (ro) { try { ro.disconnect(); } catch (e) {} }
         for (var i = 0; i < offs.length; i++) { try { offs[i](); } catch (e) {} }

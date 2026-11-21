@@ -82,6 +82,25 @@ h.run(ID, async (t) => {
     await t.shot(p, `wheel-stars-${vp}.png`);
   }
 
+  // --- a shake spins the wheel too, where the device has a motion sensor
+  page = await t.open(ID);
+  await state(page, 'wait');
+  for (let i = 0; i < 8 && !(await api(page, 'shakeOn')); i++) {
+    await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 10, gamma: 0 })));
+    await page.waitForTimeout(120);
+  }
+  assert.ok(await api(page, 'shakeOn'), 'the motion sensor is picked up');
+  await page.evaluate(() => {
+    const ev = (x) => window.dispatchEvent(new DeviceMotionEvent('devicemotion', { accelerationIncludingGravity: { x, y: 9.8, z: 0 } }));
+    ev(0); ev(0.5);   // resting in a hand: not a shake
+  });
+  assert.strictEqual(await api(page, 'state'), 'wait', 'a small wobble does not spin it');
+  await page.evaluate(() => {
+    const ev = (x) => window.dispatchEvent(new DeviceMotionEvent('devicemotion', { accelerationIncludingGravity: { x, y: 9.8, z: 0 } }));
+    ev(18); ev(-18);
+  });
+  assert.strictEqual(await api(page, 'state'), 'spin', 'a shake spins the wheel');
+
   // --- mashing: drumming on the wheel is one spin; the clap cannot be hit early or twice
   page = await t.open(ID);
   await state(page, 'wait');

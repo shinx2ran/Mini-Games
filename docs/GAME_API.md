@@ -143,6 +143,29 @@ animation, decide with `ctx.after`).
 - `ctx.load(key, fallback)` / `ctx.save(key, value)` — small per-game values
   that persist (a team record, an adaptive handicap). May silently not persist.
 
+**Device sensors and camera** — always optional. A game that uses one must be
+complete without it: steer with a finger when there is no tilt sensor, pop with
+a finger when there is no camera. They are absent on laptops, refused when the
+person says no, and switched off entirely (`MG.noSensors`) in the bundle made
+for hosts that run the page in a locked-down frame.
+
+- `ctx.motion.supported` → could this device have a tilt sensor at all? Only
+  offer the choice when it is true.
+- `ctx.motion.start()` → Promise<boolean>. Call it from a **click** (use
+  `ctx.ui.button`), because some phones only ask the person inside one.
+  Resolves `true` once real readings arrive; `false` otherwise: fall back.
+- `ctx.motion.tilt` → `{x, y}` degrees from "flat" (`x` > 0: the screen's right
+  edge dips; `y` > 0: its bottom edge dips), whichever way the screen is
+  turned. `ctx.motion.recenter()` makes the current pose "flat".
+- `ctx.motion.onShake(fn)` → `off()`; a gentle wiggle counts, at most one every 0.4s.
+- `ctx.camera.supported`, `ctx.camera.start()` → Promise<video | null>: the
+  front camera as a playing, muted `<video>` (video only, never the
+  microphone). Put it in your scene yourself (mirror it with `scaleX(-1)`).
+  `ctx.camera.stop()`; the shell also switches it off when the game closes.
+  Never store, upload or record a frame, and say so on the screen that asks.
+- In tests: dispatch `DeviceOrientationEvent` / `DeviceMotionEvent` on
+  `window`, and run with `h.FAKE_CAMERA` (see `tests/wiggle.test.js`).
+
 **Sound** — synthesized; safe to call any time (silent until the first touch,
 or when muted). Soft and musical: no harsh buzzers, no sudden loud bangs.
 
