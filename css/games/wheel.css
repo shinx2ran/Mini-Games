@@ -54,9 +54,11 @@
   transform: rotate(var(--a)) translateY(calc(var(--size) * -0.33));
   transition: opacity 0.3s;
 }
+/* the label is a point on the wheel; its emoji is centred on that point */
+.g-wheel .wh-label .mg-sticker { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); }
 .g-wheel .wh-label.is-landed .mg-sticker { animation: wh-landed 0.3s ease-in-out infinite alternate; }
 .g-wheel .wh-label.is-used { opacity: 0.3; }
-@keyframes wh-landed { from { transform: scale(1); } to { transform: scale(1.4); } }
+@keyframes wh-landed { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.4); } }
 
 .g-wheel .wh-hub {
   position: absolute;

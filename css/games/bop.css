@@ -4,7 +4,7 @@
 .g-bop .bp-scene {
   position: absolute;
   inset: 0;
-  --size: clamp(84px, calc(var(--gmin) * 0.3), 190px);
+  --size: 110px; /* set by the game, which also works out how high a balloon may fly */
 }
 
 /* each half is one big button */
@@ -21,9 +21,8 @@
 }
 .g-bop .bp-pad[data-p="0"] { left: 0; border-right: 3px dashed var(--c-dark); }
 .g-bop .bp-pad[data-p="1"] { right: 0; border-left: 3px dashed var(--c-dark); }
-/* the half the balloon is over lights up: "yours!" */
-.g-bop .bp-scene[data-over="0"] .bp-pad[data-p="0"],
-.g-bop .bp-scene[data-over="1"] .bp-pad[data-p="1"] { background: var(--c); }
+/* a half lights up whenever its player has a balloon to bop: "yours, now!" */
+.g-bop .bp-pad.is-mine { background: var(--c); }
 
 .g-bop .bp-who {
   position: absolute;
@@ -52,6 +51,7 @@
   animation: bp-hand 0.5s ease-in-out infinite alternate;
 }
 .g-bop .bp-hand.is-done { display: none; }
+.g-bop .bp-pad:not(.is-mine) .bp-hand { visibility: hidden; }
 @keyframes bp-hand { from { transform: translateX(-50%) translateY(16%); } to { transform: translateX(-50%) translateY(-6%) scale(0.92); } }
 
 .g-bop .bp-sky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -135,30 +135,34 @@
   100% { transform: translate(calc(var(--dir) * var(--size) * 0.3), calc(var(--size) * -2.4)) scale(0.1) rotate(calc(var(--dir) * 720deg)); opacity: 0; }
 }
 
-/* the row of passes to fill */
-.g-bop .bp-row {
+/* the ladder of passes to fill: up the middle, behind the balloons */
+.g-bop .bp-ladder {
   position: absolute;
   left: 50%;
-  top: 12px;
-  display: grid;
-  grid-template-columns: repeat(6, auto);
-  gap: 5px;
-  padding: 7px 9px;
+  top: 10px;
+  bottom: 10px;
+  width: clamp(18px, calc(var(--gmin) * 0.06), 30px);
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
   border: 3px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: 999px;
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--line);
   transform: translateX(-50%);
   pointer-events: none;
 }
 .g-bop .bp-dot {
-  width: clamp(12px, calc(var(--gmin) * 0.045), 22px);
+  flex: 0 1 auto;
+  width: 58%;
   aspect-ratio: 1;
-  border: 3px solid var(--line);
+  min-height: 0;
   border-radius: 50%;
   background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--ink-soft);
 }
-.g-bop .bp-dot.is-on { background: var(--sun); animation: bp-dot 0.3s cubic-bezier(.3, 1.9, .5, 1); }
+.g-bop .bp-dot.is-on { background: var(--sun); box-shadow: inset 0 0 0 2px var(--line); animation: bp-dot 0.3s cubic-bezier(.3, 1.9, .5, 1); }
 @keyframes bp-dot { from { transform: scale(0.3); } }
 
 @media (prefers-reduced-motion: reduce) {

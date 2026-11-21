@@ -101,6 +101,26 @@ h.run(ID, async (t) => {
   });
   assert.strictEqual(await api(page, 'state'), 'spin', 'a shake spins the wheel');
 
+  // ...and so does a REAL shake: readings come ~60 times a second, so neighbours differ only a little
+  const wave = (page, g, hz, ms) => page.evaluate(async ([g, hz, ms]) => {
+    const t0 = performance.now();
+    for (;;) {
+      const t = performance.now() - t0;
+      if (t > ms) break;
+      window.dispatchEvent(new DeviceMotionEvent('devicemotion', { accelerationIncludingGravity: { x: g * 9.8 * Math.sin(2 * Math.PI * hz * t / 1000), y: 9.8, z: 0 } }));
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    return MG.current.api.state;
+  }, [g, hz, ms]);
+  page = await t.open(ID);
+  await state(page, 'wait');
+  for (let i = 0; i < 8 && !(await api(page, 'shakeOn')); i++) {
+    await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 10, gamma: 0 })));
+    await page.waitForTimeout(120);
+  }
+  assert.strictEqual(await wave(page, 0.3, 1.5, 900), 'wait', 'passing the phone across is not a shake');
+  assert.strictEqual(await wave(page, 1.5, 3, 900), 'spin', 'a child-sized wiggle is');
+
   // --- mashing: drumming on the wheel is one spin; the clap cannot be hit early or twice
   page = await t.open(ID);
   await state(page, 'wait');

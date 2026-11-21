@@ -1,6 +1,7 @@
 /* Balloon Bop — keep the balloon in the air TOGETHER. When it floats over
- * your side, tap anywhere on your side to bop it across to the other player.
- * Every pass fills the row of dots; fill it and the balloons burst into a party.
+ * your side and has stopped rising, your side lights up: tap anywhere on it to
+ * bop the balloon across to the other player. Every pass lights a dot on the
+ * ladder up the middle; fill it and the balloons burst into a party.
  * If a balloon lands, it lets out a silly raspberry and a new one puffs up:
  * nothing is lost.
  *
@@ -10,12 +11,14 @@
 (function () {
   'use strict';
 
-  var GOAL = 12;              // passes to fill the row
-  var SECOND_AT = 5;          // a second balloon joins after this many passes
-  var GRAVITY = 0.2;          // per s^2: about two and a half seconds from top to bottom
+  var GOAL = 24;              // passes to fill the ladder: about 45 seconds of rallying
+  var SECOND_AT = 10;         // a second balloon joins after this many passes
+  var GRAVITY = 0.3;          // per s^2: a bit over two seconds from the top to the ground
   var FLOOR = 0.84;           // where a balloon touches down
+  var CEILING = 0.12;         // highest a balloon's middle may go (raised for big balloons on short screens)
   var BOP_UP = -0.5;
-  var COOLDOWN = 0.35;        // seconds between bops of one balloon
+  var COOLDOWN = 0.9;         // seconds before the same balloon can be bopped again
+  var RISING = -0.08;         // still going up faster than this: not yours to bop yet
   var COLORS = ['berry', 'sun', 'sea', 'leaf', 'grape', 'tangerine'];
 
   /* ---------------------------------------------------------- pure rules */
@@ -26,22 +29,28 @@
   /** How fast a balloon falls over player i's half: floatier for a little player who gets help. */
   function gravityFor(help) { return GRAVITY * [1, 0.7, 0.5][help || 0]; }
 
+  /** May the player on `side` bop balloon b right now? Over their half, rested, and no longer shooting upwards. */
+  function canBop(b, side, now) {
+    return sideOf(b.x) === side && now >= b.cool && b.vy > RISING;
+  }
+
   /** One step of flight. Mutates and returns b: {x, y, vx, vy}. Walls and ceiling are soft. */
-  function fly(b, dt, g) {
+  function fly(b, dt, g, top) {
+    top = top == null ? CEILING : top;
     b.vy += g * dt;
     b.vx *= Math.pow(0.6, dt); // sideways drift dies away, so it hangs over a half
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     if (b.x < 0.1) { b.x = 0.1; b.vx = Math.abs(b.vx) * 0.6; }
     if (b.x > 0.9) { b.x = 0.9; b.vx = -Math.abs(b.vx) * 0.6; }
-    if (b.y < 0.12) { b.y = 0.12; b.vy = Math.abs(b.vy) * 0.3; }
+    if (b.y < top) { b.y = top; b.vy = Math.abs(b.vy) * 0.3; }
     return b;
   }
 
   /** The push a bop from player i gives: up, and across to the other half. */
   function bopVelocity(i, rnd) {
     var r = rnd == null ? Math.random() : rnd;
-    return { vx: (i === 0 ? 1 : -1) * (0.42 + r * 0.2), vy: BOP_UP - r * 0.08 };
+    return { vx: (i === 0 ? 1 : -1) * (0.26 + r * 0.12), vy: BOP_UP - r * 0.08 };
   }
 
   MG.registerGame({
@@ -49,7 +58,7 @@
     name: 'Balloon Bop',
     emoji: '🎈',
     color: 'tangerine',
-    howTo: 'Keep it up together! When the balloon is over your side, tap anywhere on your side to bop it across. Fill the row of dots. If it lands, it just makes a rude noise and a new one puffs up.',
+    howTo: 'Keep it up together! When the balloon floats over your side, your side lights up: tap anywhere on it to bop the balloon across. Fill the ladder of dots in the middle. If it lands, it just makes a rude noise and a new one puffs up.',
 
     mount: function (root, ctx) {
       var el = ctx.el, sfx = ctx.sfx, fx = ctx.fx, util = ctx.util;
@@ -74,9 +83,22 @@
       });
       var dots = util.range(GOAL).map(function () { return el('span', { class: 'bp-dot' }); });
       var sky = el('div', { class: 'bp-sky', 'aria-hidden': 'true' });
-      var scene = el('div', { class: 'bp-scene' }, sides[0].pad, sides[1].pad, sky,
-        el('div', { class: 'bp-row', role: 'img', 'aria-label': 'Passes so far' }, dots));
+      var scene = el('div', { class: 'bp-scene' }, sides[0].pad, sides[1].pad,
+        el('div', { class: 'bp-ladder', role: 'img', 'aria-label': 'Passes so far' }, dots), sky);
       root.appendChild(scene);
+
+      // The balloon's size is set here (not in the stylesheet) because the ceiling depends on it:
+      // a balloon at the top of its flight must still be whole, on the shortest screen too.
+      var ceiling = CEILING;
+      function measure() {
+        var s = ctx.size();
+        var wide = s.w >= s.h;
+        var size = util.clamp(Math.min(s.w, s.h) * (wide ? 0.24 : 0.3), 84, wide ? 150 : 190);
+        scene.style.setProperty('--size', size.toFixed(1) + 'px');
+        ceiling = Math.max(CEILING, (size * 0.62 + 10) / s.h);
+      }
+      measure();
+      ctx.onResize(measure);
 
       /* ---- sounds ---- */
 
@@ -109,7 +131,7 @@
       function bop(i) {
         var hit = false;
         balloons.forEach(function (b) {
-          if (!b.alive || b.grounded || sideOf(b.x) !== i || ctx.time < b.cool) return;
+          if (!b.alive || b.grounded || !canBop(b, i, ctx.time)) return;
           hit = true;
           b.cool = ctx.time + COOLDOWN;
           var v = bopVelocity(i);
@@ -157,7 +179,7 @@
 
       function finish() {
         state = 'done';
-        balloons.forEach(function (b, k) {
+        balloons.filter(function (b) { return b.alive && !b.grounded; }).forEach(function (b, k) {
           ctx.after(200 + k * 220, function () {
             var c = fx.centerOf(b.node);
             sfx.play('pop');
@@ -174,11 +196,14 @@
         balloons.forEach(function (b) {
           if (!b.alive || b.grounded) return;
           var over = sideOf(b.x);
-          fly(b, dt, gravityFor(ctx.helpFor(over)));
+          fly(b, dt, gravityFor(ctx.helpFor(over)), ceiling);
           if (b.y >= FLOOR) { b.y = FLOOR; land(b); }
           draw(b);
         });
-        scene.dataset.over = balloons.length && balloons[0].alive ? String(sideOf(balloons[0].x)) : '';
+        // each half lights up by itself whenever there is a balloon its player can bop right now
+        sides.forEach(function (s, i) {
+          s.pad.classList.toggle('is-mine', balloons.some(function (b) { return b.alive && !b.grounded && canBop(b, i, ctx.time); }));
+        });
       });
 
       /* ---- input: your whole half is the button ---- */
@@ -198,9 +223,10 @@
         get passes() { return passes; },
         get bops() { return bops; },
         get landings() { return landings; },
-        get balloons() { return balloons.filter(function (b) { return b.alive && !b.grounded; }).map(function (b) { return { x: b.x, y: b.y, side: sideOf(b.x), ready: ctx.time >= b.cool, from: b.from }; }); },
+        get balloons() { return balloons.filter(function (b) { return b.alive && !b.grounded; }).map(function (b) { return { x: b.x, y: b.y, side: sideOf(b.x), ready: canBop(b, sideOf(b.x), ctx.time), from: b.from }; }); },
+        get ceiling() { return ceiling; },
         GOAL: GOAL, SECOND_AT: SECOND_AT, FLOOR: FLOOR,
-        sideOf: sideOf, gravityFor: gravityFor, fly: fly, bopVelocity: bopVelocity,
+        sideOf: sideOf, gravityFor: gravityFor, fly: fly, bopVelocity: bopVelocity, canBop: canBop,
       });
     },
   });

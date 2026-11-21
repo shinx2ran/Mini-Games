@@ -77,6 +77,21 @@ h.run('shell', async (t) => {
   await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden);
   await page.waitForFunction((v) => MG.current.ctx.time > v, t1);
 
+  // --- switching away mid-game pauses it (nothing runs, and no camera stays on, behind their back)
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForSelector('.mg-overlay--pause');
+  assert.ok(await page.evaluate(() => MG.current.ctx.paused), 'paused when the page goes to the background');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(450);
+  await page.locator('.mg-pausecard .mg-btn--primary').tap();
+  await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden && !MG.current.ctx.paused);
+
   // --- options persist and restart the round
   await t.pause(page);
   await page.locator('.mg-seg__btn', { hasText: '5' }).tap();

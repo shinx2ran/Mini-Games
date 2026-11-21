@@ -22,13 +22,17 @@ h.run(ID, async (t) => {
     const wall = a.fly({ x: 0.11, y: 0.5, vx: -2, vy: 0 }, 0.05, 0.2);
     const roof = a.fly({ x: 0.5, y: 0.13, vx: 0, vy: -2 }, 0.05, 0.2);
     const drop = a.fly({ x: 0.5, y: 0.5, vx: 0, vy: 0 }, 1, 0.2);
+    const low = a.fly({ x: 0.5, y: 0.41, vx: 0, vy: -2 }, 0.05, 0.3, 0.4);
     return { sides: [a.sideOf(0.2), a.sideOf(0.5), a.sideOf(0.8)], g: [a.gravityFor(0), a.gravityFor(1), a.gravityFor(2)],
-      wall, roof, drop, v0: a.bopVelocity(0, 0.5), v1: a.bopVelocity(1, 0.5) };
+      wall, roof, drop, low, v0: a.bopVelocity(0, 0.5), v1: a.bopVelocity(1, 0.5),
+      can: [a.canBop({ x: 0.2, vy: 0.1, cool: 0 }, 0, 5), a.canBop({ x: 0.2, vy: 0.1, cool: 0 }, 1, 5), a.canBop({ x: 0.2, vy: -0.4, cool: 0 }, 0, 5), a.canBop({ x: 0.2, vy: 0.1, cool: 9 }, 0, 5)] };
   });
   assert.deepStrictEqual(r.sides, [0, 1, 1]);
   assert.ok(r.g[0] > r.g[1] && r.g[1] > r.g[2], 'the balloon is floatier over a helped player\'s half');
   assert.ok(r.wall.x >= 0.1 && r.wall.vx > 0, 'soft wall');
   assert.ok(r.roof.y >= 0.12 && r.roof.vy > 0, 'soft ceiling');
+  assert.ok(r.low.y >= 0.4 && r.low.vy > 0, 'the ceiling can be lowered for a big balloon on a short screen');
+  assert.deepStrictEqual(r.can, [true, false, false, false], 'yours to bop only over your half, once it has stopped rising and rested');
   assert.ok(r.drop.y > 0.5 && r.drop.vy > 0, 'it falls');
   assert.ok(r.v0.vx > 0 && r.v0.vy < 0 && r.v1.vx < 0 && r.v1.vy < 0, 'a bop sends it up and across to the other player');
 
@@ -52,7 +56,7 @@ h.run(ID, async (t) => {
   page = await t.open(ID);
   await t.fast(page, 4);
   const tappers = [0, 0];
-  for (let guard = 0; guard < 400; guard++) {
+  for (let guard = 0; guard < 6000; guard++) {
     if ((await api(page, 'state')) !== 'play') break;
     const b = (await api(page, 'balloons')).find((x) => x.ready && x.from !== x.side);
     if (!b) { await page.waitForTimeout(15); continue; }
@@ -60,8 +64,11 @@ h.run(ID, async (t) => {
     await page.locator(`.g-bop .bp-pad[data-p="${b.side}"]`).tap();
     if ((await api(page, 'passes')) > before) tappers[b.side]++;
   }
-  assert.strictEqual(await api(page, 'passes'), 12);
-  assert.ok(tappers[0] >= 4 && tappers[1] >= 4, `both players passed it (${tappers})`);
+  assert.strictEqual(await api(page, 'passes'), 24);
+  assert.ok(tappers[0] >= 8 && tappers[1] >= 8, `both players passed it (${tappers})`);
+  const took = await page.evaluate(() => MG.current.ctx.time);
+  // this bot has no reaction time at all; people take about twice as long
+  assert.ok(took >= 15, `a rally is long enough to settle into, even bopping the instant it is yours (${took.toFixed(0)}s)`);
   await t.waitForWin(page, 30000);
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), 'team');
 
@@ -71,13 +78,24 @@ h.run(ID, async (t) => {
     await playing(p);
     await p.waitForTimeout(450);
     assert.ok(await t.noPageScroll(p), `no page scroll @${vp}`);
-    assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-bop .bp-pad, .g-bop .bp-who, .g-bop .bp-row, .g-bop .bp-body'), [], `all in view @${vp}`);
+    assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-bop .bp-pad, .g-bop .bp-who, .g-bop .bp-ladder, .g-bop .bp-body'), [], `all in view @${vp}`);
+    // bop it and watch it to the top of its flight: the whole balloon stays on the mat, and a half is lit exactly when its player can bop
+    await p.locator(`.g-bop .bp-pad[data-p="${(await api(p, 'balloons'))[0].side}"]`).tap();
+    for (let k = 0; k < 14; k++) {
+      await p.waitForTimeout(90);
+      assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-bop .bp-body'), [], `the balloon is whole at the top of its flight @${vp}`);
+      const lit = await p.evaluate(() => ({
+        pads: [...document.querySelectorAll('.g-bop .bp-pad')].map((el) => el.classList.contains('is-mine')),
+        want: [0, 1].map((i) => MG.current.api.balloons.some((b) => b.side === i && b.ready)),
+      }));
+      assert.deepStrictEqual(lit.pads, lit.want, `each half lights up exactly when it has a balloon to bop @${vp}`);
+    }
     assert.ok((await t.minTargetSize(p, '.g-bop .bp-pad')).min >= 120, `pads are huge @${vp}`);
     await t.shot(p, `bop-${vp}.png`);
     if (vp === 'phone') {
       await p.setViewportSize({ width: 844, height: 390 });
       await p.waitForTimeout(300);
-      assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-bop .bp-who, .g-bop .bp-row'), [], 'still in view after rotating');
+      assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-bop .bp-who, .g-bop .bp-ladder'), [], 'still in view after rotating');
       await playing(p);
       const s2 = (await api(p, 'balloons'))[0].side;
       const before = await api(p, 'bops');

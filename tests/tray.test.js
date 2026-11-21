@@ -20,7 +20,7 @@ h.run(ID, async (t) => {
   const r = await page.evaluate(() => {
     const a = MG.current.api;
     const right = a.roll({ x: 0.5, y: 0.5, vx: 0, vy: 0 }, { x: 1, y: 0 }, 0.1, 1, 1.6);
-    const wall = a.roll({ x: 0.93, y: 0.5, vx: 3, vy: 0 }, { x: 0, y: 0 }, 0.1, 1, 1.6);
+    const wall = a.roll({ x: 0.9, y: 0.5, vx: 3, vy: 0 }, { x: 0, y: 0 }, 0.1, 1, 1.6);
     let glide = { x: 0.5, y: 0.5, vx: 1, vy: 0 }; for (let i = 0; i < 300; i++) glide = a.roll(glide, { x: 0, y: 0 }, 0.016, 5, 5);
     const spots = []; for (let i = 0; i < 300; i++) spots.push(a.berrySpot({ x: 0.5, y: 0.8 }, 1, 1.6));
     return {
@@ -28,18 +28,19 @@ h.run(ID, async (t) => {
       tilts: [a.pushFromTilt({ x: 8, y: -40 }), a.pushFromTilt({ x: 0, y: 0 })],
       none: a.pushFromFingers({ x: 0.5, y: 0.5 }, []),
       one: a.pushFromFingers({ x: 0.2, y: 0.5 }, [{ x: 0.9, y: 0.5 }]),
-      tug: a.pushFromFingers({ x: 0.5, y: 0.5 }, [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }]),
+      toRight: a.pushFromFingers({ x: 0.5, y: 0.5 }, [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }], { x: 0.95, y: 0.5 }),
+      toLeft: a.pushFromFingers({ x: 0.5, y: 0.5 }, [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }], { x: 0.05, y: 0.5 }),
       spotsOk: spots.every((s) => s.x >= 0.14 && s.x <= 0.86 && s.y >= 0.14 && s.y <= 1.46),
       far: spots.filter((s) => Math.hypot(s.x - 0.5, s.y - 0.8) > 0.3).length / spots.length,
     };
   });
   assert.ok(r.right.vx > 0 && r.right.x > 0.5 && r.right.vy === 0, 'a push to the right rolls right');
-  assert.ok(r.wall.x <= 0.93 && r.wall.vx < 0, 'the rim is a soft bounce');
+  assert.ok(r.wall.x <= 0.9 && r.wall.vx < 0, 'the rim is a soft bounce');
   assert.ok(r.rest, 'left alone, she rolls to a stop');
   assert.deepStrictEqual(r.tilts, [{ x: 0.5, y: -1 }, { x: 0, y: 0 }]);
   assert.deepStrictEqual(r.none, { x: 0, y: 0 });
   assert.ok(r.one.x > 0.9 && Math.abs(r.one.y) < 1e-9, 'one finger pulls her towards it');
-  assert.ok(Math.abs(r.tug.x) < 1e-9, 'two fingers pull her to the middle between them');
+  assert.ok(r.toRight.x > 0.9 && r.toLeft.x < -0.9, 'with two fingers down she follows the one nearest the strawberry');
   assert.ok(r.spotsOk && r.far > 0.9, 'strawberries land on the tray, away from the ladybird');
 
   // --- where tilting could work, she is asked: tilt or finger. Finger: hold where she should go.
@@ -50,7 +51,7 @@ h.run(ID, async (t) => {
   assert.strictEqual(await api(page, 'mode'), 'touch');
   await page.waitForSelector('.mg-hint', { state: 'attached', timeout: 5000 }); // a ghost hand points at the strawberry
   await t.fast(page, 4);
-  for (let n = 1; n <= 8; n++) {
+  for (let n = 1; n <= 12; n++) {
     const b = await spot(page, await api(page, 'berry'));
     await page.mouse.move(b.x, b.y);
     await page.mouse.down();
@@ -60,17 +61,20 @@ h.run(ID, async (t) => {
   }
   await t.waitForWin(page, 30000);
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), 'team');
-  assert.strictEqual(await page.locator('.g-tray .ty-slot.is-on').count(), 8);
+  assert.strictEqual(await page.locator('.g-tray .ty-slot.is-on').count(), 12);
 
   // --- tilt: real sensor events steer her (and the first reading counts as "flat")
   page = await t.open(ID);
   await page.locator('.g-tray .ty-ask .mg-btn').nth(0).click();
-  for (let i = 0; i < 6; i++) { await tilt(page, 20, 0); await page.waitForTimeout(60); } // held at a comfy 20 degrees
+  for (let i = 0; i < 6; i++) { await tilt(page, 45, 0); await page.waitForTimeout(60); } // tapped while holding it up to look at
   await playing(page);
   assert.strictEqual(await api(page, 'mode'), 'tilt');
+  assert.ok(await api(page, 'settling'), 'a moment to lay it down first');
+  for (let i = 0; i < 80 && (await api(page, 'settling')); i++) { await tilt(page, 20, 0); await page.waitForTimeout(50); } // ...then laid between them
+  await tilt(page, 20, 0);
   await page.waitForTimeout(400);
   const still = await api(page, 'ball');
-  assert.ok(Math.abs(still.y - (await api(page, 'size')).H / 2) < 0.05, 'the way it is held at the start is "flat"');
+  assert.ok(Math.abs(still.y - (await api(page, 'size')).H / 2) < 0.05, 'the pose it is laid down in is "flat", not the one it was tapped in');
   await t.fast(page, 4);
   for (let n = 1; n <= 3; n++) {
     for (let guard = 0; guard < 400 && (await api(page, 'eaten')) < n; guard++) {
@@ -81,6 +85,49 @@ h.run(ID, async (t) => {
       await page.waitForTimeout(20);
     }
     assert.ok((await api(page, 'eaten')) >= n, `tilting reaches strawberry ${n}`);
+  }
+
+  // --- tipped right over for a while: that is simply how they hold it now, so it becomes "flat"
+  await page.evaluate(() => { MG.timeScale = 1; });
+  for (let i = 0; i < 60; i++) { await tilt(page, 85, 0); await page.waitForTimeout(50); }
+  assert.ok(Math.abs(await page.evaluate(() => MG.current.ctx.motion.tilt.y)) < 5, 'a stuck tilt re-centres itself');
+
+  // --- and a finger always works, in tilt mode too
+  {
+    const e0 = await api(page, 'eaten');
+    const b = await spot(page, await api(page, 'berry'));
+    await page.mouse.move(b.x, b.y);
+    await page.mouse.down();
+    await t.fast(page, 4);
+    await page.waitForFunction((n) => MG.current.api.eaten > n, e0, { timeout: 30000 });
+    await page.mouse.up();
+  }
+
+  // --- the phone never answers the sensor question: Finger still starts the game; and a resting thumb does not hold her back
+  page = await t.open(null, { page: 'tests/play.html?g=tray' });
+  await page.addInitScript(() => { if (window.DeviceOrientationEvent) window.DeviceOrientationEvent.requestPermission = () => new Promise(() => {}); });
+  await page.reload();
+  await page.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
+  await page.evaluate(() => MG.open('tray'));
+  await page.locator('.g-tray .ty-ask .mg-btn').nth(0).click();
+  await page.waitForTimeout(300);
+  assert.strictEqual(await api(page, 'state'), 'asking');
+  assert.strictEqual(await page.locator('.g-tray .ty-ask .mg-btn.is-waiting').count(), 1, 'the tapped button shows it is waiting');
+  await page.locator('.g-tray .ty-ask .mg-btn').nth(1).click();
+  await playing(page);
+  assert.strictEqual(await api(page, 'mode'), 'touch');
+  await page.evaluate(() => {
+    const el = document.querySelector('.g-tray .ty-scene'), r = document.querySelector('.g-tray .ty-board').getBoundingClientRect();
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 91, pointerType: 'touch', clientX: r.left + 12, clientY: r.bottom - 12 }));
+  });
+  assert.strictEqual(await api(page, 'fingers'), 1);
+  {
+    const b = await spot(page, await api(page, 'berry'));
+    await page.mouse.move(b.x, b.y);
+    await page.mouse.down();
+    await t.fast(page, 4);
+    await page.waitForFunction(() => MG.current.api.eaten >= 1, null, { timeout: 30000 });
+    await page.mouse.up();
   }
 
   // --- no sensor behind the API (a laptop): choosing Tilt quietly falls back to fingers
@@ -110,6 +157,24 @@ h.run(ID, async (t) => {
     await p.waitForTimeout(500);
     assert.ok(await t.noPageScroll(p), `no page scroll @${vp}`);
     assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-tray .ty-board, .g-tray .ty-row, .g-tray .ty-berry .mg-sticker, .g-tray .ty-bug .mg-sticker'), [], `all in view @${vp}`);
+    // what is drawn sits exactly where the game thinks it is (its middle, not its corner)
+    const drawn = await p.evaluate(() => {
+      const board = document.querySelector('.g-tray .ty-board'), a = MG.current.api;
+      const inner = { left: board.getBoundingClientRect().left + board.clientLeft, top: board.getBoundingClientRect().top + board.clientTop, w: board.clientWidth, h: board.clientHeight };
+      const off = (sel, pt) => { const r = document.querySelector(sel).getBoundingClientRect(); return Math.hypot((r.left + r.right) / 2 - (inner.left + pt.x / a.size.W * inner.w), (r.top + r.bottom) / 2 - (inner.top + pt.y / a.size.H * inner.h)); };
+      return { berry: off('.g-tray .ty-berry', a.berry), bug: off('.g-tray .ty-bug', a.ball) };
+    });
+    assert.ok(drawn.berry < 12 && drawn.bug < 4, `strawberry and ladybird are drawn where they are @${vp} (${drawn.berry.toFixed(0)}px, ${drawn.bug.toFixed(0)}px off)`);
+    // ...so even a strawberry in the far corner is whole
+    const corner = await p.evaluate(() => {
+      const a = MG.current.api, fruit = document.querySelector('.g-tray .ty-berry'), g = document.querySelector('#mg-game').getBoundingClientRect();
+      const keep = [fruit.style.left, fruit.style.top];
+      fruit.style.left = (1 - 0.14 / a.size.W) * 100 + '%'; fruit.style.top = (1 - 0.14 / a.size.H) * 100 + '%';
+      const r = fruit.querySelector('.mg-sticker').getBoundingClientRect();
+      fruit.style.left = keep[0]; fruit.style.top = keep[1];
+      return r.right <= g.right + 1 && r.bottom <= g.bottom + 1;
+    });
+    assert.ok(corner, `a strawberry in the far corner is not cut off @${vp}`);
     await t.shot(p, `tray-${vp}.png`);
     if (vp === 'phone') {
       const before = await p.evaluate(() => ({ b: MG.current.api.berry, s: MG.current.api.size }));

@@ -15,12 +15,13 @@
 (function () {
   'use strict';
 
-  var STEP = 0.28;          // seconds per running step: the same top speed for everyone
+  var STEP = 0.4;           // seconds per running step: the same top speed for everyone
   var DIZZY = 0.8;          // seconds a caught player spins
   var LOOK_MS = [1700, 2700];
   var AWAY_MS = 450;
+  var SPIN_ON = 0.6;        // seconds someone who was caught is still spinning when the next song starts
 
-  /* The wolf's song: an original tune. A song is one to three of these bars,
+  /* The wolf's song: an original tune. A song is one or two of these bars,
      at one of three speeds, and always ends on the same two notes ("ta-DAA"),
      so the ear learns when the freeze is coming. Notes are MIDI numbers. */
   var BARS = [
@@ -41,9 +42,11 @@
    * he turns in which still-running feet are forgiven, back: steps lost when caught}
    */
   function setup(help, littleIdx) {
-    if (littleIdx < 0 || !help) return { len: [28, 28], grace: [0.35, 0.35], back: [3, 3] };
-    var kid = help >= 2 ? { len: 22, grace: 0.9, back: 2 } : { len: 24, grace: 0.65, back: 2 };
-    var big = help >= 2 ? { len: 34, grace: 0.2, back: 5 } : { len: 32, grace: 0.2, back: 4 };
+    // Long enough for five or six freezes; being caught costs about half of what one song lets you run,
+    // so stopping in time always beats ploughing on.
+    if (littleIdx < 0 || !help) return { len: [56, 56], grace: [0.35, 0.35], back: [6, 6] };
+    var kid = help >= 2 ? { len: 44, grace: 0.9, back: 3 } : { len: 48, grace: 0.65, back: 4 };
+    var big = help >= 2 ? { len: 68, grace: 0.2, back: 10 } : { len: 64, grace: 0.2, back: 8 };
     var a = littleIdx === 0 ? [kid, big] : [big, kid];
     return { len: [a[0].len, a[1].len], grace: [a[0].grace, a[1].grace], back: [a[0].back, a[1].back] };
   }
@@ -58,8 +61,7 @@
   function makeSong(rnd, longer) {
     rnd = rnd || Math.random;
     var step = TEMPOS[Math.floor(rnd() * TEMPOS.length)];
-    var bars = 1 + Math.floor(rnd() * 3);
-    if (longer) bars = Math.max(2, bars);
+    var bars = longer ? 2 : 1 + Math.floor(rnd() * 2);
     while ((bars * 8 + TA_DAA.length + 1) * step < MIN_SONG) bars++;
     var notes = [];
     for (var b = 0; b < bars; b++) notes = notes.concat(BARS[Math.floor(rnd() * BARS.length)]);
@@ -144,6 +146,9 @@
         var behind = littleIdx >= 0 ? pos[1 - littleIdx] / rules.len[1 - littleIdx] - pos[littleIdx] / rules.len[littleIdx] : 0;
         song = makeSong(Math.random, behind > 0.3);
         songs++;
+        // whoever was caught is still dizzy for the first beat of the song: freezing in time is always quicker
+        for (var c = 0; c < 2; c++) if (caughtNow[c]) dizzyUntil[c] = Math.max(dizzyUntil[c], ctx.time + SPIN_ON);
+        caughtNow = [false, false];
         if (held) return;
         var n = 0;
         var note = function () {
@@ -191,7 +196,13 @@
         void lanes[i].climber.offsetWidth;
         lanes[i].climber.classList.add('is-hop');
         if (tutorial[i]) { tutorial[i] = false; lanes[i].hand.classList.add('is-done'); }
-        if (pos[i] >= rules.len[i]) finish(i);
+      }
+
+      /** Once everyone has moved this instant: has anybody arrived? Both on the very same step is a tie. */
+      function arrivals() {
+        if (state !== 'play') return;
+        var a = pos[0] >= rules.len[0], b = pos[1] >= rules.len[1];
+        if (a || b) finish(a && b ? 'tie' : a ? 0 : 1);
       }
 
       function tryStep(i) {
@@ -214,22 +225,27 @@
         fx.shake(wolf);
       }
 
+      /** w: 0 | 1, or 'tie'. */
       function finish(w) {
         state = 'done';
         if (cancelPhase) cancelPhase();
         if (cancelSong) cancelSong();
         setPhase('party');
         sfx.play('match');
-        var c = fx.centerOf(lanes[w].node.querySelector('.tt-cake'));
-        fx.burst(c.x, c.y, { emoji: '🧁', count: 8, distance: 90, size: 24 });
-        lanes[w].climber.classList.add('is-champ');
-        // the wolf turns out to be friendly: the other one is waved up to share
-        ctx.after(500, function () {
-          pos[1 - w] = rules.len[1 - w];
-          lanes[1 - w].node.classList.add('is-zooming');
-          place(1 - w);
-          sfx.play('boost');
+        (w === 'tie' ? [0, 1] : [w]).forEach(function (i) {
+          var c = fx.centerOf(lanes[i].node.querySelector('.tt-cake'));
+          fx.burst(c.x, c.y, { emoji: '🧁', count: 8, distance: 90, size: 24 });
+          lanes[i].climber.classList.add('is-champ');
         });
+        // the wolf turns out to be friendly: whoever is not there yet is waved up to share
+        if (w !== 'tie') {
+          ctx.after(500, function () {
+            pos[1 - w] = rules.len[1 - w];
+            lanes[1 - w].node.classList.add('is-zooming');
+            place(1 - w);
+            sfx.play('boost');
+          });
+        }
         ctx.win(w, { delay: 1900, emoji: '🧁' });
       }
 
@@ -245,6 +261,7 @@
           if (state !== 'play') return;
           if (ev.pointerId != null) fingers[ev.pointerId] = i;
           moving(i);
+          arrivals();
         });
       });
       ['pointerup', 'pointercancel'].forEach(function (type) {
@@ -259,6 +276,7 @@
           lanes[i].node.classList.toggle('is-running', down && phase !== 'look');
           if (down) moving(i);
         }
+        arrivals();
       });
 
       /* ---- go ---- */

@@ -51,11 +51,11 @@ async function popOne(page) {
     await playing(page);
     assert.strictEqual(await api(page, 'mode'), 'touch');
     await t.fast(page, 3);
-    for (let guard = 0; guard < 600 && (await api(page, 'state')) === 'play'; guard++) {
+    for (let guard = 0; guard < 1500 && (await api(page, 'state')) === 'play'; guard++) {
       if (!(await popOne(page))) await page.waitForTimeout(40);
       assert.ok((await api(page, 'count')) <= 5, 'never more than five bubbles at once');
     }
-    assert.strictEqual(await api(page, 'popped'), 20);
+    assert.strictEqual(await api(page, 'popped'), 30);
     assert.strictEqual(await api(page, 'byWave'), 0);
     await t.waitForWin(page, 30000);
     assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), 'team');
@@ -81,6 +81,25 @@ async function popOne(page) {
     await playing(page);
     assert.strictEqual(await api(page, 'mode'), 'touch');
     assert.strictEqual(await page.locator('.g-wiggle .wp-video').count(), 0);
+
+    // --- the camera question is never answered: Fingers still starts the game
+    page = await t.open(null, { page: 'tests/play.html?g=wiggle' });
+    await page.addInitScript(() => { if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = () => new Promise(() => {}); });
+    await page.reload();
+    await page.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
+    await page.evaluate(() => MG.open('wiggle'));
+    await page.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();
+    await page.waitForTimeout(300);
+    assert.strictEqual(await api(page, 'state'), 'asking');
+    assert.strictEqual(await page.locator('.g-wiggle .wp-ask .mg-btn.is-waiting').count(), 1);
+    await page.locator('.g-wiggle .wp-ask .mg-btn').nth(1).click();
+    await playing(page);
+    assert.strictEqual(await api(page, 'mode'), 'touch');
+
+    // --- portrait: the two choices sit in the middle, not jammed against the top
+    page = await t.open(ID, { viewport: 'phone' });
+    const gap = await page.evaluate(() => document.querySelector('.g-wiggle .wp-ask .mg-btn').getBoundingClientRect().top - document.querySelector('#mg-game').getBoundingClientRect().top);
+    assert.ok(gap > 80, `the choices are centred (${Math.round(gap)}px from the top)`);
 
     // --- the sandboxed build never asks for the camera
     page = await t.open(null, { page: 'tests/play.html?g=wiggle' });
@@ -131,21 +150,61 @@ async function popOne(page) {
   // --- with a (fake) camera: the picture shows mirrored, movement is measured, and the camera goes off on leaving
   await h.run(ID + ' (camera)', async (t) => {
     const { assert } = t;
+    /** A page that remembers every camera stream it was ever given (optionally answering late). */
+    const spy = async (delay = 0) => {
+      const p = await t.open(null, { page: 'tests/play.html?g=wiggle' });
+      await p.addInitScript((delay) => {
+        const md = navigator.mediaDevices; if (!md) return;
+        const real = md.getUserMedia.bind(md); window.__streams = [];
+        md.getUserMedia = (c) => new Promise((res) => setTimeout(res, delay)).then(() => real(c)).then((s) => { window.__streams.push(s); return s; });
+      }, delay);
+      await p.reload();
+      await p.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
+      await p.evaluate(() => MG.open('wiggle'));
+      return p;
+    };
+    const tracks = (p) => p.evaluate(() => window.__streams.map((s) => s.getTracks().map((tr) => tr.readyState).join(',')));
+
+    // --- pausing lets the camera go; resuming brings it back into the same picture; leaving ends it
+    let cam = await spy();
+    await cam.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();
+    await playing(cam);
+    assert.deepStrictEqual(await tracks(cam), ['live']);
+    await t.pause(cam);
+    assert.deepStrictEqual(await tracks(cam), ['ended'], 'paused: the camera is off');
+    await cam.locator('.mg-pausecard .mg-btn--primary').tap();
+    await cam.waitForFunction(() => window.__streams.length === 2 && document.querySelector('.g-wiggle .wp-video').srcObject === window.__streams[1], null, { timeout: 15000 });
+    assert.deepStrictEqual(await tracks(cam), ['ended', 'live'], 'resumed: back on, in the same mirror');
+    await cam.waitForFunction(() => document.querySelector('.g-wiggle .wp-video').videoWidth > 0);
+    await cam.evaluate(() => MG.home());
+    assert.deepStrictEqual(await tracks(cam), ['ended', 'ended'], 'left: off');
+
+    // --- "Fingers" tapped while the camera question was still open: a late yes must not leave the camera on
+    cam = await spy(700);
+    await cam.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();
+    await cam.locator('.g-wiggle .wp-ask .mg-btn').nth(1).click();
+    await playing(cam);
+    assert.strictEqual(await api(cam, 'mode'), 'touch');
+    await cam.waitForFunction(() => window.__streams.length === 1, null, { timeout: 15000 });
+    await cam.waitForTimeout(300);
+    assert.deepStrictEqual(await tracks(cam), ['ended'], 'the late camera is switched straight off');
+    assert.strictEqual(await cam.locator('.g-wiggle .wp-video').count(), 0);
+
     const page = await t.open(ID);
     await page.locator('.g-wiggle .wp-ask .mg-btn').nth(0).click();
     await playing(page);
     assert.strictEqual(await api(page, 'mode'), 'camera');
     assert.strictEqual(await page.locator('.g-wiggle .wp-video').count(), 1);
     await page.waitForFunction(() => MG.current.api.samples >= 5, null, { timeout: 30000 });
-    const cam = await page.evaluate(() => {
+    const info = await page.evaluate(() => {
       const v = document.querySelector('.g-wiggle .wp-video');
       window.__tracks = v.srcObject.getTracks();
       return { w: v.videoWidth, live: window.__tracks.map((tr) => tr.readyState), audio: v.srcObject.getAudioTracks().length, mirrored: getComputedStyle(v).transform };
     });
-    assert.ok(cam.w > 0, 'the camera picture is playing');
-    assert.deepStrictEqual(cam.live, ['live']);
-    assert.strictEqual(cam.audio, 0, 'video only: the microphone is never opened');
-    assert.ok(cam.mirrored.startsWith('matrix(-1'), 'shown like a mirror');
+    assert.ok(info.w > 0, 'the camera picture is playing');
+    assert.deepStrictEqual(info.live, ['live']);
+    assert.strictEqual(info.audio, 0, 'video only: the microphone is never opened');
+    assert.ok(info.mirrored.startsWith('matrix(-1'), 'shown like a mirror');
     const share = await api(page, 'lastShare');
     assert.ok(share >= 0 && share <= 1);
     await t.shot(page, 'wiggle-camera.png');

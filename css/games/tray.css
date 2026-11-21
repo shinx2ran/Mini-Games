@@ -24,7 +24,8 @@
 
 .g-tray .ty-row {
   justify-self: center;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(6, auto);
   gap: 4px;
   padding: 5px 8px;
   border: 3px solid var(--line);
@@ -42,6 +43,7 @@
   font-size: clamp(12px, calc(var(--gmin) * 0.045), 22px);
   line-height: 1;
 }
+.g-tray[data-orient="landscape"] .ty-row { grid-template-columns: repeat(12, auto); }
 .g-tray .ty-slot.is-on { border-style: solid; border-color: var(--line); background: var(--berry-soft); animation: ty-slot 0.3s cubic-bezier(.3, 1.9, .5, 1); }
 @keyframes ty-slot { from { transform: scale(0.3); } }
 
@@ -63,12 +65,9 @@
 
 .g-tray .ty-bug, .g-tray .ty-berry {
   position: absolute;
-  width: 0;
-  height: 0;
-  display: grid;
-  place-items: center;
   line-height: 1;
   pointer-events: none;
+  transform: translate(-50%, -50%); /* left/top say where its MIDDLE is */
 }
 .g-tray .ty-bug { z-index: 2; font-size: calc(var(--short) * 0.17); }
 .g-tray .ty-bug .mg-sticker { transform: rotate(var(--turn, 0deg)); transition: transform 0.15s linear; }
@@ -109,6 +108,8 @@
 .g-tray[data-orient="landscape"] .ty-ask { flex-direction: row; align-items: center; padding: 0 16px; }
 .g-tray .ty-ask .mg-btn--big { min-height: clamp(96px, calc(var(--gmin) * 0.34), 170px); font-size: var(--fs-xl); }
 .g-tray .ty-ask .mg-btn__emoji { font-size: 1.6em; }
+.g-tray .ty-ask .mg-btn.is-waiting { animation: ty-wait 0.5s ease-in-out infinite alternate; }
+@keyframes ty-wait { from { opacity: 1; } to { opacity: 0.55; } }
 
 @media (prefers-reduced-motion: reduce) {
   .g-tray .ty-tip, .g-tray .ty-berry.is-in .mg-sticker, .g-tray .ty-bug.is-full .mg-sticker { animation: none; }

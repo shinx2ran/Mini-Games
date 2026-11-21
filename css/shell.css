@@ -566,7 +566,9 @@ button { font: inherit; color: inherit; }
 .mg-seg { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
 .mg-seg__btn {
   appearance: none;
-  flex: 1 1 0;
+  /* never narrower than its own label: a long row of choices wraps instead */
+  flex: 1 0 auto;
+  white-space: nowrap;
   min-width: 72px;
   min-height: 46px;
   display: inline-flex;

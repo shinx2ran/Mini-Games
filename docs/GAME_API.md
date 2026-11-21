@@ -156,13 +156,20 @@ for hosts that run the page in a locked-down frame.
   Resolves `true` once real readings arrive; `false` otherwise: fall back.
 - `ctx.motion.tilt` → `{x, y}` degrees from "flat" (`x` > 0: the screen's right
   edge dips; `y` > 0: its bottom edge dips), whichever way the screen is
-  turned. `ctx.motion.recenter()` makes the current pose "flat".
-- `ctx.motion.onShake(fn)` → `off()`; a gentle wiggle counts, at most one every 0.4s.
+  turned. `ctx.motion.recenter()` makes the current pose "flat": do it once
+  the device has been laid down to play, not when the button was tapped. The
+  shell also re-centres after every pause.
+- `ctx.motion.onShake(fn)` → `off()`; a child-sized wiggle counts (passing the
+  phone across does not), at most one every 0.4s.
 - `ctx.camera.supported`, `ctx.camera.start()` → Promise<video | null>: the
   front camera as a playing, muted `<video>` (video only, never the
   microphone). Put it in your scene yourself (mirror it with `scaleX(-1)`).
-  `ctx.camera.stop()`; the shell also switches it off when the game closes.
+  `ctx.camera.stop()` ends it for good. The shell lets the camera go while the
+  game is paused (or the page is in the background) and brings it back into
+  the same `<video>` on resume, and switches it off when the game closes.
   Never store, upload or record a frame, and say so on the screen that asks.
+- A sensor question can stay unanswered for ever. Never make the touch choice
+  wait for it: let "Finger" win at any time, and drop a late answer.
 - In tests: dispatch `DeviceOrientationEvent` / `DeviceMotionEvent` on
   `window`, and run with `h.FAKE_CAMERA` (see `tests/wiggle.test.js`).
 

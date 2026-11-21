@@ -1,9 +1,10 @@
 /* Wobble Tray — hold the phone flat TOGETHER, like a tray, and tip it to roll
  * the ladybird to each strawberry. One team, nothing to bump into, no clock.
  *
- * Steering is by the tilt sensor where the device has one and allows it.
- * Everywhere else (and in the sandboxed build) it is by finger: hold a finger
- * down and the ladybird rolls towards it; two fingers pull it between them.
+ * Steering is by the tilt sensor where the device has one and allows it, and
+ * always by finger too: hold a finger down and the ladybird rolls towards it.
+ * With several fingers down she follows the one nearest the strawberry, so a
+ * resting thumb never holds her back.
  *
  * Lengths are in "short sides": the tray is W x H with the shorter one = 1.
  * state: ask (tilt or finger?) -> play -> done
@@ -11,8 +12,9 @@
 (function () {
   'use strict';
 
-  var GOAL = 8;
-  var RADIUS = 0.07;        // the ladybird
+  var GOAL = 12;
+  var SETTLE_MS = 1500;     // tilt mode: time to lay the phone flat before that pose becomes "flat"
+  var RADIUS = 0.1;         // the ladybird: she stops this far from the rim, so all of her stays on the tray
   var ACCEL = 1.7;          // short sides per s^2 at full push
   var FULL_TILT = 16;       // degrees of tip that count as a full push
   var DRAG = 1.6;           // how quickly it slows by itself (per second)
@@ -41,12 +43,19 @@
     return { x: Math.max(-1, Math.min(1, tilt.x / FULL_TILT)), y: Math.max(-1, Math.min(1, tilt.y / FULL_TILT)) };
   }
 
-  /** Fingers -> push: towards the middle of all the fingers, gentler when it is nearly there. */
-  function pushFromFingers(b, fingers) {
+  /**
+   * Fingers -> push: towards a finger, gentler when she is nearly there. With
+   * several fingers down she follows the one nearest the strawberry: whoever
+   * is pointing at it wins, and a thumb resting on the glass changes nothing.
+   */
+  function pushFromFingers(b, fingers, berry) {
     if (!fingers.length) return { x: 0, y: 0 };
-    var cx = 0, cy = 0;
-    fingers.forEach(function (f) { cx += f.x; cy += f.y; });
-    var dx = cx / fingers.length - b.x, dy = cy / fingers.length - b.y;
+    var to = fingers[0];
+    if (berry) {
+      var far = function (f) { return (f.x - berry.x) * (f.x - berry.x) + (f.y - berry.y) * (f.y - berry.y); };
+      fingers.forEach(function (f) { if (far(f) < far(to)) to = f; });
+    }
+    var dx = to.x - b.x, dy = to.y - b.y;
     var d = Math.sqrt(dx * dx + dy * dy);
     if (d < 0.01) return { x: 0, y: 0 };
     var k = Math.min(1, d / 0.25) / d;
@@ -61,7 +70,7 @@
       var s = { x: m + rnd() * (W - 2 * m), y: m + rnd() * (H - 2 * m) };
       var d = Math.sqrt((s.x - b.x) * (s.x - b.x) + (s.y - b.y) * (s.y - b.y));
       if (!best || d > best.d) best = { x: s.x, y: s.y, d: d };
-      if (d > 0.45) break;
+      if (d > 0.6) break;
     }
     return { x: best.x, y: best.y };
   }
@@ -71,7 +80,7 @@
     name: 'Wobble Tray',
     emoji: '🐞',
     color: 'berry',
-    howTo: 'One team. Hold the phone flat between you, like a tray, and tip it together to roll the ladybird to each strawberry. Where tilting is not available, hold a finger where she should go: two fingers pull her between them.',
+    howTo: 'One team. Hold the phone flat between you, like a tray, and tip it together to roll the ladybird to each strawberry. A finger always works too: hold it where she should go.',
 
     mount: function (root, ctx) {
       var el = ctx.el, sfx = ctx.sfx, fx = ctx.fx, util = ctx.util;
@@ -83,6 +92,7 @@
       var berry = null;
       var eaten = 0;
       var fingers = {};           // pointerId -> {x, y} in short sides
+      var settling = false, pinned = 0;
       var reach = REACH[ctx.help] || REACH[1];
 
       /* ---- build ---- */
@@ -139,9 +149,10 @@
         ball.x = W / 2; ball.y = H / 2;
         newBerry();
         if (how === 'tilt') {
-          ctx.motion.recenter();
+          // a moment to lay the phone flat between them: THAT pose is "flat", not the one it was tapped in
+          settling = true;
           tip.hidden = false;
-          ctx.after(2600, function () { tip.hidden = true; });
+          ctx.after(SETTLE_MS, function () { ctx.motion.recenter(); settling = false; tip.hidden = true; });
         } else {
           ctx.hint(fruit, { delay: 400 });
         }
@@ -168,7 +179,15 @@
 
       ctx.frame(function (dt) {
         if (state !== 'play') return;
-        var push = mode === 'tilt' ? pushFromTilt(ctx.motion.tilt) : pushFromFingers(ball, Object.keys(fingers).map(function (k) { return fingers[k]; }));
+        var push = pushFromFingers(ball, Object.keys(fingers).map(function (k) { return fingers[k]; }), berry);
+        if (mode === 'tilt' && !settling) {
+          var lean = ctx.motion.tilt;
+          // tipped right over for a while? Then that is simply how they hold it now: call it flat
+          pinned = Math.abs(lean.x) >= 30 || Math.abs(lean.y) >= 30 ? pinned + dt : 0;
+          if (pinned > 2) { ctx.motion.recenter(); pinned = 0; lean = ctx.motion.tilt; }
+          var tipped = pushFromTilt(lean);
+          push = { x: util.clamp(push.x + tipped.x, -1, 1), y: util.clamp(push.y + tipped.y, -1, 1) };
+        }
         roll(ball, push, dt, W, H);
         // the tray leans the way she is being pushed, so the cause is visible
         board.style.setProperty('--tx', push.x.toFixed(2));
@@ -180,7 +199,7 @@
         }
       });
 
-      /* ---- fingers (always work, even alongside the tilt sensor) ---- */
+      /* ---- fingers: they always work, also alongside the tilt sensor ---- */
 
       function where(ev) {
         var r = board.getBoundingClientRect();
@@ -188,7 +207,7 @@
         return { x: util.clamp((ev.clientX - r.left) / short, 0, W), y: util.clamp((ev.clientY - r.top) / short, 0, H) };
       }
       ctx.tap(scene, function (ev) {
-        if (state !== 'play' || mode !== 'touch' || ev.pointerId == null) return;
+        if (state !== 'play' || ev.pointerId == null) return;
         fingers[ev.pointerId] = where(ev);
       });
       ctx.on(scene, 'pointermove', function (ev) { if (fingers[ev.pointerId]) fingers[ev.pointerId] = where(ev); });
@@ -201,16 +220,18 @@
       var tip = el('div', { class: 'ty-tip', 'aria-hidden': 'true', hidden: true, text: '📱' });
       scene.appendChild(tip);
       var card = el('div', { class: 'ty-ask' },
-        ctx.ui.button({ emoji: '📱', label: 'Tilt', color: 'sun', class: 'mg-btn--big', onTap: function () {
+        ctx.ui.button({ emoji: '📱', label: 'Tilt', color: 'sun', class: 'mg-btn--big', onTap: function (ev) {
           if (state !== 'ask') return;
           state = 'asking';
+          ev.currentTarget.classList.add('is-waiting');
           ctx.motion.start().then(function (ok) {
             if (!ctx.alive || state !== 'asking') return;
             if (!ok) sfx.play('boop');
             begin(ok ? 'tilt' : 'touch');
           });
         } }),
-        ctx.ui.button({ emoji: '👆', label: 'Finger', color: 'sea', class: 'mg-btn--big', onTap: function () { if (state === 'ask') begin('touch'); } }));
+        // Finger wins at any time, also while the phone is still being asked about its sensor
+        ctx.ui.button({ emoji: '👆', label: 'Finger', color: 'sea', class: 'mg-btn--big', onTap: function () { if (state === 'ask' || state === 'asking') begin('touch'); } }));
 
       ctx.setTurn(null);
       ctx.onResize(measure);
@@ -226,6 +247,7 @@
         get berry() { return berry ? { x: berry.x, y: berry.y } : null; },
         get size() { return { W: W, H: H }; },
         get fingers() { return Object.keys(fingers).length; },
+        get settling() { return settling; },
         GOAL: GOAL, RADIUS: RADIUS,
         roll: roll, pushFromTilt: pushFromTilt, pushFromFingers: pushFromFingers, berrySpot: berrySpot,
       });

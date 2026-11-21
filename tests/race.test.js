@@ -116,6 +116,17 @@ h.run(ID, async (t) => {
     await t.shot(p, `race-${track}-${length}-${vp}.png`);
   }
 
+  // --- the five-choice "Where" row never clips a label in the pause menu
+  for (const vp of ['small', 'phoneWide']) {
+    const p = await t.open(ID, { viewport: vp });
+    await canPick(p);
+    await t.pause(p);
+    const clipped = await p.evaluate(() => [...document.querySelectorAll('.mg-seg__btn')].filter((b) => b.scrollWidth > b.clientWidth + 1 || [...b.children].some((c) => { const r = c.getBoundingClientRect(), o = b.getBoundingClientRect(); return r.left < o.left - 1 || r.right > o.right + 1; })).map((b) => b.textContent));
+    assert.deepStrictEqual(clipped, [], `every option label fits its button @${vp}`);
+    assert.strictEqual(await p.locator('.mg-seg__btn').count() >= 5 + 3 + 2, true);
+    await t.shot(p, `race-pause-${vp}.png`);
+  }
+
   // --- mashing: slapping all three piles at once picks one, and the turn passes once
   page = await t.open(ID);
   await canPick(page);

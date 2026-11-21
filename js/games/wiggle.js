@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var GOAL = 20;
+  var GOAL = 30;
   var MAX_BUBBLES = 5;
   var SPAWN_MS = 850;
   var RISE = 0.11;          // screen heights per second
@@ -224,16 +224,20 @@
       /* ---- camera or fingers? (only asked where a camera could work) ---- */
 
       var card = el('div', { class: 'wp-ask' },
-        ctx.ui.button({ emoji: '📷', label: 'Camera', color: 'sun', class: 'mg-btn--big', onTap: function () {
+        ctx.ui.button({ emoji: '📷', label: 'Camera', color: 'sun', class: 'mg-btn--big', onTap: function (ev) {
           if (state !== 'ask') return;
           state = 'asking';
+          ev.currentTarget.classList.add('is-waiting');
           ctx.camera.start().then(function (cam) {
-            if (!ctx.alive || state !== 'asking') return;
+            if (!ctx.alive) return;
+            // they chose Fingers while the question was still open: a late "yes" must not leave the camera on
+            if (state !== 'asking') { if (mode !== 'camera') ctx.camera.stop(); return; }
             if (!cam) sfx.play('boop');
             begin(cam ? 'camera' : 'touch', cam);
           });
         } }),
-        ctx.ui.button({ emoji: '👆', label: 'Fingers', color: 'sea', class: 'mg-btn--big', onTap: function () { if (state === 'ask') begin('touch'); } }),
+        // Fingers wins at any time, also while the camera question is still open
+        ctx.ui.button({ emoji: '👆', label: 'Fingers', color: 'sea', class: 'mg-btn--big', onTap: function () { if (state === 'ask' || state === 'asking') begin('touch'); } }),
         el('p', { class: 'wp-note', text: 'The camera picture stays on this device. Nothing is recorded or sent.' }));
 
       ctx.setTurn(null);
