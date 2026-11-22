@@ -66,6 +66,8 @@
       var ticks = 0;               // beats played so far this mount
       var log = [];                // tests: [{beat, rows}] for the beats played
       var touched = {};            // "r,s" -> game time of its last toggle (a mashed square changes once)
+      var booked = 0;              // the tick whose notes are already lined up on the audio clock
+      var running = false;
       var cancelLoop = null, cancelNudge = null;
 
       /* ---- build ---- */
@@ -134,6 +136,7 @@
         var rows = onBeat(song, beat);
         log.push({ beat: beat, rows: rows.slice() });
         if (log.length > 64) log.shift();
+        if (state === 'show' && ticks > STEPS * SHOW_LOOPS) return; // (the concert is over)
         flat.forEach(function (c) { c.classList.toggle('is-now', +c.dataset.s === beat); });
         rows.forEach(function (r) {
           var c = cells[r][beat];
@@ -141,18 +144,33 @@
           heads[r].classList.remove('is-sing'); void heads[r].offsetWidth; heads[r].classList.add('is-sing');
           if (state === 'show') { var st = stage.children[r]; st.classList.remove('is-sing'); void st.offsetWidth; st.classList.add('is-sing'); }
         });
-        // the next beat's notes are scheduled on the audio clock, so the rhythm is steady even if a frame is late
-        var nextAt = t0 + ticks * step, lead = Math.max(0, nextAt - ctx.time);
-        onBeat(song, (beat + 1) % STEPS).forEach(function (r) { sing(r, lead); });
         if (state === 'show') showBeat();
       }
+
+      /*
+       * Each beat's notes are lined up on the audio clock a moment (under 70ms)
+       * before the beat is due, so the rhythm stays steady even when a frame
+       * is late. Only a moment ahead: a pause can never leave a note sounding
+       * behind the pause menu, or a beat silent afterwards.
+       */
+      ctx.frame(function () {
+        if (!running) return;
+        var n = ticks + 1;                      // the next tick to come (counting from 1)
+        if (booked >= n) return;
+        if (state === 'show' && n > STEPS * SHOW_LOOPS) return;   // the concert plays the song exactly twice
+        var at = t0 + ticks * step, lead = at - ctx.time;
+        if (lead > 0.07) return;
+        booked = n;
+        onBeat(song, (beat + 1) % STEPS).forEach(function (r) { sing(r, Math.max(0, lead)); });
+      });
 
       function startLoop() {
         if (cancelLoop) cancelLoop();
         beat = -1;
         ticks = 0;
+        booked = 0;
+        running = true;
         t0 = ctx.time + 0.05;
-        onBeat(song, 0).forEach(function (r) { sing(r, 0.05); });
         ctx.after(50, function () {
           tick();
           cancelLoop = ctx.every(step * 1000, tick);
@@ -176,7 +194,14 @@
       }
 
       ctx.tap(grid, function (ev, node) {
-        if (state !== 'jam') return;
+        if (state !== 'jam') {
+          // during the concert every tap still gets an answer: that animal sings along
+          var sr = +node.dataset.r;
+          sing(sr);
+          var st = stage.children[sr];
+          if (st) { st.classList.remove('is-sing'); void st.offsetWidth; st.classList.add('is-sing'); }
+          return;
+        }
         if (node.classList.contains('bd-head')) {
           var hr = +node.dataset.r;
           sing(hr);
@@ -184,7 +209,7 @@
           return;
         }
         var r = +node.dataset.r, s = +node.dataset.s, key = r + ',' + s;
-        if (touched[key] != null && ctx.time - touched[key] < 0.25) return;
+        if (touched[key] != null && ctx.time - touched[key] < 0.25) { sfx.play('tick'); return; }
         touched[key] = ctx.time;
         song[r][s] = !song[r][s];
         draw(r, s);
@@ -204,6 +229,7 @@
         sfx.play('start');
         // a beat of quiet, then from the top
         if (cancelLoop) { cancelLoop(); cancelLoop = null; }
+        running = false;
         flat.forEach(function (c) { c.classList.remove('is-now'); });
         ctx.after(700, startLoop);
       });
@@ -211,10 +237,12 @@
       function showBeat() {
         if (ticks >= STEPS * SHOW_LOOPS) {
           if (cancelLoop) { cancelLoop(); cancelLoop = null; }
+          running = false;
           state = 'done';
           ctx.after(step * 1000, function () {
-            // the audience goes wild
-            for (var i = 0; i < 10; i++) sfx.noise({ freq: 2500 + Math.random() * 1500, dur: 0.03, q: 2, gain: 0.12, delay: i * 0.07 + Math.random() * 0.03 });
+            // ta-da, and the audience goes wild
+            sfx.play('match');
+            for (var i = 0; i < 10; i++) sfx.noise({ freq: 2500 + Math.random() * 1500, dur: 0.03, q: 2, gain: 0.12, delay: 0.25 + i * 0.07 + Math.random() * 0.03 });
             var c = fx.centerOf(stage);
             fx.burst(c.x, c.y, { emoji: '👏', count: 8, distance: 120, size: 30 });
             ctx.win('team', { delay: 700, emoji: '🎵' });
@@ -238,6 +266,7 @@
         get ticks() { return ticks; },
         get log() { return log.slice(); },
         get step() { return step; },
+        get booked() { return booked; },
         BAND: BAND.map(function (a) { return a.id; }), STEPS: STEPS, READY: READY, SHOW_LOOPS: SHOW_LOOPS,
         startSong: startSong, countNotes: countNotes, onBeat: onBeat,
       });

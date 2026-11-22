@@ -197,7 +197,10 @@
 }
 
 /* not yours to pull right now: dim, and taps go past it to the bright ones */
-.g-stack .sk-block.is-off .sk-face { filter: saturate(0.4) brightness(0.8); pointer-events: none; }
+.g-stack .sk-block.is-off .sk-face { filter: saturate(0.4) brightness(0.8); }
+/* a dimmed block that was tapped: a tiny "not me" shiver of its faces (the block itself stays put) */
+.g-stack .sk-block.is-nope .sk-face { animation: sk-nope 0.3s ease-in-out; }
+@keyframes sk-nope { 30% { filter: saturate(0.4) brightness(1); } }
 
 /* turn the tower */
 .g-stack .sk-turn {

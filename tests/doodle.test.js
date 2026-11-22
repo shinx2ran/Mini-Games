@@ -35,11 +35,15 @@ h.run(ID, async (t) => {
       if (len < 600) bad.push('too little to work with ' + len.toFixed(0));
     }
     const b = a.bounds([{ kind: 'stroke', w: 10, pts: [[100, 200], [300, 250]] }, { kind: 'stamp', x: 500, y: 500, s: 100 }]);
-    return { bad: bad.slice(0, 3), b, none: a.bounds([]), ends: a.spline([[0, 0], [100, 0], [100, 100]], 5) };
+    const good = { img: 'data:image/png;base64,AAAA', w: 100, h: 80, eyes: [{ e: '👀', x: 0.5, y: 0.4, s: 0.2 }] };
+    const zoo = a.cleanZoo([null, 7, 'x', good, { img: 'data:image/png;base64,A', w: 0, h: 5, eyes: [] }, { img: 'data:image/png;base64,A', w: 5, h: 5, eyes: [{ e: '👀', x: 1 }] }, { w: 5, h: 5, eyes: [] }]);
+    return { bad: bad.slice(0, 3), b, none: a.bounds([]), ends: a.spline([[0, 0], [100, 0], [100, 100]], 5), zoo: zoo.length, notList: a.cleanZoo({}).length };
   });
   assert.deepStrictEqual(r.bad, [], 'every squiggle is a good long line, well on the page');
   assert.deepStrictEqual(r.b, { x0: 90, y0: 190, x1: 550, y1: 550 });
   assert.strictEqual(r.none, null);
+  assert.strictEqual(r.zoo, 1, 'only well-formed friends are kept from storage');
+  assert.strictEqual(r.notList, 0);
   assert.deepStrictEqual(r.ends[0], [0, 0]); assert.deepStrictEqual(r.ends[r.ends.length - 1], [100, 100]);
 
   // --- the squiggle draws itself, then it is the first player's go; nothing to take back or wake yet
@@ -70,9 +74,13 @@ h.run(ID, async (t) => {
   await page.locator('.g-doodle .dd-wand').tap({ force: true });
   assert.strictEqual(await api(page, 'state'), 'draw');
 
-  // --- pass: now the other player; a sticker stamps where it is tapped
-  await tool(page, '.dd-pass');
+  // --- pass: now the other player (two fingers on the arrow at once still pass it just once); a sticker stamps where it is tapped
+  await page.evaluate(() => {
+    const b = document.querySelector('.g-doodle .dd-pass'), r = b.getBoundingClientRect();
+    [61, 62].forEach((id) => b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: id, pointerType: 'touch', clientX: r.left + 20, clientY: r.top + 20 })));
+  });
   assert.strictEqual(await api(page, 'turn'), 1 - first);
+  await page.waitForTimeout(500);
   await tool(page, '.dd-sticker[data-emoji="👀"]');
   await stampAt(page, 0.45, 0.4);
   items = await api(page, 'items');
@@ -129,6 +137,68 @@ h.run(ID, async (t) => {
   await t.shot(page, 'doodle-alive.png');
   await t.waitForWin(page, 10000);
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), 'team');
+
+  // --- a touch during the squiggle's own drawing is not lost: the squiggle finishes at once and the touch counts
+  page = await t.open(ID);
+  assert.strictEqual(await api(page, 'state'), 'intro');
+  await tool(page, '.dd-sticker[data-emoji="🎩"]').catch(() => {});
+  await stampAt(page, 0.5, 0.2);
+  assert.strictEqual(await api(page, 'state'), 'draw');
+  assert.ok((await api(page, 'items')).length >= 2, 'the touch drew or stamped something');
+
+  // --- a finger held down through a pause: the line ends at the pause, no straight jump to where the finger went meanwhile
+  page = await t.open(ID);
+  await drawing(page);
+  {
+    const pr = await page.locator('.g-doodle .dd-paper').boundingBox();
+    await page.mouse.move(pr.x + pr.width * 0.2, pr.y + pr.height * 0.2);
+    await page.mouse.down();
+    await page.mouse.move(pr.x + pr.width * 0.3, pr.y + pr.height * 0.3, { steps: 3 });
+    const n = (await api(page, 'items')).slice(-1)[0].n;
+    await t.pause(page);
+    await page.mouse.move(pr.x + pr.width * 0.8, pr.y + pr.height * 0.8, { steps: 2 });
+    await page.locator('.mg-pausecard .mg-btn--primary').tap();
+    await page.waitForFunction(() => document.querySelector('#mg-overlay').hidden && !MG.current.ctx.paused);
+    await page.mouse.move(pr.x + pr.width * 0.82, pr.y + pr.height * 0.82, { steps: 2 });
+    await page.mouse.up();
+    assert.strictEqual((await api(page, 'items')).slice(-1)[0].n, n, 'the line stopped at the pause');
+  }
+
+  // --- whatever is in the zoo on this device, the round still ends in a party
+  page = await t.open(null, { page: 'tests/play.html?g=doodle' });
+  await page.evaluate(() => { localStorage.setItem('mg:game:doodle:zoo', JSON.stringify([null, { img: 5 }, { img: 'data:image/png;base64,AAAA', w: 10, h: 10, eyes: [{ e: '👀' }] }])); });
+  await page.evaluate(() => MG.open('doodle'));
+  await drawing(page);
+  await draw(page, [[0.3, 0.3], [0.5, 0.5]]);
+  await tool(page, '.dd-pass');
+  await page.waitForTimeout(500);
+  await stampAt(page, 0.5, 0.5);
+  await tool(page, '.dd-wand');
+  await t.waitForWin(page, 10000);
+  assert.strictEqual(await api(page, 'zoo'), 1, 'the bad entries were dropped and the new friend saved');
+
+  // --- the woken creature is always whole on screen, even a drawing that fills the page, on a wide screen too
+  for (const vp of ['phoneWide', 'tablet', 'tabletTall']) {
+    const p = await t.open(ID, { viewport: vp, dark: true });
+    await drawing(p);
+    await draw(p, [[0.02, 0.02], [0.98, 0.02], [0.98, 0.98], [0.02, 0.98], [0.02, 0.05]]);
+    await p.locator('.g-doodle .dd-pass').tap();
+    await p.waitForTimeout(500);
+    await p.locator('.g-doodle .dd-sticker[data-emoji="👀"]').tap();
+    await stampAt(p, 0.5, 0.05);
+    await p.locator('.g-doodle .dd-wand').tap({ force: true });
+    const worst = await p.evaluate(() => new Promise((resolve) => {
+      const g = document.querySelector('#mg-game').getBoundingClientRect(); let out = 0; const t0 = performance.now();
+      (function look() {
+        const f = document.querySelector('.g-doodle .dd-friend--new');
+        if (f) { const r = f.getBoundingClientRect(); out = Math.max(out, g.left - r.left, r.right - g.right, g.top - r.top, r.bottom - g.bottom); }
+        if (performance.now() - t0 < 2600) requestAnimationFrame(look); else resolve(out);
+      })();
+    }));
+    assert.ok(worst <= 1, `the creature stays whole while it hops @${vp} (${worst.toFixed(0)}px over)`);
+    assert.ok((await p.evaluate(() => getComputedStyle(document.querySelector('.g-doodle .dd-friend__pic')).filter)).includes('drop-shadow'), 'it has a white sticker edge, so it shows on the dark playmat');
+    if (vp === 'phoneWide') await t.shot(p, 'doodle-alive-dark-wide.png');
+  }
 
   // --- the zoo is kept: next round, the old friends come out to meet the new one
   page = await t.open(null, { page: 'tests/play.html?g=doodle' });

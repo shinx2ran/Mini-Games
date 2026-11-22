@@ -42,6 +42,10 @@ h.run(ID, async (t) => {
       // what each pull from a full level leaves: two blocks either way round, then the lone middle, then one edge block
       risk: [a.riskOf(full, 0, 1), a.riskOf(full, 0, 0), a.riskOf([[0, -1, 2]].concat(L(full).slice(1)), 0, 0), a.riskOf([[0, 1, -1]].concat(L(full).slice(1)), 0, 0), a.riskOf([[-1, 1, -1]].concat(L(full).slice(1)), 0, 1)],
       weaker: a.riskOf(thin, 2, 1) > a.riskOf(full, 2, 1),
+      // however many thin levels there are, taking one from a full level stays a small risk
+      capped: a.riskOf([[0, 1, 2], [-1, 4, -1], [-1, 7, -1], [-1, 10, -1], [-1, 13, -1], [-1, 16, -1], [18, 19, 20], [21, 22, 23]], 0, 1),
+      // a block alone on its level holds the tower up: it is never offered
+      lone: (() => { const tw = a.makeTower(Math.random, 6); tw.levels[1] = [-1, 4, -1]; return a.choicesFor(tw, 4).list.some((c) => c.lvl === 1); })(),
       pullable: [0, 1, 2, 3, 4].map((l) => a.pullable(full, l)),
       next: [a.nextSpot(full), a.nextSpot(L(full).concat([[-1, 7, -1]])), a.nextSpot(L(full).concat([[7, 8, -1]]))],
     };
@@ -53,6 +57,8 @@ h.run(ID, async (t) => {
   assert.ok(r.risk[2] > 0.8, 'leaving one edge block alone brings it down');
   assert.strictEqual(r.risk[4], 0.95, 'taking the last block of a level: down it comes');
   assert.ok(r.weaker, 'thin levels below make the whole tower shakier');
+  assert.ok(r.capped <= 0.06 + 1e-9, `...but a pull that leaves two blocks always stays safe-ish (${r.capped})`);
+  assert.strictEqual(r.lone, false, 'the last block of a level cannot be pulled'); 
   assert.deepStrictEqual(r.pullable, [true, true, true, false, false], 'never from the top two levels');
   assert.deepStrictEqual(r.next, [{ lvl: 5, slot: 1 }, { lvl: 5, slot: 0 }, { lvl: 5, slot: 2 }], 'a new level fills middle first');
 
@@ -67,12 +73,44 @@ h.run(ID, async (t) => {
   assert.strictEqual(start.turn, start.first);
   await page.waitForSelector('.mg-hint', { state: 'attached', timeout: 5000 });
 
-  // --- a dimmed block cannot be pulled, even tapped right on
-  const dim = await page.evaluate(() => { const n = document.querySelector('.g-stack .sk-block.is-off'); return n ? +n.dataset.id : -1; });
-  if (dim >= 0) {
-    await tapBlock(page, dim);
+  // --- a dimmed block cannot be pulled: a real finger right on any dimmed block's visible end does nothing,
+  //     even when a bright block is right next to it (and so does a tap on empty space away from the tower)
+  {
+    const dims = await page.evaluate(() => {
+      const a = MG.current.api, out = [];
+      document.querySelectorAll('.g-stack .sk-block.is-off').forEach((n) => {
+        const f = a.frontEnd(+n.dataset.id), r = f.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        if (hit && hit.closest('.sk-block') === n) out.push({ x, y });
+      });
+      return out;
+    });
+    assert.ok(dims.length >= 5, `plenty of dimmed blocks in view (${dims.length})`);
+    for (const d of dims) await page.touchscreen.tap(d.x, d.y);
     await page.waitForTimeout(100);
-    assert.strictEqual(await api(page, 'pulls'), 0, 'a dimmed block stays put');
+    assert.strictEqual(await api(page, 'pulls'), 0, `none of ${dims.length} dimmed blocks moved`);
+    // empty spots: one far from every bright block, and one a finger's slip away from a bright block's end
+    const spots = await page.evaluate(() => {
+      const a = MG.current.api, s = document.querySelector('.g-stack .sk-stage').getBoundingClientRect();
+      const ends = a.choices.map((c) => ({ id: c.id, r: a.frontEnd(c.id).getBoundingClientRect() }));
+      const dist = (x, y, r) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      let far = null, near = null;
+      for (let y = s.top + 8; y < s.bottom - 8; y += 6) {
+        for (let x = s.left + 8; x < s.right - 8; x += 6) {
+          const hit = document.elementFromPoint(x, y);
+          if (!hit || hit.closest('.sk-face') || hit.closest('.sk-turn')) continue;
+          const d = ends.map((e) => ({ id: e.id, d: dist(x, y, e.r) })).sort((p, q) => p.d - q.d)[0];
+          if (!far && d.d > 90) far = { x, y };
+          if (!near && d.d > 4 && d.d < 14) near = { x, y, id: d.id };
+        }
+      }
+      return { far, near };
+    });
+    assert.ok(spots.far && spots.near, 'found both kinds of spot');
+    await page.touchscreen.tap(spots.far.x, spots.far.y);
+    assert.strictEqual(await api(page, 'pulls'), 0, 'a tap on empty space far from the tower does nothing');
+    spots.nearId = spots.near.id;
+    page.__near = spots.near;
   }
 
   // --- a pull: out it slides and up to the top it goes; now it is the one to match, and it is the other player's turn
@@ -91,19 +129,42 @@ h.run(ID, async (t) => {
   const topBlock = await api(page, 'top');
   assert.strictEqual(tile.shape, topBlock.shape, 'the big tile shows the block to match');
 
-  // --- a near miss beside a bright block still counts (it snaps to the nearest bright one)
-  c = await safest(page);
-  const before = await api(page, 'pulls');
-  await page.evaluate((id) => {
-    const f = MG.current.api.frontEnd(id), r = f.getBoundingClientRect(), stage = document.querySelector('.g-stack .sk-stage');
-    stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 31, pointerType: 'touch', clientX: r.right + 14, clientY: r.top + r.height / 2 }));
-  }, c.id);
-  assert.strictEqual(await api(page, 'pulls'), before + 1, 'a tap just beside a bright block pulls it');
-  await picking(page);
+  // --- a near miss just off the edge of a bright block still counts: that block, the nearest one
+  {
+    const near = await page.evaluate(() => {
+      const a = MG.current.api, s = document.querySelector('.g-stack .sk-stage').getBoundingClientRect();
+      const ends = a.choices.map((c) => ({ id: c.id, r: a.frontEnd(c.id).getBoundingClientRect() }));
+      const dist = (x, y, r) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      for (let y = s.top + 8; y < s.bottom - 8; y += 4) {
+        for (let x = s.left + 8; x < s.right - 8; x += 4) {
+          const hit = document.elementFromPoint(x, y);
+          if (!hit || hit.closest('.sk-face') || hit.closest('.sk-turn')) continue;
+          const d = ends.map((e) => ({ id: e.id, d: dist(x, y, e.r) })).sort((p, q) => p.d - q.d);
+          if (d[0].d > 4 && d[0].d < 14 && (d.length < 2 || d[1].d > d[0].d + 10)) return { x, y, id: d[0].id };
+        }
+      }
+      return null;
+    });
+    assert.ok(near, 'there is a spot just off a bright block');
+    const before = await api(page, 'pulls');
+    await page.touchscreen.tap(near.x, near.y);
+    assert.strictEqual(await api(page, 'pulls'), before + 1, 'a tap just beside a bright block pulls it');
+    assert.strictEqual(await api(page, 'topId') === near.id || (await page.evaluate(() => MG.current.api.state)) === 'pulling', true);
+    await picking(page);
+    assert.strictEqual(await api(page, 'topId'), near.id, 'and it is the block the finger was next to');
+  }
 
-  // --- turning the tower: the view turns a quarter, and the front ends are still the ones we can see and tap
-  await page.locator('.g-stack .sk-turn').tap();
-  assert.strictEqual(await api(page, 'spin'), 1);
+  // --- turning the tower: the view turns a quarter (and never pulls a block, wherever the button is pressed),
+  //     and the front ends are still the ones we can see and tap
+  {
+    const p0 = await api(page, 'pulls');
+    await page.evaluate(() => {
+      const b = document.querySelector('.g-stack .sk-turn'), r = b.getBoundingClientRect();
+      b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 41, pointerType: 'touch', clientX: r.left + 6, clientY: r.bottom - 6 }));
+    });
+    assert.strictEqual(await api(page, 'spin'), 1);
+    assert.strictEqual(await api(page, 'pulls'), p0, 'the turn button only turns');
+  }
   await page.waitForTimeout(700);
   c = await safest(page);
   const seen = await page.evaluate((id) => {
@@ -181,6 +242,10 @@ h.run(ID, async (t) => {
     return Math.hypot(hint.left - (f.left + f.width / 2), hint.top - (f.top + f.height / 2));
   });
   assert.ok(hinted < 40, `the ghost hand is on the steadiest block (${hinted.toFixed(0)}px off)`);
+  // ...and turning the tower does not lose it: it comes back on the same block, seen from the new side
+  await page.evaluate(() => { MG.timeScale = 1; });
+  await page.locator('.g-stack .sk-turn').tap();
+  await page.waitForSelector('.mg-hint', { state: 'attached', timeout: 3000 });
 
   // --- every supported size: everything in view, the tower included; rotate mid-round
   for (const vp of ['small', 'phone', 'phoneWide', 'tabletTall', 'tablet']) {

@@ -26,9 +26,10 @@
   var H = 0.8;             // block height
   var VIEW_X = -24;        // degrees we look down on the tower
   var VIEW_Y = -38;        // the starting quarter view: two sides of every level show
-  var SAFE = [1, 0.45, 0.2];           // a little player's tumble chance, by help level
-  var HESITATE_MS = [0, 4500, 2500];   // ...and how long before a ghost hand shows the steadiest block
+  var SAFE = [1, 0.3, 0.12];           // a little player's tumble chance, by help level
+  var HESITATE_MS = [0, 3500, 2200];   // ...and how long before a ghost hand shows the steadiest block
   var ORDER = [1, 0, 2];               // blocks go onto a new level middle first
+  var WEAK_CAP = 0.05;                 // thin levels elsewhere add at most this: a pull that leaves two blocks always looks, and is, safe
 
   /* ---------------------------------------------------------- pure rules */
 
@@ -93,7 +94,7 @@
       if (n === 1) weak += 0.03;
       else if (n === 2) weak += 0.012;
     }
-    return Math.min(0.95, base + weak);
+    return Math.min(0.95, base + Math.min(WEAK_CAP, weak));
   }
 
   /** Where the next block goes on top: {lvl, slot}. */
@@ -107,13 +108,14 @@
 
   /**
    * The blocks that may be pulled now: [{id, lvl, slot, risk}], and whether
-   * nothing matched so anything goes (`any`).
+   * nothing matched so anything goes (`any`). A block alone on its level is
+   * holding up everything above it: it is never offered.
    */
   function choices(tower, topId) {
     var all = [], match = [];
     var top = tower.blocks[topId];
     tower.levels.forEach(function (row, lvl) {
-      if (!pullable(tower.levels, lvl)) return;
+      if (!pullable(tower.levels, lvl) || countIn(row) < 2) return;
       row.forEach(function (id, slot) {
         if (id < 0) return;
         var c = { id: id, lvl: lvl, slot: slot, risk: riskOf(tower.levels, lvl, slot) };
@@ -144,6 +146,7 @@
       var current = { list: [], any: false };
       var rigged = null;                           // tests: the tumble roll
       var cancelHesitate = null;
+      var hintedThisTurn = false;
       var u = 40;
 
       /* ---- build ---- */
@@ -203,8 +206,10 @@
       function fit() {
         var r = stage.getBoundingClientRect();
         if (!r.width || !r.height) return;
-        var tall = topLevel(tower.levels) + 1 + 2;  // room to grow a little
-        u = Math.max(16, Math.min(r.width / 5.2, r.height / (tall * H * 0.92 + 2.8), 90));
+        var tall = topLevel(tower.levels) + 1 + 1;  // room for the next level (it refits as the tower grows)
+        // on a tall screen the tower is as wide as the stage, so it must also stay below the turn button in the corner
+        var room = r.height - (r.width < r.height ? turnBtn.offsetHeight + 8 : 0);
+        u = Math.max(16, Math.min(r.width / 5.2, room / (tall * H * 0.92 + 2.5), 90));
         scene.style.setProperty('--u', u.toFixed(2) + 'px');
         view.style.top = (r.height - u * 1.5).toFixed(1) + 'px';
       }
@@ -263,12 +268,13 @@
         showTarget();
         mark();
         if (cancelHesitate) { cancelHesitate(); cancelHesitate = null; }
+        hintedThisTurn = pulls === 0;
         if (pulls === 0) ctx.hint(frontEnd(steadiest().id), { delay: 700 });
         var level = ctx.helpFor(p);
         if (level) {
           cancelHesitate = ctx.after(HESITATE_MS[level], function () {
             cancelHesitate = null;
-            if (state === 'pick' && turn === p) ctx.hint(frontEnd(steadiest().id));
+            if (state === 'pick' && turn === p) { hintedThisTurn = true; ctx.hint(frontEnd(steadiest().id)); }
           });
         }
       }
@@ -394,14 +400,49 @@
 
       /* ---- input ---- */
 
-      ctx.tap(stage, function (ev, f) { pull(+f.dataset.id); }, { delegate: '.sk-face', slop: 34 });
+      /**
+       * Which block a touch means. The face under the finger decides: a bright
+       * block is pulled, a dimmed one is not (nothing happens). Only a touch
+       * that lands on no block at all is snapped to the nearest bright block's
+       * front end, and only if that is close.
+       */
+      function aimAt(ev) {
+        var ok = {};
+        current.list.forEach(function (c) { ok[c.id] = true; });
+        var f = ev.target && ev.target.closest ? ev.target.closest('.sk-face') : null;
+        if (f) return ok[+f.dataset.id] ? +f.dataset.id : null;
+        if (ev.clientX == null) return null;
+        var best = null, bestD = Math.max(30, u * 0.8);
+        current.list.forEach(function (c) {
+          var r = frontEnd(c.id).getBoundingClientRect();
+          var dx = Math.max(r.left - ev.clientX, 0, ev.clientX - r.right), dy = Math.max(r.top - ev.clientY, 0, ev.clientY - r.bottom);
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d < bestD) { bestD = d; best = c.id; }
+        });
+        return best;
+      }
+
+      ctx.tap(stage, function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.sk-turn')) return; // the turn button only turns
+        var id = state === 'pick' ? aimAt(ev) : null;
+        if (id == null) {
+          sfx.play('boop');
+          var f = ev.target && ev.target.closest ? ev.target.closest('.sk-block') : null;
+          if (f && state === 'pick') { f.classList.remove('is-nope'); void f.offsetWidth; f.classList.add('is-nope'); }
+          return;
+        }
+        pull(id);
+      });
       ctx.tap(turnBtn, function () {
         if (state === 'done' || state === 'falling') return;
         spin = (spin + 1) % 4;
         aim();
         sfx.play('whoosh');
         // the ghost hand follows the block it was pointing at
-        if (state === 'pick' && pulls === 0) ctx.after(650, function () { if (state === 'pick' && pulls === 0) ctx.hint(frontEnd(steadiest().id)); });
+        if (state === 'pick' && hintedThisTurn) {
+          var p = turn;
+          ctx.after(650, function () { if (state === 'pick' && turn === p) ctx.hint(frontEnd(steadiest().id)); });
+        }
       });
 
       beginTurn(turn);

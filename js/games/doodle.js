@@ -70,6 +70,17 @@
     return spline(pts, 12).map(function (p) { return [Math.round(p[0]), Math.round(p[1])]; });
   }
 
+  /** Only well-formed zoo friends: anything else in storage (old, damaged) is dropped, never trusted. */
+  function cleanZoo(z) {
+    if (!Array.isArray(z)) return [];
+    var num = function (v) { return typeof v === 'number' && isFinite(v); };
+    return z.filter(function (f) {
+      return f && typeof f === 'object' && typeof f.img === 'string' && f.img.indexOf('data:image/') === 0 &&
+        num(f.w) && num(f.h) && f.w > 0 && f.h > 0 && Array.isArray(f.eyes) &&
+        f.eyes.every(function (e) { return e && typeof e.e === 'string' && num(e.x) && num(e.y) && num(e.s); });
+    }).slice(-ZOO);
+  }
+
   /** The box around everything drawn: {x0, y0, x1, y1} in drawing units, or null. */
   function bounds(items) {
     var b = null;
@@ -106,9 +117,10 @@
       var tool = { type: 'pen', color: 'ink' };
       var added = [false, false];
       var zoo = [];
-      try { zoo = ctx.load('zoo', []) || []; } catch (e) { zoo = []; }
-      if (!Array.isArray(zoo)) zoo = [];
+      try { zoo = cleanZoo(ctx.load('zoo', [])); } catch (e) { zoo = []; }
       var cancelNudge = null;
+      var lastPass = -1;
+      var friend = null, fitFriend = null;   // the woken creature, and how to fit it to the screen
 
       /* ---- build ---- */
 
@@ -265,6 +277,7 @@
       /* ---- input ---- */
 
       ctx.tap(paper, function (ev) {
+        if (state === 'intro') endIntro(); // no waiting: a touch during the squiggle finishes it and counts
         if (state !== 'draw') return;
         var p = at(ev);
         if (tool.type === 'stamp') {
@@ -316,6 +329,8 @@
 
       ctx.tap(passBtn, function () {
         if (state !== 'draw') return;
+        if (lastPass >= 0 && ctx.time - lastPass < 0.45) return; // two fingers or a double tap still pass it once
+        lastPass = ctx.time;
         live = {};
         setTurn(1 - turn);
         fx.bounce(passBtn);
@@ -364,20 +379,38 @@
           return { e: it.emoji, x: (it.x - b.x0) / bw, y: (it.y - b.y0) / bh, s: it.s / Math.max(bw, bh) };
         });
 
+        // the party comes whatever happens below: nothing can leave the round stuck
+        ctx.after(3000, function () {
+          if (state !== 'alive') return;
+          state = 'done';
+          ctx.win('team', { delay: 900, emoji: '🖍️' });
+        });
+
         // the creature takes the drawing's place on the page, then the page slides away
         var pr = paper.getBoundingClientRect(), sr = scene.getBoundingClientRect();
-        var friend = makeFriend({ img: src, w: bw, h: bh, eyes: eyes }, bw / SIZE * pr.width, bh / SIZE * pr.height, 'dd-friend--new');
+        friend = makeFriend({ img: src, w: bw, h: bh, eyes: eyes }, bw / SIZE * pr.width, bh / SIZE * pr.height, 'dd-friend--new');
         friend.style.left = (pr.left - sr.left + (b.x0 + bw / 2) / SIZE * pr.width) + 'px';
         friend.style.top = (pr.top - sr.top + (b.y0 + bh / 2) / SIZE * pr.height) + 'px';
         party.appendChild(friend);
+        /** Big in the middle, but always whole: room for its hop above and its squash to the sides. */
+        fitFriend = function () {
+          var s2 = scene.getBoundingClientRect();
+          var k2 = Math.min(s2.width * 0.7 / bw, s2.height * 0.6 / bh);
+          friend.style.left = '50%';
+          friend.style.top = '52%';
+          friend.style.width = (bw * k2) + 'px';
+          friend.style.height = (bh * k2) + 'px';
+        };
 
         // its friends from the zoo come out to meet it
-        zoo.slice(-5).forEach(function (z, i, all) {
-          var f = makeFriend(z, 0, 0, 'dd-friend--old');
-          f.style.left = ((i + 0.5) / all.length * 100) + '%';
-          f.style.setProperty('--d', (i * 0.12).toFixed(2) + 's');
-          party.appendChild(f);
-        });
+        try {
+          zoo.slice(-5).forEach(function (z, i, all) {
+            var f = makeFriend(z, 0, 0, 'dd-friend--old');
+            f.style.left = ((i + 0.5) / all.length * 100) + '%';
+            f.style.setProperty('--d', (i * 0.12).toFixed(2) + 's');
+            party.appendChild(f);
+          });
+        } catch (e) {}
 
         var pitch = util.clamp(520 - Math.max(bw, bh) * 0.25, 220, 560);
         babble(pitch, 4);
@@ -391,21 +424,9 @@
         }
 
         // it bounces into the middle and grows, so both of them can see it properly
-        ctx.after(350, function () {
-          var big = Math.min(sr.width, sr.height) * 0.62, k2 = big / Math.max(bw, bh);
-          friend.style.left = (sr.width / 2) + 'px';
-          friend.style.top = (sr.height * 0.42) + 'px';
-          friend.style.width = Math.max(friend.offsetWidth, bw * k2) + 'px';
-          friend.style.height = Math.max(friend.offsetHeight, bh * k2) + 'px';
-          sfx.play('boing');
-        });
+        ctx.after(60, function () { friend.dataset.fit = '1'; fitFriend(); sfx.play('boing'); });
         ctx.after(1250, function () { friend.classList.add('is-hopping'); babble(pitch, 3); });
         ctx.after(2200, function () { babble(pitch * 1.1, 4); });
-        ctx.after(3000, function () {
-          if (state !== 'alive') return;
-          state = 'done';
-          ctx.win('team', { delay: 900, emoji: '🖍️' });
-        });
       }
 
       /** A creature: its picture, plus eyes that blink. w/h: px size (0 = the zoo's own size). */
@@ -429,7 +450,20 @@
       choose(tool);
       setTurn(turn);
       fit();
-      ctx.onResize(fit);
+      ctx.onResize(function () { fit(); if (friend && fitFriend && friend.dataset.fit) fitFriend(); });
+      // a finger held down through a pause does not draw a ruler-straight jump afterwards: the line ends at the pause
+      ctx.onResume(function () { live = {}; });
+
+      var stopIntro = null;
+      function endIntro() {
+        if (state !== 'intro') return;
+        introUpto = null;
+        if (stopIntro) { stopIntro(); stopIntro = null; }
+        state = 'draw';
+        paint();
+        sfx.play('ding');
+        refresh();
+      }
       if (ctx.opt('start') === 'blank') {
         state = 'draw';
         refresh();
@@ -438,20 +472,12 @@
         items.push({ kind: 'stroke', color: 'ink', w: INK, pts: squiggle(), by: -1 });
         introUpto = 0;
         var t0 = ctx.time, total = items[0].pts.length;
-        var stopIntro = ctx.frame(function () {
+        stopIntro = ctx.frame(function () {
           if (state !== 'intro') return;
           introUpto = Math.min(total, Math.ceil((ctx.time - t0) / 1.1 * total));
           paint();
           if (introUpto % 5 === 0) scribble();
-          if (introUpto >= total) {
-            introUpto = null;
-            stopIntro();
-            state = 'draw';
-            paint();
-            sfx.play('ding');
-            refresh();
-            ctx.hint(paper, { delay: 500 });
-          }
+          if (introUpto >= total) { endIntro(); ctx.hint(paper, { delay: 500 }); }
         });
       }
 
@@ -464,7 +490,7 @@
         get zoo() { return zoo.length; },
         get paperPx() { return px; },
         SIZE: SIZE,
-        squiggle: squiggle, bounds: bounds, spline: spline,
+        squiggle: squiggle, bounds: bounds, spline: spline, cleanZoo: cleanZoo,
       });
     },
   });

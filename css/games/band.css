@@ -22,13 +22,13 @@
   min-width: 0;
   min-height: 0;
   display: grid;
-  gap: 5px;
+  gap: 4px;
   transition: opacity 0.4s;
 }
-.g-band .bd-grid[data-flow="across"] { grid-template-columns: auto repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); }
-.g-band .bd-grid[data-flow="down"] { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: auto repeat(8, minmax(0, 1fr)); }
+.g-band .bd-grid[data-flow="across"] { grid-template-columns: minmax(44px, 0.9fr) repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.g-band .bd-grid[data-flow="down"] { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: minmax(44px, 0.9fr) repeat(8, minmax(0, 1fr)); }
 
-/* the singers: tap one to hear it */
+/* the singers: tap one to hear it. Each fills its whole cell at the head of its row. */
 .g-band .bd-head {
   appearance: none;
   min-width: 0;
@@ -37,14 +37,10 @@
   display: grid;
   place-items: center;
   border: var(--stroke, 3px) solid var(--line);
-  border-radius: 50%;
+  border-radius: var(--r-md);
   background: var(--c-soft);
-  font-size: clamp(24px, calc(var(--gmin) * 0.075), 48px);
+  font-size: clamp(24px, calc(var(--gmin) * 0.08), 52px);
   line-height: 1;
-  aspect-ratio: 1;
-  align-self: center;
-  justify-self: center;
-  width: clamp(40px, calc(var(--gmin) * 0.12), 72px);
 }
 .g-band .bd-head.is-sing { animation: bd-hop 0.28s ease-out; }
 @keyframes bd-hop { 40% { transform: translateY(-14%) scale(1.12); } }

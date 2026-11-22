@@ -67,7 +67,12 @@ h.run(ID, async (t) => {
   assert.ok(await page.locator('.g-band .bd-scene.is-show').count(), 'the band is on stage');
   await tapCell(page, 0, 0);
   assert.deepStrictEqual(await api(page, 'song'), song, 'the song cannot change during the concert');
+  // a tap during the concert still gets an answer: that animal sings along (the song does not change)
+  await tapCell(page, 1, 1);
+  assert.ok(await page.locator('.g-band .bd-star.is-sing').count() >= 1, 'the animal on stage sings along');
   await page.waitForFunction(() => MG.current.api.state === 'done', null, { timeout: 20000 });
+  await page.waitForTimeout(600);
+  assert.strictEqual(await api(page, 'booked'), 16, 'exactly twice through: not a note more');
   const show = (await api(page, 'log')).slice(-16);
   assert.deepStrictEqual(show.map((e) => e.beat), [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7], 'the whole song, twice, from the top');
   show.forEach((e) => assert.deepStrictEqual(e.rows, song.map((row, i) => (row[e.beat] ? i : -1)).filter((i) => i >= 0), `the concert plays the song as written (beat ${e.beat + 1})`));
@@ -78,9 +83,14 @@ h.run(ID, async (t) => {
   page = await t.open(ID);
   await page.waitForFunction(() => MG.current.api.ticks >= 3);
   await t.pause(page);
-  const n0 = await api(page, 'ticks');
+  const n0 = await api(page, 'ticks'), b0 = await api(page, 'booked');
   await page.waitForTimeout(900);
   assert.strictEqual(await api(page, 'ticks'), n0, 'no beats while paused');
+  assert.ok(b0 <= n0 + 1 && (await api(page, 'booked')) === b0, 'and no notes lined up behind the pause menu');
+  await page.locator('.mg-pausecard .mg-btn--primary').tap();
+  await page.waitForFunction((n) => MG.current.api.ticks >= n + 2, n0, { timeout: 5000 });
+  const after = await page.evaluate(() => [MG.current.api.ticks, MG.current.api.booked]);
+  assert.ok(after[1] >= after[0], 'after resuming every beat has its notes again');
 
   // --- the grown-up's choices: nothing to start with, and a faster beat
   page = await t.open(ID);
@@ -102,6 +112,7 @@ h.run(ID, async (t) => {
     assert.strictEqual(sq.count, 48);
     assert.ok(sq.min >= (vp === 'small' ? 34 : 46), `squares are big enough @${vp} (${sq.min}px)`);
     assert.ok((await t.minTargetSize(p, '.g-band .bd-mic')).min >= 72, `the microphone is big @${vp}`);
+    assert.ok((await t.minTargetSize(p, '.g-band .bd-head')).min >= (vp === 'small' ? 36 : 44), `the animals are big enough to tap @${vp}`);
     const flow = await p.evaluate(() => document.querySelector('.g-band .bd-grid').dataset.flow);
     assert.strictEqual(flow, vp === 'phoneWide' || vp === 'tablet' ? 'across' : 'down', `time runs the long way @${vp}`);
     await tapCell(p, 2, 6);

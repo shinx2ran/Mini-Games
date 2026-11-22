@@ -142,7 +142,16 @@
   container-type: size;
   transform: translate(-50%, -50%);
 }
-.g-doodle .dd-friend__pic { display: block; width: 100%; height: 100%; }
+.g-doodle .dd-friend__pic {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* a die-cut white edge, like every sticker: dark crayon reads on the dark playmat too */
+  filter:
+    drop-shadow(3px 0 0 var(--edge)) drop-shadow(-3px 0 0 var(--edge))
+    drop-shadow(0 3px 0 var(--edge)) drop-shadow(0 -3px 0 var(--edge))
+    drop-shadow(0 4px 0 rgba(12, 10, 38, 0.28));
+}
 .g-doodle .dd-eye {
   position: absolute;
   font-size: calc(var(--s) * 100cqmax * 0.86);
@@ -152,10 +161,9 @@
 }
 @keyframes dd-blink { 0%, 88%, 100% { transform: translate(-50%, -50%); } 93% { transform: translate(-50%, -50%) scaleY(0.1); } }
 
-.g-doodle .dd-friend--new { transition: left 0.8s cubic-bezier(.4, 1.4, .5, 1), top 0.8s cubic-bezier(.4, 1.4, .5, 1), width 0.8s cubic-bezier(.4, 1.4, .5, 1), height 0.8s cubic-bezier(.4, 1.4, .5, 1); }
-.g-doodle .dd-friend--new { animation: dd-wake 0.7s cubic-bezier(.3, 1.8, .5, 1); }
+/* it bounces into the middle (a springy move) and grows to fit (never past its final size) */
+.g-doodle .dd-friend--new { transition: left 0.8s cubic-bezier(.4, 1.4, .5, 1), top 0.8s cubic-bezier(.4, 1.4, .5, 1), width 0.8s cubic-bezier(.25, 1, .5, 1), height 0.8s cubic-bezier(.25, 1, .5, 1); }
 .g-doodle .dd-friend--new.is-hopping { animation: dd-hop 0.42s ease-in-out infinite alternate; }
-@keyframes dd-wake { 0% { transform: translate(-50%, -50%) scale(1); } 40% { transform: translate(-50%, -50%) scale(1.25, 0.8); } 100% { transform: translate(-50%, -50%) scale(1); } }
 @keyframes dd-hop {
   from { transform: translate(-50%, -50%) translateY(0) scale(1.08, 0.92) rotate(-4deg); }
   to { transform: translate(-50%, -50%) translateY(-18%) scale(0.95, 1.06) rotate(5deg); }
@@ -175,5 +183,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .g-doodle .dd-wand.is-ready, .g-doodle .dd-eye, .g-doodle .dd-friend--new.is-hopping, .g-doodle .dd-friend--old { animation: none; }
-  .g-doodle .dd-friend--new { animation: none; }
 }
