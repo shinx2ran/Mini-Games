@@ -271,6 +271,9 @@
 }
 .g-garden .gd-pile { display: inline-flex; }
 .g-garden .gd-pile .mg-sticker + .mg-sticker { margin-left: -0.45em; }
+/* many kinds in a small basket: each pile stacks up instead of spreading out */
+.g-garden .gd-basket__items.is-stacked .gd-pile { flex-direction: column; align-items: center; }
+.g-garden .gd-basket__items.is-stacked .gd-pile .mg-sticker + .mg-sticker { margin-left: 0; margin-top: -0.72em; }
 .g-garden .gd-basket:not(.is-empty) .gd-basket__can { opacity: 0.35; }
 
 /* ---------------------------------------------------------------- the beds */
@@ -411,7 +414,7 @@
 .g-garden .gd-bug {
   position: absolute;
   left: 58%;
-  bottom: 40%;
+  bottom: 24%;                /* low on the plant: clear of the need bubble in the corner */
   font-size: calc(var(--cell) * 0.24);
   line-height: 1;
   animation: gd-nibble 0.5s ease-in-out infinite alternate;
@@ -485,7 +488,7 @@
 .g-garden .gd-garden[data-strip="side"] .gd-strip { flex-direction: column; width: var(--strip); height: var(--strip-len); }
 .g-garden .gd-garden[data-strip="none"] .gd-strip { display: none; }
 .g-garden .gd-helper, .g-garden .gd-deco { display: grid; place-items: center; flex: 0 0 calc(100% / var(--per, 13)); }
-.g-garden .gd-helper--bees { animation: gd-buzz 1.4s ease-in-out infinite alternate; }
+.g-garden .gd-helper--bees > .mg-sticker { animation: gd-buzz 1.4s ease-in-out infinite alternate; }   /* the bee moves, its place does not */
 @keyframes gd-buzz { to { transform: translate(-8%, -6%) rotate(-8deg); } }
 
 /* rain: soft streaks over the beds for a moment */
@@ -557,6 +560,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .g-garden .gd-fruits, .g-garden .gd-bug, .g-garden .gd-need, .g-garden .gd-helper--bees,
+  .g-garden .gd-fruits, .g-garden .gd-bug, .g-garden .gd-need, .g-garden .gd-helper--bees > .mg-sticker,
   .g-garden .gd-visitor.is-ready .gd-who, .g-garden .gd-rain.is-on, .g-garden .gd-tool.is-asked .gd-sack { animation: none; }
 }

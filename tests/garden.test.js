@@ -68,6 +68,8 @@ h.run(ID, async (t) => {
       const big = []; for (let k = 0; k < 300; k++) big.push(a.makeOrder(f9, Math.random, null));
       const f20 = a.cleanFarm({ done: 20 });
       const late = []; for (let k = 0; k < 300; k++) late.push(a.makeOrder(f20, Math.random, null).want);
+      const fullB = a.cleanFarm({ done: 20, basket: { tomato: 3, chilli: 3, strawberry: 3, eggplant: 3, cucumber: 3 } });
+      const drains = []; for (let k = 0; k < 300; k++) drains.push(a.makeOrder(fullB, Math.random, null).want);
       const stocked = a.cleanFarm({ done: 12, basket: { tomato: 3, chilli: 3, carrot: 3, corn: 3, strawberry: 3, eggplant: 3, pumpkin: 3, cucumber: 3, potato: 1 } });
       const fromStock = []; for (let k = 0; k < 300; k++) fromStock.push(a.makeOrder(stocked, Math.random, null).want);
       return {
@@ -81,7 +83,7 @@ h.run(ID, async (t) => {
         first: a.makeOrder(a.cleanFarm(null), Math.random, null),
         orders3: orders.map((o) => ({ who: o.who, want: o.want })),
         orders9: big.map((o) => o.want),
-        late, fromStock,
+        late, fromStock, drains,
         all: a.unlocks(12), decor: a.unlocks(30).decor.length,
         prizes: [a.unlocks(23).prizes, a.unlocks(49).prizes],
         gifts: [a.giftFor(0), a.giftFor(1), a.giftFor(2), a.giftFor(22), a.giftFor(31), a.giftFor(200)],
@@ -119,6 +121,10 @@ h.run(ID, async (t) => {
     }
     const withPotato = r.late.filter((w) => w.potato).length;
     assert.ok(withPotato < 250, `long after potatoes were new, not every visitor wants them (${withPotato}/300)`);
+    const FULL = ['tomato', 'chilli', 'strawberry', 'eggplant', 'cucumber'];
+    assert.ok(r.drains.every((w) => FULL.some((c) => w[c] === 3)), 'a basket of many kinds: the visitor takes a whole pile');
+    assert.ok(FULL.every((c) => r.drains.filter((w) => w[c]).length >= 20), 'and over time every pile gets used: ' + FULL.map((c) => c + ' ' + r.drains.filter((w) => w[c]).length));
+    assert.ok(r.drains.every((w) => Object.keys(w).some((c) => !FULL.includes(c) || w[c] > 3)), 'and still wants something grown');
     assert.ok(r.fromStock.every((w) => Object.keys(w).some((c) => w[c] > ({ tomato: 3, chilli: 3, carrot: 3, corn: 3, strawberry: 3, eggplant: 3, pumpkin: 3, cucumber: 3, potato: 1 })[c])), 'a visitor never wants only what is already in the basket');
     assert.strictEqual(r.all.crops.length, 9, 'twelve orders: all nine vegetables');
     assert.deepStrictEqual(r.all.helpers, { ladybird: true, bees: true, fountain: true });
@@ -144,7 +150,7 @@ h.run(ID, async (t) => {
   await tap(page, bed(0));
   assert.strictEqual((await farm(page)).plots[0].crop, 'tomato', 'a second seed does not go on top');
   await tap(page, tool('seed'));
-  assert.ok(await api(page, 'shelfOpen'), 'one tap on the seeds: the seed shelf');
+  assert.ok(await api(page, 'shelfOpen'), 'seeds already in hand: a tap on them opens the seed shelf');
   assert.strictEqual(await page.locator('.g-garden .gd-packet--pick').count(), 2);
   await tap(page, '.g-garden .gd-packet--pick[data-crop="chilli"]');
   assert.ok(!(await api(page, 'shelfOpen')));
@@ -243,9 +249,9 @@ h.run(ID, async (t) => {
   f = await farm(page);
   assert.deepStrictEqual([f.plots[0].crop, f.seed], ['chilli', 'tomato'], 'the chosen chilli goes in; then the tomato is in hand');
 
-  // --- following only the ghost hand, from a brand-new garden, fills the first order
-  await openGarden(page);
-  let steps = 0;
+  // --- following only the ghost hand, from a brand-new garden (bugs on), fills the first order without detours
+  await openGarden(page, { bugs: 'some' });
+  let steps = 0, shelves = 0, wasOpen = false;
   for (; steps < 260 && (await api(page, 'state')) === 'play'; steps++) {
     const did = await page.evaluate((id) => {
       const a = MG.current.api;
@@ -253,6 +259,7 @@ h.run(ID, async (t) => {
       a.hintNext();
       const n = a.hinted;
       if (!n) { a.grow(1); return 'grow'; }
+      if (n.closest('.gd-shelf') === null && document.querySelector('.g-garden .gd-shelf').hidden === false) return 'shelf-hint-through';
       const r = n.getBoundingClientRect();
       const o = { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
       n.dispatchEvent(new PointerEvent('pointerdown', o));
@@ -260,10 +267,28 @@ h.run(ID, async (t) => {
       a.grow(0.4);
       return 'tap';
     }, ++pid);
+    assert.notStrictEqual(did, 'shelf-hint-through', 'the hand never points through the open shelf');
+    const open = await api(page, 'shelfOpen');
+    if (open && !wasOpen) shelves++;
+    wasOpen = open;
     await page.waitForTimeout(did === 'wait' ? 200 : 20);
   }
   assert.ok(['gift', 'over'].includes(await api(page, 'state')) || (await farm(page)).done === 1, `the ghost hand alone leads to a filled order (${steps} steps)`);
+  assert.ok(shelves <= 1, `without sending the child back to the seed shelf again and again (${shelves})`);
   await page.waitForTimeout(3500);
+
+  // --- the hand never points through the open shelf, and never stays on a job already done
+  await openGarden(page);
+  await setFarm(page, { done: 4, seed: 'tomato', rainIn: 110, order: { who: '🐷', want: { carrot: 1 }, got: {} }, plots: [P('tomato', 2, { t: 0.1 }), P('chilli', 2, { t: 0.1 }), P('tomato', 2, { t: 0.1 }), P('carrot', 4, { fruits: 2 })] });
+  await tap(page, tool('water')); await tap(page, tool('seed')); await tap(page, tool('seed'));
+  assert.ok(await api(page, 'shelfOpen'));
+  const pointed = await page.evaluate(() => { const a = MG.current.api; a.hintNext(); return { bed: a.hinted && a.hinted.dataset.i, open: a.shelfOpen }; });
+  assert.deepStrictEqual(pointed, { bed: '3', open: false }, 'the hand goes to the ripe carrot, and the shelf is put away first');
+  await setFarm(page, { done: 0, rainIn: 110, order: { who: '🐰', want: { tomato: 1, chilli: 1 }, got: {} }, plots: [P('tomato', 1, { water: 0 }), P('chilli', 1), null, null] });
+  await page.evaluate(() => MG.current.api.hintNext());
+  assert.strictEqual(await page.locator('.mg-hint').count(), 1, 'a dry plant: the hand shows the water');
+  await page.evaluate(() => MG.current.api.rain());
+  assert.strictEqual(await page.locator('.mg-hint').count(), 0, 'rain did the job: the hand goes away');
 
   // --- never punished: a dry plant, a bug, the wrong sack — all only wait or give a little less
   await openGarden(page);
@@ -344,6 +369,8 @@ h.run(ID, async (t) => {
       assert.deepStrictEqual(clash, [], `nothing overlaps (helpers and decorations included) ${label}`);
       assert.deepStrictEqual(await escapes(p, '.g-garden .gd-need', '.gd-plot', 1), [], `need bubbles stay inside their beds ${label}`);
       assert.deepStrictEqual(await escapes(p, '.g-garden .gd-pile', '.gd-basket', 0), [], `every pile shows inside the basket ${label}`);
+      const pileSize = await p.evaluate(() => Math.min(...[...document.querySelectorAll('.g-garden .gd-pile .mg-sticker')].map((n) => n.getBoundingClientRect().height)));
+      assert.ok(pileSize >= (vp === 'small' ? 12 : 16), `basket vegetables big enough to see ${label}: ${Math.round(pileSize)}px`);
       if (done > 12) {
         const strip = await p.evaluate(() => {
           const s = document.querySelector('.g-garden .gd-garden').dataset.strip;
@@ -356,7 +383,9 @@ h.run(ID, async (t) => {
     }
     // the seed shelf: in view, big packets, the tools still visible, medals on the packets that won them
     await tap(p, tool('water')); await tap(p, tool('seed'));
-    assert.ok(await api(p, 'shelfOpen'));
+    assert.ok(!(await api(p, 'shelfOpen')) && (await api(p, 'tool')) === 'seed', 'the first tap picks the seeds up');
+    await tap(p, tool('seed'));
+    assert.ok(await api(p, 'shelfOpen'), 'a second opens the shelf');
     await p.waitForTimeout(300);                                    // (it pops in)
     assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-garden .gd-packet--pick'), [], `seed shelf in view @${vp}`);
     assert.ok((await t.minTargetSize(p, '.g-garden .gd-packet--pick')).min >= 64, `big packets @${vp}`);

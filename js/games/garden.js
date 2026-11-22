@@ -154,8 +154,10 @@
 
   /**
    * A new visitor's wish list: a little bigger as the garden grows. A newly
-   * earned seed is wanted in the next two orders; otherwise the visitor prefers
-   * what the basket is short of, and never wants only what is already in it.
+   * earned seed is wanted in the next two orders. Once the basket holds four or
+   * more kinds, the visitor takes a whole pile of what it has most of (so the
+   * basket empties again); otherwise they lean a little towards what the
+   * basket is short of. They never want only what is already in it.
    */
   function makeOrder(farm, rnd, prevWho) {
     var done = farm.done, crops = farm.crops, have = farm.basket || {};
@@ -166,24 +168,33 @@
     var newest = crops[crops.length - 1], gi = -1;
     GIFTS.forEach(function (g, k) { if (g.kind === 'crop' && g.id === newest) gi = k; });
     var fresh = gi >= 0 && done - (gi + 1) < 2;
-    var rest = crops.filter(function (c) { return !(fresh && c === newest); })
-      .map(function (c) { return { c: c, k: rnd() }; })
-      .sort(function (a, b) { return stock(a.c) - stock(b.c) || a.k - b.k; })
+    var chosen = fresh ? [newest] : [], drain = null;
+    var inBasket = crops.filter(function (c) { return stock(c) > 0; });
+    if (inBasket.length >= 4 && chosen.length < kinds) {
+      var top = Math.max.apply(null, inBasket.map(stock));
+      var full = inBasket.filter(function (c) { return stock(c) === top && chosen.indexOf(c) < 0; });
+      if (full.length) { drain = full[Math.floor(rnd() * full.length)]; chosen.push(drain); }
+    }
+    var rest = crops.filter(function (c) { return chosen.indexOf(c) < 0; })
+      .map(function (c) { return { c: c, k: rnd() + 0.15 * stock(c) }; })
+      .sort(function (a, b) { return a.k - b.k; })
       .map(function (x) { return x.c; });
-    var chosen = (fresh ? [newest] : []).concat(rest).slice(0, kinds), want = {};
-    chosen.forEach(function (c) { want[c] = 1; });
-    var left = total - kinds;
-    for (var guard = 0; left > 0 && guard < 50; guard++) {
-      var c2 = chosen[Math.floor(rnd() * chosen.length)];
+    chosen = chosen.concat(rest).slice(0, kinds);
+    var want = {};
+    chosen.forEach(function (c) { want[c] = c === drain ? Math.min(3, stock(c)) : 1; });
+    var left = total - chosen.reduce(function (s, c) { return s + want[c]; }, 0);
+    var grow = chosen.filter(function (c) { return c !== drain; });
+    for (var guard = 0; left > 0 && grow.length && guard < 50; guard++) {
+      var c2 = grow[Math.floor(rnd() * grow.length)];
       if (want[c2] < 3) { want[c2]++; left--; }
     }
     // something always has to be grown
     if (chosen.every(function (c) { return stock(c) >= want[c]; })) {
-      var low = chosen.slice().sort(function (a, b) { return stock(a) - stock(b); })[0];
-      if (stock(low) < 3) want[low] = Math.min(3, stock(low) + 1);
+      var low = grow.slice().sort(function (a, b) { return stock(a) - stock(b); })[0];   // (the whole pile stays wanted)
+      if (low && stock(low) < 3) want[low] = Math.min(3, stock(low) + 1);
       else {
         var other = crops.filter(function (c) { return !want[c] && stock(c) < 3; }).sort(function (a, b) { return stock(a) - stock(b); })[0];
-        if (other) { delete want[low]; want[other] = stock(other) + 1; }
+        if (other) { if (low) delete want[low]; want[other] = stock(other) + 1; }
       }
     }
     var whoPool = VISITORS.filter(function (v) { return v !== prevWho; });
@@ -231,7 +242,7 @@
       var tutorBug = false;               // the first rounds bring one bug early, to show the spray
       var raining = 0, nextRain = farm.rainIn != null ? farm.rainIn : util.randf(25, 60);
       var bugClock = 0, ladyClock = 0, fountainClock = 0, saveClock = 0;
-      var lastTap = 0, lastHinted = null, lastCheer = -1, cheers = 0;
+      var lastTap = 0, lastHinted = null, lastCheer = -1, cheers = 0, tapped = false;
       var gateSz = 110;
 
       /* ---- build ---- */
@@ -410,16 +421,31 @@
         basketBtn.classList.toggle('is-empty', !kinds.length);
         visitBtn.classList.toggle('is-ready', canDeliver());
         if (!kinds.length) return;
-        // as many piles as there are kinds, all of them inside the basket
-        var n = kinds.length, cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols);
-        basketItems.style.gridTemplateColumns = 'repeat(' + cols + ', auto)';
-        var bw = basketItems.clientWidth, bh = basketItems.clientHeight;
+        // every pile inside the basket, as big as the basket's shape allows: piles of three side by side,
+        // or (when that comes out much bigger) stacked up; and however many columns suit best
+        var n = kinds.length, bw = basketItems.clientWidth, bh = basketItems.clientHeight;
         if (!bw || !bh) return;
-        var fs = Math.floor(Math.min(bw / (cols * 2.2), bh / (rows * 1.25), gateSz * 0.22));
-        for (var tries = 0; tries < 8; tries++) {
+        var cap = Math.floor(gateSz * 0.22);
+        var layout = function (stacked) {
+          basketItems.classList.toggle('is-stacked', stacked);
+          basketItems.style.gridTemplateColumns = 'repeat(' + n + ', auto)';
+          basketItems.style.fontSize = '100px';
+          var pw = 1, ph = 1, best = null;
+          basketItems.childNodes.forEach(function (p) { pw = Math.max(pw, p.offsetWidth); ph = Math.max(ph, p.offsetHeight); });
+          for (var cols = 1; cols <= Math.min(n, 5); cols++) {
+            var rows = Math.ceil(n / cols);
+            var fs = Math.floor(Math.min(cap, bw / (cols * pw / 100 + (cols - 1) * 0.3), bh / (rows * ph / 100 + (rows - 1) * 0.12)));
+            if (!best || fs > best.fs) best = { fs: fs, cols: cols, stacked: stacked };
+          }
+          return best;
+        };
+        var row = layout(false), stack = layout(true);
+        var pick = stack.fs > row.fs * 1.15 ? stack : row;
+        basketItems.classList.toggle('is-stacked', pick.stacked);
+        basketItems.style.gridTemplateColumns = 'repeat(' + pick.cols + ', auto)';
+        for (var fs = Math.max(6, pick.fs); ; fs--) {
           basketItems.style.fontSize = fs + 'px';
-          if (basketItems.scrollWidth <= bw + 1 && basketItems.scrollHeight <= bh + 1) break;
-          fs = Math.max(6, Math.floor(fs * 0.88));
+          if (fs <= 6 || (basketItems.scrollWidth <= bw + 1 && basketItems.scrollHeight <= bh + 1)) break;
         }
       }
 
@@ -501,7 +527,12 @@
 
       /* ---- the ghost hand ---- */
 
-      function hint(node, o) { lastHinted = node || null; ctx.hint(node || null, o); }
+      /** The ghost hand. It never points through the open seed shelf: pointing anywhere else puts the shelf away. */
+      function hint(node, o) {
+        if (node && !shelf.hidden && !shelf.contains(node)) closeShelf();
+        lastHinted = node || null;
+        ctx.hint(node || null, o);
+      }
 
       /** A crop the visitor still needs that nothing is growing: the seed to have in hand. */
       function neededSeed() {
@@ -528,13 +559,10 @@
       function pickTool(t) {
         if (state !== 'play') return;
         if (t === 'seed' && farm.crops.length > 1) {
-          // seeds: the shelf opens to choose which; tapping seeds again puts it away
+          // seeds: the first tap picks up the packet shown (usually the one the visitor needs);
+          // another tap opens the shelf to choose a different kind, and one more puts it away
           if (!shelf.hidden) { closeShelf(); sfx.play('tap'); return; }
-          tool = 'seed';
-          renderTools();
-          openShelf();
-          fx.pop(toolEls.seed);
-          return;
+          if (tool === 'seed') { openShelf(); fx.pop(toolEls.seed); return; }
         }
         closeShelf();
         tool = t;
@@ -843,7 +871,8 @@
             farm.plots[ti].bug = BUGS[0];
             changed = true;
             sfx.play('pop', { pitch: 300 });
-            if (help) hint(tool === 'spray' ? plotEls[ti] : toolEls.spray, { delay: 500 });
+            // (not while a planting is under way: the hand shows the spray once that seed is in)
+            if (help && shelf.hidden && !plantingInHand()) hint(tool === 'spray' ? plotEls[ti] : toolEls.spray, { delay: 500 });
           }
         }
         // bugs come by now and then (never more than two at once)
@@ -871,6 +900,7 @@
           if (fountainClock >= 15) {
             fountainClock = 0;
             farm.plots.forEach(function (p) { if (p.crop && p.stage < 4 && p.water < MAX_WATER) { p.water++; p.dry = 0; p.thirst = 0; changed = true; } });
+            if (changed && lastHinted) hintNext();     // the hand moves on from a job the fountain has done
           }
         }
         // rain: the countdown carries over between rounds, so it comes every minute or two of play
@@ -892,6 +922,7 @@
         sfx.noise({ freq: 1200, to: 600, dur: 2.5, q: 0.4, gain: 0.05 });
         farm.plots.forEach(function (p) { p.water = MAX_WATER; p.dry = 0; p.thirst = 0; });
         after();
+        if (lastHinted) hintNext();                   // the hand moves on from a job the rain has done
       }
 
       function ladybirdTo(i) {
@@ -904,9 +935,16 @@
           if (lb.animate) lb.animate([{ transform: 'translate(0, 0)' }, { transform: 'translate(' + (c.x - from.x) + 'px, ' + (c.y - from.y) + 'px) scale(1.3)', offset: 0.5 }, { transform: 'translate(0, 0)' }], { duration: 1200, easing: 'ease-in-out' });
         }
         sfx.play('munch');
+        if (lastHinted) hintNext();                   // the hand moves on from a bug the ladybird has eaten
       }
 
       /* ---- the ghost hand: what to do next, always heading for the visitor's wish ---- */
+
+      /** Seeds the visitor needs are in hand and a bed is free: one tap finishes the planting. */
+      function plantingInHand() {
+        var need = neededSeed();
+        return tool === 'seed' && !!need && farm.seed === need && farm.plots.some(function (p) { return !p.crop; });
+      }
 
       function hintNext() {
         lastHinted = null;
@@ -914,24 +952,24 @@
         if (canDeliver()) { hint(visitBtn); return; }
         var ps = farm.plots, find = function (f) { for (var i = 0; i < ps.length; i++) if (f(ps[i])) return i; return -1; };
         var ripe = function (p) { return p.crop && p.stage === 4; };
+        var need = neededSeed(), empty = find(function (p) { return !p.crop; }), planting = !!need && empty >= 0;
         var i;
+        if (planting && !shelf.hidden) { hint(shelf.querySelector('[data-crop="' + need + '"]')); return; }   // choosing: that one
         if ((i = find(function (p) { return ripe(p) && stillWanted(p.crop) > 0; })) >= 0) { hint(plotEls[i]); return; }
+        if (planting && tool === 'seed' && farm.seed === need) { hint(plotEls[empty]); return; }           // finish the planting in hand
         if ((i = find(function (p) { return p.bug; })) >= 0) { hint(tool === 'spray' ? plotEls[i] : toolEls.spray); return; }
         if ((i = find(function (p) { return p.crop && p.stage < 4 && p.water === 0; })) >= 0) { hint(tool === 'water' ? plotEls[i] : toolEls.water); return; }
         if ((i = find(isHungry)) >= 0) { hint(toolEls[CROPS[ps[i].crop].likes]); return; }
-        var need = neededSeed();
-        if (need && (i = find(function (p) { return !p.crop; })) >= 0) {
-          if (!shelf.hidden) { hint(shelf.querySelector('[data-crop="' + need + '"]')); return; }
-          hint(farm.seed !== need || tool !== 'seed' ? toolEls.seed : plotEls[i]);
-          return;
-        }
+        if (planting) { hint(toolEls.seed); return; }   // pick up seeds (another tap opens the shelf when a different kind is needed)
         if ((i = find(ripe)) >= 0) { hint(plotEls[i]); return; }   // room for new seeds, more in the basket
+        hint(null);                                                 // nothing to do: no hand left on a job already done
       }
 
       /* ---- input ---- */
 
       /** A tap counts as activity; a tap on what the hand showed brings the next step sooner. */
       function counted(node) {
+        tapped = true;
         lastTap = node && node === lastHinted ? ctx.time - IDLE_S + 1.5 : ctx.time;
         lastHinted = null;
       }
@@ -967,7 +1005,7 @@
       ctx.every(200, function () { tick(0.2); });
       fx.bounce(visitBtn);
       sfx.play('start');
-      ctx.after(700, hintNext);
+      ctx.after(700, function () { if (!tapped) hintNext(); });   // where to start (unless someone already has)
       save();
 
       ctx.expose({
