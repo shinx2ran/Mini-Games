@@ -119,6 +119,41 @@ h.run(ID, async (t) => {
   assert.ok(bag.gems >= g0 + 3, 'three gems from the chest');
   assert.strictEqual((await api(page, 'tiles'))[chest2].what, 'opened');
 
+  // --- a gem the crab hid on a chest's square is picked up AND the chest still opens (with the other key)
+  let stashed = 0;
+  {
+    me = await api(page, 'turn');
+    const keyK2 = await findTile(page, 'key');
+    const chest3 = await findTile(page, 'chest');
+    if (keyK2 && chest3) {
+      [bx, by] = besideOf(keyK2);
+      await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
+      await rollDie(page, 1);
+      await goTo(page, keyK2);
+      await state(page, 'roll');
+      await rollDie(page, 1);                                         // (the other player's turn passes)
+      await goTo(page, (await api(page, 'reach'))[0]);
+      await state(page, 'roll');
+      await page.evaluate((k) => MG.current.api.stash(k), chest3);
+      stashed++;
+      assert.strictEqual(await page.locator(`.g-island .il-sq[data-k="${chest3}"] .il-hidden-gem`).count(), 0, '(still under its cloud)');
+      [bx, by] = besideOf(chest3);
+      await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
+      const g1 = (await api(page, 'bags'))[me].gems;
+      await rollDie(page, 1);
+      await goTo(page, chest3);
+      await state(page, 'roll');
+      assert.strictEqual((await api(page, 'bags'))[me].gems, g1 + 1 + 3, 'the hidden gem and the chest\'s three');
+      assert.strictEqual((await api(page, 'tiles'))[chest3].what, 'opened');
+    }
+  }
+  // --- once rolled, the die rests (it does not wobble "tap me", and tapping it leaves the ghost hand alone)
+  me = await api(page, 'turn');
+  await rollDie(page, 2);
+  assert.strictEqual(await page.locator(`.g-island .il-die[data-p="${me}"]`).getAttribute('aria-disabled'), 'true');
+  await goTo(page, (await api(page, 'reach'))[0]);
+  await state(page, 'roll');
+
   // --- the parrot flies you somewhere new
   me = await api(page, 'turn');
   const parrot = await findTile(page, 'parrot');
@@ -164,10 +199,34 @@ h.run(ID, async (t) => {
   assert.strictEqual(await api(page, 'state'), 'done');
   assert.strictEqual(await api(page, 'left'), 0);
   const bags = await api(page, 'bags');
-  assert.strictEqual(bags[0].gems + bags[1].gems, 14, 'all 14 gems found, none lost, none doubled');
+  assert.strictEqual(bags[0].gems + bags[1].gems, 14 + stashed, 'all 14 gems found (and the one the test hid), none lost, none doubled');
   await t.waitForWin(page, 15000);
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), bags[0].gems === bags[1].gems ? 'tie' : bags[0].gems > bags[1].gems ? '0' : '1');
   assert.strictEqual(await page.locator('.g-island .il-sq:not(.is-open)').count(), 0, 'at the end the whole island shows');
+
+  // --- a family game (a little player tapping any glowing square, a grown-up playing well) never drags on:
+  //     once only shut chests are left, their locks rust off and whoever gets there first opens one
+  for (let g = 0; g < 3; g++) {
+    page = await t.open(ID);
+    await state(page, 'roll');
+    const turns = await page.evaluate(() => new Promise((resolve) => {
+      MG.timeScale = 16;
+      let n = 0, rusted = -1;
+      const fire = (el) => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: Math.random() * 1e6 | 0, pointerType: 'touch' }));
+      MG.current.ctx.frame(function () {
+        const a = MG.current.api, ctx = MG.current.ctx;
+        if (a.rusty && rusted < 0) rusted = n;
+        if (a.state === 'done' || n > 200) { resolve({ n, rusted, done: a.state === 'done' }); return; }
+        if (ctx.locked) return;
+        if (a.state === 'roll') { n++; fire(document.querySelector('.g-island .il-die[data-p="' + a.turn + '"]')); }
+        else if (a.state === 'choose') {
+          const little = ctx.players[a.turn].little, r = a.reach;
+          fire(document.querySelector('.g-island .il-sq[data-k="' + (little ? r[Math.floor(Math.random() * r.length)] : a.best()) + '"]'));
+        }
+      });
+    }));
+    assert.ok(turns.done && turns.n <= 90, `a family game ends in good time (${turns.n} turns${turns.rusted >= 0 ? ', locks rusted at ' + turns.rusted : ''})`);
+  }
 
   // --- a little player's footprints die rolls big at help Lots
   page = await t.open(null, { page: 'tests/play.html?g=island' });

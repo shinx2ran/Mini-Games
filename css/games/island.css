@@ -118,6 +118,9 @@
 }
 .g-island .il-chest.is-open .il-chest__lid { transform: rotate(-38deg); }
 .g-island .il-chest.is-open .il-chest__lock { display: none; }
+/* the lock rusted off: anyone can open it now */
+.g-island .il-chest.is-unlocked .il-chest__lock { background: #A0613A; transform: rotate(35deg) translate(20%, 30%); }
+.g-island .il-hidden-gem { position: absolute; right: -18%; top: -22%; z-index: 4; font-size: 0.55em; }
 
 /* the explorers */
 .g-island .il-walker {

@@ -105,6 +105,7 @@
       var rigged = [];
       var cancelHesitate = null;
       var hinted = false;
+      var rusty = false;          // only shut chests left: their locks rust off and anyone can open them
 
       /* ---- build ---- */
 
@@ -148,21 +149,23 @@
 
       /* ---- drawing ---- */
 
-      function chest(open) {
-        return el('span', { class: 'il-chest' + (open ? ' is-open' : '') }, el('span', { class: 'il-chest__lid' }), el('span', { class: 'il-chest__box' }, el('span', { class: 'il-chest__lock' })));
+      function chest(open, unlocked) {
+        return el('span', { class: 'il-chest' + (open ? ' is-open' : '') + (unlocked ? ' is-unlocked' : '') }, el('span', { class: 'il-chest__lid' }), el('span', { class: 'il-chest__box' }, el('span', { class: 'il-chest__lock' })));
       }
       function drawSquare(k) {
         var t = tiles[k], s = squares[k];
         s.node.classList.toggle('is-open', t.open);
         s.thing.textContent = '';
         if (!t.open) return;
-        if (t.what === 'chest') s.thing.appendChild(chest(false));
+        if (t.what === 'chest') s.thing.appendChild(chest(false, rusty));
         else if (t.what === 'opened') s.thing.appendChild(chest(true));
-        else if (t.what === 'gem' || t.gems) s.thing.appendChild(ctx.sticker('💎'));
+        else if (t.what === 'gem') s.thing.appendChild(ctx.sticker('💎'));
         else if (t.what === 'key') s.thing.appendChild(ctx.sticker('🔑'));
         else if (t.what === 'parrot') s.thing.appendChild(ctx.sticker('🦜'));
         else if (t.what === 'crab') s.thing.appendChild(ctx.sticker('🦀'));
         else s.thing.appendChild(ctx.sticker(t.deco || '🌴', 'il-deco'));
+        // a gem the crab hid shows in the corner, whatever else is on the square (and even with someone standing on it)
+        if (t.gems && t.what !== 'gem') s.thing.appendChild(ctx.sticker('💎', 'il-hidden-gem'));
       }
       function placeWalker(i) {
         var share = pos[0].x === pos[1].x && pos[0].y === pos[1].y;
@@ -220,6 +223,7 @@
         state = 'rolling';
         ctx.lock(700);
         var die = seats[turn].die;
+        die.setAttribute('aria-disabled', 'true'); // rolled: it rests until this player's next turn
         die.classList.add('is-rolling');
         sfx.play('roll');
         var flick = ctx.every(90, function () { showFace(turn, 1 + util.rand(3)); });
@@ -249,7 +253,7 @@
             if (!t.open) score += 1;
             else if (t.what === 'gem' || t.gems) score += 4;
             else if (t.what === 'key') score += 3;
-            else if (t.what === 'chest' && bags[turn].keys) score += 8;
+            else if (t.what === 'chest' && (bags[turn].keys || rusty)) score += 8;
           });
           var end = tiles[k];
           if (end.open && end.what === 'crab') score -= 3;
@@ -265,7 +269,7 @@
         var chestsShut = Object.keys(tiles).some(function (q) { return tiles[q].what === 'chest'; });
         var best2 = 99;
         Object.keys(tiles).forEach(function (q) {
-          var t = tiles[q], worth = !t.open || t.what === 'gem' || t.gems || (t.what === 'key' && chestsShut) || (t.what === 'chest' && bags[turn].keys);
+          var t = tiles[q], worth = !t.open || t.what === 'gem' || t.gems || (t.what === 'key' && chestsShut && !rusty) || (t.what === 'chest' && (bags[turn].keys || rusty));
           if (!worth) return;
           var p = q.split(',').map(Number), d = Math.abs(p[0] - at.x) + Math.abs(p[1] - at.y);
           if (d < best2) best2 = d;
@@ -312,11 +316,16 @@
 
       function pickUp(i, k) {
         var t = tiles[k], c = fx.centerOf(squares[k].node);
-        if (t.what === 'gem' || t.gems) {
-          var n = (t.what === 'gem' ? 1 : 0) + t.gems;
-          if (t.what === 'gem') t.what = null;
+        // a gem the crab hid here is picked up as well as whatever the square holds
+        if (t.gems) {
+          bags[i].gems += t.gems;
           t.gems = 0;
-          bags[i].gems += n;
+          sfx.play('ding');
+          fx.burst(c.x, c.y, { emoji: '💎', count: 5, distance: 50, size: 18 });
+        }
+        if (t.what === 'gem') {
+          t.what = null;
+          bags[i].gems += 1;
           sfx.play('ding');
           fx.burst(c.x, c.y, { emoji: '💎', count: 5, distance: 50, size: 18 });
         } else if (t.what === 'key') {
@@ -324,9 +333,9 @@
           bags[i].keys++;
           jingle();
           fx.burst(c.x, c.y, { emoji: '✨', count: 5, distance: 40, size: 16 });
-        } else if (t.what === 'chest' && bags[i].keys) {
+        } else if (t.what === 'chest' && (bags[i].keys || rusty)) {
           t.what = 'opened';
-          bags[i].keys--;
+          if (bags[i].keys) bags[i].keys--;
           bags[i].gems += CHEST_GEMS;
           sfx.play('match');
           fx.burst(c.x, c.y, { emoji: '💎', count: 10, distance: 80, size: 22 });
@@ -390,7 +399,20 @@
       function end(i) {
         if (state === 'done') return;
         if (!treasureLeft(tiles)) { finish(); return; }
+        // Only shut chests left (every gem found, every cloud gone or not)? Then their locks rust right off:
+        // whoever gets there first opens one. Nobody is left with nothing to do for turn after turn.
+        if (!rusty && onlyChestsLeft()) {
+          rusty = true;
+          Object.keys(tiles).forEach(function (q) { if (tiles[q].what === 'chest') { squares[q].node.classList.add('is-rusty'); drawSquare(q); } });
+          sfx.tone({ freq: 300, to: 120, dur: 0.4, type: 'triangle', gain: 0.14 });
+          sfx.play('pop', { pitch: 300 });
+        }
         ctx.after(250, function () { if (state !== 'done') setTurn(1 - i); });
+      }
+
+      function onlyChestsLeft() {
+        return Object.keys(tiles).every(function (q) { var t = tiles[q]; return t.what !== 'gem' && !t.gems; }) &&
+          Object.keys(tiles).some(function (q) { return tiles[q].what === 'chest'; });
       }
 
       function finish() {
@@ -429,9 +451,12 @@
         get tiles() { return JSON.parse(JSON.stringify(tiles)); },
         get reach() { return Object.keys(reach); },
         get left() { return treasureLeft(tiles); },
+        get rusty() { return rusty; },
         best: function () { return bestSquare(); },
         /** Tests only: the next footprint rolls. */
         rig: function (v) { rigged = v.slice(); },
+        /** Tests only: hide a gem on square k, as the crab would. */
+        stash: function (k) { tiles[k].gems++; drawSquare(k); },
         /** Tests only: stand explorer i on (x, y) without walking. */
         place: function (i, x, y) { pos[i] = { x: x, y: y }; placeWalker(0); placeWalker(1); },
         SIZE: SIZE, GEMS: GEMS, CHEST_GEMS: CHEST_GEMS,

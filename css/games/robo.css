@@ -53,20 +53,21 @@
 .g-robo .rb-steps { position: absolute; inset: 0; pointer-events: none; }
 .g-robo .rb-step {
   position: absolute;
-  z-index: 1;
+  z-index: 3; /* over the robot, so a step that stays on its square still shows */
   display: flex;
   gap: 3px;
   padding: 4px 6px;
   border-radius: 999px;
   background: var(--c, var(--surface));
-  transform: translate(-50%, -50%) translateY(calc(var(--sq) * 0.3));
+  transform: translate(-50%, -50%) translateY(calc(var(--sq) * 0.36));
   box-shadow: 0 0 0 2px var(--line);
 }
-.g-robo .rb-step.is-bonk { background: var(--surface-2); }
+/* a move that will bonk: a jagged white burst instead of a smooth pill */
+.g-robo .rb-step.is-bonk { background: #FFFFFF; border-radius: 3px; transform: translate(-50%, -50%) translateY(calc(var(--sq) * 0.36)) rotate(-8deg); box-shadow: 0 0 0 2px var(--line), 3px 3px 0 0 var(--berry); }
 .g-robo .rb-dot { width: calc(var(--sq) * 0.1); height: calc(var(--sq) * 0.1); border-radius: 50%; background: #2A2356; }
 .g-robo .rb-ghost {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
   width: calc(var(--sq) * 0.78);
   height: calc(var(--sq) * 0.78);
   border: 3px dashed var(--line);
@@ -155,6 +156,9 @@
   --c: var(--surface);
 }
 .g-robo[data-orient="landscape"] .rb-controls { justify-content: center; }
+/* on its side the plan goes over two lines (the slots, then take-back and go), so the field gets the width */
+.g-robo[data-orient="landscape"] .rb-plan { flex-wrap: wrap; justify-content: center; max-width: calc(var(--key) * 3 + 12px); }
+.g-robo[data-orient="landscape"] .rb-slots { order: -1; }
 .g-robo .rb-plan { display: flex; align-items: center; gap: 8px; }
 .g-robo .rb-slots {
   display: flex;

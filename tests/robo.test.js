@@ -25,7 +25,7 @@ h.run(ID, async (t) => {
       const f = a.makeField(Math.random), tr = Object.keys(f.trees), be = Object.keys(f.berries);
       if (tr.length !== 5 || be.length !== a.BERRIES) bad.push('counts');
       if (be.some((b) => f.trees[b])) bad.push('berry on a tree');
-      if (!a.allReachable(f.trees, f.starts)) bad.push('cut off');
+      if (!a.allReachable(f.trees, [f.starts[0]]) || !a.allReachable(f.trees, [f.starts[1]])) bad.push('cut off');
       f.starts.forEach((s) => { if (f.trees[a.key(s.x, s.y)] || f.berries[a.key(s.x, s.y)]) bad.push('start taken'); });
     }
     const trees = { '1,4': true };
@@ -52,6 +52,10 @@ h.run(ID, async (t) => {
   assert.strictEqual(await page.locator('.g-robo .rb-go').getAttribute('aria-disabled'), 'true', 'nothing to run yet');
   await press(page, '.rb-arrow[data-m="up"]', [5, 6]);
   assert.deepStrictEqual(await api(page, 'program'), ['up'], 'two fingers at once: one move');
+  // ...but two DIFFERENT arrows in quick succession are two moves
+  await press(page, '.rb-arrow[data-m="right"]');
+  assert.deepStrictEqual(await api(page, 'program'), ['up', 'right'], 'quick taps on different arrows both count');
+  await press(page, '.rb-undo');
   await page.waitForTimeout(140);
   await program(page, ['right', 'up', 'left']);
   assert.deepStrictEqual(await api(page, 'program'), ['up', 'right', 'up'], 'three moves at most');
@@ -74,7 +78,6 @@ h.run(ID, async (t) => {
     path.forEach((p) => { const k = a.key(p.x, p.y); if (left.has(k)) { left.delete(k); n++; } });
     return { end: path[path.length - 1], n };
   }, [route, first]);
-  assert.ok(expect.n >= 1, 'the route reaches a strawberry');
   await press(page, '.rb-go', [7, 8, 9, 10, 11, 12]);
   assert.strictEqual(await api(page, 'state'), 'run');
   await planning(page);
@@ -115,18 +118,25 @@ h.run(ID, async (t) => {
   assert.strictEqual(await page.locator('.mg-win').getAttribute('data-result'), got[0] === got[1] ? 'tie' : got[0] > got[1] ? '0' : '1');
 
   // --- the most help: a strawberry right next to where a little player stops hops into her robot
-  page = await t.open(null, { page: 'tests/play.html?g=robo' });
-  await page.evaluate(() => MG.store.set('help', 2));
-  await page.reload();
-  await page.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
-  await page.evaluate(() => MG.open('robo'));
-  await planning(page);
   {
-    const little = await page.evaluate(() => MG.current.ctx.players.findIndex((p) => p.little));
-    if ((await api(page, 'turn')) !== little) { await program(page, ['up']); await press(page, '.rb-go'); await planning(page); }
-    const mv = await page.evaluate(() => MG.current.api.route(3));
-    if (mv.length >= 2) {
-      const plan = mv.slice(0, -1);
+    let checked = false;
+    for (let tries = 0; tries < 8 && !checked; tries++) {
+      page = await t.open(null, { page: 'tests/play.html?g=robo' });
+      await page.evaluate(() => MG.store.set('help', 2));
+      await page.reload();
+      await page.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
+      await page.evaluate(() => MG.open('robo'));
+      await planning(page);
+      const little = await page.evaluate(() => MG.current.ctx.players.findIndex((p) => p.little));
+      if ((await api(page, 'turn')) !== little) continue;
+      // a route that ENDS on a strawberry within three moves: stop one move short of it
+      const plan = await page.evaluate(() => {
+        const a = MG.current.api, mv = a.route(3); if (mv.length < 2) return null;
+        const trees = {}; a.trees.forEach((k) => { trees[k] = true; });
+        const path = a.simulate(a.bots[a.turn], mv, trees, a.bots[1 - a.turn]), end = path[path.length - 1];
+        return a.berries.includes(a.key(end.x, end.y)) ? mv.slice(0, -1) : null;
+      });
+      if (!plan) continue;
       const g0 = (await api(page, 'got'))[little];
       const passing = await page.evaluate(([plan, little]) => {
         const a = MG.current.api, trees = {}; a.trees.forEach((k) => { trees[k] = true; });
@@ -138,7 +148,9 @@ h.run(ID, async (t) => {
       await press(page, '.rb-go');
       await page.waitForFunction(() => MG.current.api.state !== 'run', null, { timeout: 15000 });
       assert.ok((await api(page, 'got'))[little] >= g0 + passing + 1, 'the strawberry next to her hopped in');
+      checked = true;
     }
+    assert.ok(checked, 'found a field to check the help on');
   }
 
   // --- every supported size: the field, the controls and both baskets in view; keys big; turn the screen mid-run

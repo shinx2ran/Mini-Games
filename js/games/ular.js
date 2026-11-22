@@ -342,6 +342,8 @@
           var c = fx.centerOf(tokens[me]);
           fx.burst(c.x, c.y, { emoji: '⭐', count: 8, distance: 70, size: 22 });
           ctx.after(500, function () { if (state !== 'done') { state = 'roll'; dice[me].btn.classList.add('is-again'); ctx.after(600, function () { dice[me].btn.classList.remove('is-again'); }); } });
+        } else if (w.kind === 'gift' && depth >= 3) {
+          next(); // (enough gifts in a row: this one stays shut)
         } else if (w.kind === 'gift') {
           state = 'gift';
           var extra = 1 + util.rand(3);
@@ -351,7 +353,7 @@
           fx.float(g.x, g.y - 20, extra === 1 ? '👣' : extra === 2 ? '👣👣' : '👣👣👣', { size: 26, duration: 1000 });
           ctx.after(700, function () {
             if (state === 'done') return;
-            walk(hops(pos[me], extra, N, exact), 0, function () { if (depth < 3) land(depth + 1); else next(); });
+            walk(hops(pos[me], extra, N, exact), 0, function () { land(depth + 1); });
           });
         } else next();
       }

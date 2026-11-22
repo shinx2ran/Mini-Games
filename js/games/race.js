@@ -141,7 +141,7 @@
     var best = null;
     GRID_COLUMNS.forEach(function (cols) {
       var rows = Math.ceil(NODE_COUNT / cols);
-      var unit = Math.min(zone.w / cols * 0.98, zone.h / (rows * ROW_PITCH + HEADROOM), 150);
+      var unit = Math.min(zone.w / cols * 0.94, zone.h / (rows * ROW_PITCH + HEADROOM), 150); // (room for a tilted stone's outline)
       var lastRow = NODE_COUNT - cols * (rows - 1);
       var score = lastRow < 3 ? unit * 0.85 : unit; // a picnic alone on its row looks lost
       if (!best || score > best.score) best = { cols: cols, rows: rows, unit: unit, score: score };
@@ -178,7 +178,10 @@
     return {
       w: w, h: h, orient: landscape ? 'landscape' : 'portrait',
       cols: cols, rows: rows, unit: unit, pile: pile, side: side, band: band, badge: badge, gap: gap,
-      picnic: 1 + Math.min(spare, 2) * 0.35, nodes: nodes, trail: trail,
+      // the picnic blanket spreads over the empty cells after it, but never past the edge of the path's zone
+      picnic: Math.max(1, Math.min(1 + Math.min(spare, 2) * 0.35,
+        (2 * Math.min(nodes[FINISH].x / 100 * w - zone.x, zone.x + zone.w - nodes[FINISH].x / 100 * w) - 12) / (unit * 0.92 * 1.06))),
+      nodes: nodes, trail: trail,
     };
   }
 

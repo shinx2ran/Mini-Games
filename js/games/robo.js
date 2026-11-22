@@ -61,7 +61,8 @@
         return null;
       };
       for (var i = 0; i < TREES; i++) { var tk = spot(); if (tk) trees[tk] = true; }
-      if (!allReachable(trees, starts)) continue;
+      // each robot, from its own corner, can get everywhere (trees never split the field in two)
+      if (!allReachable(trees, [starts[0]]) || !allReachable(trees, [starts[1]])) continue;
       for (var j = 0; j < BERRIES; j++) { var bk = spot(); if (bk) berries[bk] = true; }
       if (Object.keys(berries).length < BERRIES) continue;
       return { trees: trees, berries: berries, starts: starts };
@@ -122,7 +123,7 @@
       var program = [];
       var cancelHesitate = null;
       var runs = 0;
-      var lastAdd = -1;              // fingers landing together on an arrow add one move, not several
+      var lastAdd = { m: null, t: -1 };   // fingers landing together on one arrow add one move, not several
 
       /* ---- build ---- */
 
@@ -236,6 +237,7 @@
         ctx.setTurn(p);
         controls.style.setProperty('--c', players[p].color);
         controls.style.setProperty('--c-dark', players[p].dark);
+        steps.style.setProperty('--c', players[p].color);
         botNodes.forEach(function (b, i) { b.classList.toggle('is-turn', i === p); });
         baskets.forEach(function (b, i) { b.node.classList.toggle('is-turn', i === p); });
         preview();
@@ -246,7 +248,7 @@
       function armHint() {
         if (cancelHesitate) { cancelHesitate(); cancelHesitate = null; }
         var level = ctx.helpFor(turn);
-        if (runs === 0 && !program.length) { ctx.hint(arrowBtns[bestFirstMove(bots[turn], trees, berries, bots[1 - turn]) || 'up'], { delay: 800 }); return; }
+        if (runs === 0 && !program.length) { var first = bestFirstMove(bots[turn], trees, berries, bots[1 - turn]); if (first) ctx.hint(arrowBtns[first], { delay: 800 }); return; }
         if (!level || state !== 'plan') return;
         var who = turn;
         cancelHesitate = ctx.after(HESITATE_MS[level], function () {
@@ -256,19 +258,21 @@
           var end = simulate(bots[who], program, trees, bots[1 - who]);
           var from = end.length ? end[end.length - 1] : bots[who];
           var m = bestFirstMove(from, trees, berries, bots[1 - who]);
-          ctx.hint(m && program.length < SLOTS ? arrowBtns[m] : goBtn);
+          if (m && program.length < SLOTS) ctx.hint(arrowBtns[m]);
+          else if (program.length) ctx.hint(goBtn);
         });
       }
 
       function add(m) {
         if (state !== 'plan' || program.length >= SLOTS) return;
-        if (lastAdd >= 0 && ctx.time - lastAdd < 0.12) return;
-        lastAdd = ctx.time;
+        if (lastAdd.m === m && ctx.time - lastAdd.t < 0.12) return false;
+        lastAdd = { m: m, t: ctx.time };
         program.push(m);
         beep(m);
         fx.pop(slots[program.length - 1]);
         preview();
         armHint();
+        return true;
       }
 
       function takeBack() {
@@ -348,7 +352,7 @@
 
       /* ---- input ---- */
 
-      ctx.tap(pad, function (ev, b) { add(b.dataset.m); fx.pop(b); }, { delegate: '.rb-arrow', slop: 10 });
+      ctx.tap(pad, function (ev, b) { if (add(b.dataset.m)) fx.pop(b); }, { delegate: '.rb-arrow', slop: 10 });
       ctx.tap(undoBtn, takeBack);
       ctx.tap(goBtn, go);
 
