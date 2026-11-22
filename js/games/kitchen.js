@@ -32,12 +32,14 @@
       { a: { do: 'fry', e: '🍳', prop: 'pan', end: 'flip', to: 'mid' },     b: { do: 'chop', e: '🥒', n: 4, to: 'mid' } },
       { a: { do: 'chop', e: '🍅', n: 3, to: 'mid' },                        b: { do: 'chop', e: '🍅', n: 4, to: 'mid' } },
       { extra: true, a: { do: 'scoop', e: '🍚' },                           b: { do: 'fetch', e: '🍶', jars: ['🍶', '🍫', '🍓'], to: 'mid' } },
+      { extra: true, a: { do: 'shake', e: '🧂', dots: '#FFFFFF', n: 3 },    b: { do: 'fetch', e: '🌶️', jars: ['🌶️', '🍫', '🍓'], to: 'mid' } },   // a pinch of salt; the sambal
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
     pisang: { e: '🍌', vessel: 'plate', beats: [   // Pisang Goreng: fried bananas (start)
       { a: { do: 'peel', e: '🍌', n: 3, to: 'stay' },                      b: { do: 'peel', e: '🍌', n: 3, to: 'stay' } },
       { a: { do: 'chop', e: '🍌', n: 3, to: 'stay' },                      b: { do: 'chop', e: '🍌', n: 4, to: 'stay' } },   // fan cut (kipas)
       { a: { do: 'fry', e: '🍌', prop: 'pan', end: 'flip', to: 'mid' },     b: { do: 'fry', e: '🍌', prop: 'pan', end: 'flip', to: 'mid' } },
       { extra: true, a: { do: 'pick', choices: ['🧀', '🍫', '🍓'] },         b: { do: 'fetch', e: '🍯', jars: ['🍯', '🧂', '🌶️'], to: 'mid' } },
+      { extra: true, a: { do: 'shake', e: '🍫', dots: '#5A3A22', n: 3 },   b: { do: 'pour', e: '🥛', liquid: '#FFF4DC', n: 2, drizzle: true } },   // meses and condensed milk
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
     goreng: { e: '🍛', vessel: 'wok', mix: '#B8742E', stir: 'sizzle', afterStir: 'toss', beats: [   // Nasi Goreng
       { a: { do: 'wash', e: '🥬', n: 3, to: 'across' },                    b: { do: 'wash', e: '🥕', n: 3, to: 'across' } },
@@ -197,7 +199,7 @@
     return clamp((job.n || 3) + (TAPS[taps] || 0) - (help || 0), 1, 8);
   }
 
-  /** The beats of a recipe: Short leaves out its one extra beat. */
+  /** The beats of a recipe: Short leaves out its extra beats (one, or two for the two starter dishes). */
   function beatsFor(recipe, length) {
     return recipe.beats.filter(function (b) { return length !== 'short' || !b.extra; });
   }
@@ -221,7 +223,7 @@
   var PILE = [[-0.07, 0.02], [0.07, 0.02], [0, -0.06], [-0.11, 0.08], [0.11, 0.08], [0, 0.1]];
   var CSLOTS = [[50, 56], [30, 46], [70, 46], [36, 72], [64, 72], [50, 32], [18, 64], [82, 64]];
   var RSLOTS = [[6, 58], [94, 58], [20, 22], [80, 22], [22, 90], [78, 90]];
-  var BSLOTS = [[38, 60], [64, 52]];
+  var BSLOTS = [[28, 82], [72, 82]];   // sauces sit at the front of the dish, beside the food (not under it)
 
   /* ---------------------------------------------------------- the game */
 
@@ -253,6 +255,7 @@
       var recipeId = null, recipe = null, beats = [], beatI = -1;
       var vessel = newVessel('plate');
       var catSnacks = 0, chickThisRound = false, highDone = false;
+      var away = {};                  // shelf helpers out on a leap right now (only one cat on screen at a time)
       var forced = {};                       // tests: force the next surprise roll
       var events = [];                       // the last 200 counted taps (tests)
       var lastTap = [0, 0], menuTap = 0, lastHinted = null;
@@ -382,7 +385,7 @@
         shelfL.textContent = '';
         shelfR.textContent = '';
         shelfItems().forEach(function (it, i) {
-          (i % 2 ? shelfR : shelfL).appendChild(el('span', { class: 'kt-item kt-item--' + it.kind, 'data-kind': it.kind }, ctx.sticker(it.e)));
+          (i % 2 ? shelfR : shelfL).appendChild(el('span', { class: 'kt-item kt-item--' + it.kind, 'data-kind': it.kind, style: away[it.kind] ? { visibility: 'hidden' } : {} }, ctx.sticker(it.e)));
         });
       }
       function shelfItem(kind) { return wallEl.querySelector('.kt-item[data-kind="' + kind + '"]'); }
@@ -391,6 +394,8 @@
       function renderTier() {
         wallEl.dataset.tier = String(u.tier);
         tierEl.textContent = '';
+        var oldSign = windowEl.querySelector('.kt-sign');
+        if (oldSign) oldSign.remove();
         windowEl.hidden = u.tier < 1;           // a window with curtains in both players' colours, behind the dish
         if (u.tier >= 2) {
           var lights = el('span', { class: 'kt-lights' });
@@ -398,10 +403,11 @@
           tierEl.appendChild(lights);
         }
         if (u.tier >= 3) {
-          tierEl.appendChild(el('span', { class: 'kt-sign' },
-            el('span', { class: 'kt-sign__end' }, ctx.sticker('🏮')), el('span', { class: 'kt-sign__end' }, ctx.sticker(players[0].emoji)),
-            el('span', { class: 'kt-sign__mid' }),
-            el('span', { class: 'kt-sign__end' }, ctx.sticker(players[1].emoji)), el('span', { class: 'kt-sign__end' }, ctx.sticker('🏮'))));
+          // a wooden band with a lantern at each end along the top of the wall (behind the step stickers) ...
+          tierEl.appendChild(el('span', { class: 'kt-signband' },
+            el('span', { class: 'kt-signband__end' }, ctx.sticker('🏮')), el('span', { class: 'kt-signband__mid' }), el('span', { class: 'kt-signband__end' }, ctx.sticker('🏮'))));
+          // ... and both chefs on a little sign hung in the window, where nothing covers them
+          windowEl.appendChild(el('span', { class: 'kt-sign' }, ctx.sticker(players[0].emoji, 'kt-sign__pet'), ctx.sticker(players[1].emoji, 'kt-sign__pet')));
         }
       }
 
@@ -432,9 +438,19 @@
       /* ---- the dish in the middle ---- */
 
       function newVessel(kind) {
-        return { kind: kind, pieces: [], rim: [], level: 0, liq: null, dots: [], blobs: [], drizzles: [], mix: null, layers: 0, frost: null, candles: null, added: 0 };
+        return { kind: kind, pieces: [], rim: [], level: 0, liq: null, dots: [], blobs: [], drizzles: [], mix: null, layers: 0, layerAt: [], frost: null, candles: null, added: 0 };
       }
 
+      /** The drop-in for a thing in the dish: it plays once, from when the thing was first drawn. A redraw while it
+       *  is still dropping in carries on from where it was (a negative delay); after LAND_MS nothing replays. */
+      var LAND_MS = 300;
+      function landing(at) {
+        var t = performance.now() - at;
+        return t < LAND_MS ? { cls: ' is-new', delay: -Math.round(t) + 'ms' } : { cls: '', delay: '' };
+      }
+      function landed(item) { if (item.at == null) item.at = performance.now(); return landing(item.at); }
+
+      /** Draw the dish. Only what has just landed gets `is-new` (the drop-in animation). */
       function renderVessel() {
         var v = vessel;
         vesselEl.dataset.kind = v.kind;
@@ -446,7 +462,11 @@
         v.blobs.forEach(function (b, i) { contentsEl.appendChild(el('span', { class: 'kt-blob', style: { '--c': b, left: BSLOTS[i][0] + '%', top: BSLOTS[i][1] + '%' } })); });
         if (v.kind === 'cake' && v.layers) {
           var cake = el('span', { class: 'kt-cake', 'data-layers': String(v.layers) });
-          for (var L = 0; L < v.layers; L++) cake.appendChild(el('span', { class: 'kt-layer' }));
+          for (var L = 0; L < v.layers; L++) {
+            if (v.layerAt[L] == null) v.layerAt[L] = performance.now();
+            var lk = landing(v.layerAt[L]);
+            cake.appendChild(el('span', { class: 'kt-layer' + lk.cls, style: { animationDelay: lk.delay } }));
+          }
           if (v.frost) cake.appendChild(el('span', { class: 'kt-frost', style: { '--c': v.frost } }));
           if (v.candles) {
             var row = el('span', { class: 'kt-candles' });
@@ -461,24 +481,36 @@
           contentsEl.appendChild(z);
         });
         v.pieces.forEach(function (p) {
-          var s = CSLOTS[p.slot];
-          contentsEl.appendChild(el('span', { class: 'kt-piece', style: { left: s[0] + '%', top: s[1] + '%', '--r': p.r + 'deg' } },
+          var s = CSLOTS[p.slot], lk = landed(p);
+          contentsEl.appendChild(el('span', { class: 'kt-piece' + (p.keep ? ' is-keep' : '') + lk.cls, 'data-e': p.e, style: { left: s[0] + '%', top: s[1] + '%', '--r': p.r + 'deg', animationDelay: lk.delay } },
             p.e === 'yolk' ? el('span', { class: 'kt-yolk' }) : ctx.sticker(p.e)));
         });
         v.dots.forEach(function (d) { contentsEl.appendChild(el('i', { class: 'kt-dot', style: { left: d.x + '%', top: d.y + '%', '--c': d.c } })); });
-        v.rim.forEach(function (e, i) { var s = RSLOTS[i]; contentsEl.appendChild(el('span', { class: 'kt-piece kt-piece--rim', style: { left: s[0] + '%', top: s[1] + '%' } }, ctx.sticker(e))); });
+        v.rim.forEach(function (r, i) {
+          var s = RSLOTS[i], lk = landed(r);
+          contentsEl.appendChild(el('span', { class: 'kt-piece kt-piece--rim' + lk.cls, 'data-e': r.e, style: { left: s[0] + '%', top: s[1] + '%', animationDelay: lk.delay } }, ctx.sticker(r.e)));
+        });
         vesselEl.style.setProperty('--fill', String(fill));
       }
 
-      /** A sticker lands in the dish; when the eight places are full the oldest gives way. */
-      function addPiece(e) {
+      /** The piece that gives way when the eight places are full: never what she cooked (a `keep` piece) while
+       *  anything else can go; first the oldest of something there is more than one of, else the oldest. */
+      function evictIndex(pieces) {
+        var count = {};
+        pieces.forEach(function (p) { count[p.e] = (count[p.e] || 0) + 1; });
+        for (var i = 0; i < pieces.length; i++) if (!pieces[i].keep && count[pieces[i].e] > 1) return i;
+        for (var j = 0; j < pieces.length; j++) if (!pieces[j].keep) return j;
+        return 0;
+      }
+      /** A sticker lands in the dish. `keep`: the thing she cooked (fried, cracked, skewered) or the dish itself. */
+      function addPiece(e, keep) {
         var v = vessel, used = v.pieces.map(function (p) { return p.slot; }), slot = -1;
         for (var i = 0; i < CSLOTS.length; i++) if (used.indexOf(i) < 0) { slot = i; break; }
-        if (slot < 0) slot = v.pieces.shift().slot;
-        v.pieces.push({ e: e, slot: slot, r: Math.round(util.randf(-18, 18)) });
+        if (slot < 0) slot = v.pieces.splice(evictIndex(v.pieces), 1)[0].slot;
+        v.pieces.push({ e: e, slot: slot, r: Math.round(util.randf(-18, 18)), keep: !!keep || (!!recipe && e === recipe.e), at: null });
         v.added++;
       }
-      function addRim(e) { if (vessel.rim.length >= RSLOTS.length) vessel.rim.shift(); vessel.rim.push(e); vessel.added++; }
+      function addRim(e) { if (vessel.rim.length >= RSLOTS.length) vessel.rim.shift(); vessel.rim.push({ e: e, at: null }); vessel.added++; }
       function addDots(c, n) {
         for (var i = 0; i < n; i++) vessel.dots.push({ c: c, x: Math.round(util.randf(14, 86)), y: Math.round(util.randf(30, 78)) });
         while (vessel.dots.length > 24) vessel.dots.shift();
@@ -497,10 +529,11 @@
         var v = job.do, e = resultOf(job);
         if (v === 'chop') { addPiece(e); addPiece(e); addPiece(e); }
         else if (v === 'pound') addBlob(SAUCE[e] || '#A0642D');
-        else if (v === 'crack') addPiece('yolk');
+        else if (v === 'crack') addPiece('yolk', true);
         else if (v === 'fry' && vessel.kind === 'cake') { vessel.layers = Math.min(2, vessel.layers + 1); vessel.added++; }
         else if (v === 'fetch' && LIQUID[e]) addLiquid(LIQUID[e], 0.15);
-        else addPiece(e);
+        else if (v === 'fetch' && SAUCE[e]) addBlob(SAUCE[e]);      // the sambal: a red sauce beside the egg
+        else addPiece(e, v === 'fry' || v === 'skewer');
       }
 
       function renderGhost() {
@@ -536,7 +569,7 @@
       function fit() {
         var s = ctx.size(), w = s.w, h = s.h, P = 12, G = 8, port = s.orient === 'portrait', U = util;
         var Wb, B, Sz, V, wallH = 0, midW = 0, row = 0, shW, shH;
-        var nShelf = shelfItems().length;
+        var nShelf = shelfItems().length, nb = beats.length || 6;
         if (port) {
           wallH = U.clamp(Math.round(h * 0.30), 150, 300);
           Sz = U.clamp(Math.round(h * 0.05), 22, 36);
@@ -548,6 +581,9 @@
           shH = V;
         } else {
           Wb = U.clamp(Math.round(w * 0.30), 150, 320);
+          // a small phone on its side: the step stickers (20px each at least) need the middle column first
+          var need = nb * 20 + (nb - 1) * 4 + 22;
+          Wb = Math.max(128, Math.min(Wb, Math.floor((w - 2 * P - 2 * G - need) / 2)));
           midW = w - 2 * P - 2 * Wb - 2 * G;
           B = h - 2 * P;
           Sz = U.clamp(Math.round(h * 0.08), 22, 36);
@@ -561,8 +597,10 @@
         var top = Math.max(C, Wn) + 6, inner = Wb - 16, mainH = B - 16 - top;
         var T = U.clamp(Math.min(inner, Math.round(mainH * 0.85)), 96, 240);       // the object
         var J = U.clamp(Math.floor(Math.min(inner, (mainH - 12) / 3)), 64, 120);   // a jar or bowl row
-        var nb = beats.length || 6, stripW = port ? w - 2 * P : midW;
+        var stripW = port ? w - 2 * P : midW;
         var pip = Math.max(20, Math.min(Sz, Math.floor((stripW - 16 - (nb - 1) * 4) / nb)));
+        // still too wide (never smaller than 20px): the stickers overlap a little instead
+        var pipOv = Math.min(0, Math.floor((stripW - 16 - nb * pip) / Math.max(1, nb - 1)) - 4);
         // menu: the biggest square cards that fit, in however many columns suit
         var n = menuCount(), W = w - 2 * P, H = h - 2 * P, card = 0, cols = 1;
         for (var c = 1; c <= 5; c++) {
@@ -572,7 +610,7 @@
         }
         card = Math.min(200, card);
         var set = function (k, v) { root.style.setProperty(k, v); };
-        set('--wall', wallH + 'px'); set('--pip', pip + 'px'); set('--vessel', V + 'px');
+        set('--wall', wallH + 'px'); set('--pip', pip + 'px'); set('--pip-ov', pipOv + 'px'); set('--vessel', V + 'px');
         set('--board-w', Wb + 'px'); set('--board-h', B + 'px'); set('--chef', C + 'px'); set('--want', Wn + 'px');
         set('--top', top + 'px'); set('--obj', T + 'px'); set('--jar', J + 'px'); set('--card', card + 'px'); set('--cols', String(cols));
         set('--gift', Math.min(Math.round(V * 0.58), 150) + 'px'); set('--shelf-row', row + 'px');
@@ -587,7 +625,9 @@
         // then make sure everything really fits, whatever the emoji font
         var over = function (n) { return n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1; };
         for (var t = 0; t < 8 && deco > 10 && (over(shelfL) || over(shelfR)); t++) { deco = Math.floor(deco * 0.9); set('--deco', deco + 'px'); }
-        for (var t2 = 0; t2 < 8 && T > 96 && boards.some(function (b) { return over(b.main); }); t2++) { T = Math.max(96, Math.floor(T * 0.9)); set('--obj', T + 'px'); }
+        // (only the object's own box counts: the knife, spoon and pestle hang over its edge on purpose)
+        var objOver = function (b) { return b.obj && b.obj.isConnected && (b.obj.offsetWidth > b.main.clientWidth + 1 || b.obj.offsetHeight > b.main.clientHeight + 1); };
+        for (var t2 = 0; t2 < 8 && T > 96 && boards.some(objOver); t2++) { T = Math.max(96, Math.floor(T * 0.9)); set('--obj', T + 'px'); }
       }
 
       /* ---- the ghost hand ---- */
@@ -702,6 +742,8 @@
         b.el.classList.remove('is-done');
         b.el.dataset.verb = job.do;
         b.el.setAttribute('role', job.do === 'fetch' || job.do === 'pick' ? 'group' : 'button');
+        b.wantGen = (b.wantGen || 0) + 1;
+        b.want.classList.remove('is-out');
         b.want.hidden = job.do !== 'fetch';
         b.want.textContent = '';
         b.main.textContent = '';
@@ -784,11 +826,20 @@
         b.el.classList.add('is-done');
         if (b.obj) b.obj.dataset.k = String(b.k);
         fx.pop(b.check);
+        if (b.verb === 'fetch') hideWant(b);
         if (b.side === aSide && !seen(b.verb)) { kit.seen.push(b.verb); save(); }
         if (boards[0].done && boards[1].done) {
           if (beatI >= beats.length - 1) finale();
           else merge();
         } else if (handSide() === b.side) hintNext();     // it finished by itself under the hand: the hand moves on
+      }
+
+      /** A finished fetch board: the want bubble pops away (it is found), so the open jar, the wave and the tick are clear. */
+      function hideWant(b) {
+        if (RM) { b.want.hidden = true; return; }
+        var gen = b.wantGen;
+        b.want.classList.add('is-out');
+        ctx.after(220, function () { if (b.wantGen === gen) b.want.hidden = true; });   // (never once the next job has set it up)
       }
 
       function merge() {
@@ -879,7 +930,7 @@
         vesselEl.style.setProperty('--fill', '1');
         renderPips();
         var cat = shelfItem('cat');
-        if (had.helpers.cat && cat) { leap(cat, vesselEl, 900); sfx.play('munch'); ctx.after(400, S.purr); }
+        if (had.helpers.cat && cat) leap(cat, vesselEl, 900, function () { sfx.play('munch'); S.purr(); });
         if (had.helpers.radio) { var radio = shelfItem('radio'); fx.bounce(radio); S.tune(); }
         later(300, function () {
           contentsEl.classList.add('is-puff');
@@ -933,17 +984,49 @@
         dishEl.hidden = false;
       }
 
-      /** A shelf helper leaps to something and back (decoration). */
-      function leap(node, toNode, ms) {
-        if (!node || !toNode || !node.animate) return;
-        var a = fx.centerOf(node), b = fx.centerOf(toNode), dx = b.x - a.x, dy = b.y - a.y;
-        node.animate([
-          { transform: 'translate(0, 0)' },
-          { transform: 'translate(' + dx * 0.5 + 'px, ' + (dy * 0.5 - 40) + 'px) scale(1.6)', offset: 0.3 },
-          { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(1.8)', offset: 0.5 },
-          { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(1.8) rotate(-10deg)', offset: 0.65 },
-          { transform: 'translate(0, 0)' },
-        ], { duration: RM ? 200 : ms, easing: 'ease-in-out', composite: 'add' });
+      /** A shelf helper leaps to something and back (decoration). The shelf clips and the boards sit above it, so a
+       *  copy of the helper flies over everything while the one on the shelf is hidden. onArrive runs when it lands. */
+      var LEAP_AT = 0.42;
+      function leap(node, toNode, ms, onArrive) {
+        if (!node || !toNode || !node.isConnected || !toNode.isConnected || away[node.dataset.kind]) { if (onArrive) onArrive(); return; }
+        var st = node.querySelector('.mg-sticker') || node, r = root.getBoundingClientRect();
+        var a = fx.centerOf(st), b = fx.centerOf(toNode), dx = b.x - a.x, dy = b.y - a.y;
+        var size = Math.max(16, parseFloat(getComputedStyle(st).fontSize) || 16);
+        var f = el('span', { class: 'kt-flyer kt-flyer--leap', style: { fontSize: size + 'px' } }, ctx.sticker(st.textContent));
+        var kind = node.dataset.kind;
+        away[kind] = (away[kind] || 0) + 1;
+        node.style.visibility = 'hidden';
+        var home = function () {
+          f.remove();
+          away[kind] = Math.max(0, (away[kind] || 1) - 1);
+          // the shelf may have been rebuilt while it was out (a present, a chick): show the one there now
+          var mine = shelfItem(kind);
+          if (!away[kind] && mine) mine.style.visibility = '';
+        };
+        if (RM) {
+          // no arc: it is simply there for a moment, fading in and out
+          f.style.left = (b.x - r.left) + 'px'; f.style.top = (b.y - r.top) + 'px';
+          root.appendChild(f);
+          if (f.animate) f.animate([{ opacity: 0, transform: 'translate(-50%, -50%) scale(1.6)' }, { opacity: 1, transform: 'translate(-50%, -50%) scale(1.6)', offset: 0.2 }, { opacity: 1, transform: 'translate(-50%, -50%) scale(1.6)', offset: 0.8 }, { opacity: 0, transform: 'translate(-50%, -50%) scale(1.6)' }], { duration: 600, fill: 'forwards' });
+          if (onArrive) onArrive();
+          ctx.after(620, home);
+          return;
+        }
+        f.style.left = (a.x - r.left) + 'px'; f.style.top = (a.y - r.top) + 'px';
+        root.appendChild(f);
+        var hop = Math.min(90, 40 + Math.abs(dx) * 0.2);
+        var at = function (x, y, sc, rot) { return 'translate(calc(-50% + ' + x + 'px), calc(-50% + ' + y + 'px)) scale(' + sc + ')' + (rot ? ' rotate(' + rot + 'deg)' : ''); };
+        if (f.animate) f.animate([
+          { transform: at(0, 0, 1) },
+          { transform: at(dx * 0.5, dy * 0.5 - hop, 1.5), offset: LEAP_AT * 0.55 },
+          { transform: at(dx, dy, 1.8), offset: LEAP_AT },
+          { transform: at(dx, dy, 1.8, -10), offset: LEAP_AT + 0.1 },
+          { transform: at(dx, dy, 1.8, 6), offset: LEAP_AT + 0.2 },
+          { transform: at(dx * 0.5, dy * 0.5 - hop, 1.4), offset: LEAP_AT + 0.4 },
+          { transform: at(0, 0, 1) },
+        ], { duration: ms, easing: 'ease-in-out', fill: 'forwards' });
+        if (onArrive) ctx.after(ms * LEAP_AT, onArrive);
+        ctx.after(ms + 20, home);
       }
 
       /* ---- cooking: one shared clock ---- */
@@ -984,7 +1067,7 @@
 
       var BUILD = {
         wash: function (b, o) {
-          var job = b.job, item = el('span', { class: 'kt-item' }, ctx.sticker(job.e)), muds = [];
+          var job = b.job, item = el('span', { class: 'kt-jitem' }, ctx.sticker(job.e)), muds = [];
           for (var i = 0; i < b.n; i++) { var m = el('i', { class: 'kt-mud', style: { left: MUD[i][0] + '%', top: MUD[i][1] + '%' } }); item.appendChild(m); muds.push(m); }
           o.appendChild(el('span', { class: 'kt-sink' }));
           o.appendChild(el('span', { class: 'kt-stream' }));
@@ -994,7 +1077,7 @@
           b.parts = { item: item, muds: muds, result: item };
         },
         peel: function (b, o) {
-          var job = b.job, item = el('span', { class: 'kt-item' }, ctx.sticker(job.e)), petals = [];
+          var job = b.job, item = el('span', { class: 'kt-jitem' }, ctx.sticker(job.e)), petals = [];
           for (var i = 0; i < b.n; i++) { var p = el('i', { class: 'kt-petal', style: { '--a': Math.round(i * 360 / b.n - 30) + 'deg', '--c': PEEL[job.e] || '#F7D35C' } }); petals.push(p); item.appendChild(p); }
           o.appendChild(item);
           b.parts = { item: item, petals: petals, result: item };
@@ -1360,10 +1443,14 @@
           b.wrongRow++;
           b.gapNext = JAR_GAP;
           var cat = u.helpers.cat ? shelfItem('cat') : null;
-          if (cat && catSnacks < 2) {
+          if (cat && catSnacks < 2 && !away.cat) {
             catSnacks++;
-            leap(cat, jar, 800);
-            ctx.after(RM ? 0 : 350, function () { sfx.play('munch'); S.purr(); anim(inner, [{ transform: 'scale(1)' }, { transform: 'scale(0)', offset: 0.3 }, { transform: 'scale(0)', offset: 0.7 }, { transform: 'scale(1)' }], 700); });
+            // the cat leaps down to the jar, gobbles what is in it (it shrinks the moment the cat lands) and goes back
+            leap(cat, jar, 800, function () {
+              sfx.play('munch'); S.purr();
+              if (RM && inner.animate) inner.animate([{ opacity: 1 }, { opacity: 0, offset: 0.2 }, { opacity: 0, offset: 0.7 }, { opacity: 1 }], { duration: 600 });   // (no motion: it fades while the cat is there)
+              else anim(inner, [{ transform: 'scale(1)' }, { transform: 'scale(0)', offset: 0.25 }, { transform: 'scale(0)', offset: 0.55 }, { transform: 'scale(1)' }], 640);
+            });
           } else {
             anim(inner, [{ transform: 'translateY(0)' }, { transform: 'translateY(-55%)', offset: 0.3 }, { transform: 'translateY(-55%) rotate(-14deg)', offset: 0.45 }, { transform: 'translateY(-55%) rotate(14deg)', offset: 0.6 }, { transform: 'translateY(0)' }], 620);
             sfx.play('boing');
@@ -1418,7 +1505,11 @@
           var c = b.parts.candles[b.k];
           if (c) c.classList.add('is-out');
           burstAt(b.chef, { emoji: '💨', count: 3, distance: 36, size: 16 });
-          if (vessel.candles) { vessel.candles[b.side * 3 + b.k] = false; renderVessel(); }
+          if (vessel.candles) {
+            var ci = b.side * 3 + b.k, cn = contentsEl.querySelectorAll('.kt-candles .kt-candle')[ci];
+            vessel.candles[ci] = false;
+            if (cn) cn.classList.add('is-out'); else renderVessel();       // (the flame fades; nothing else moves)
+          }
           sfx.scale(2 + 2 * b.k);
           b.k++;
           ctx.say(b.k);
@@ -1492,6 +1583,8 @@
         }
         var pip = t.closest('.kt-pip');
         if (pip) { fx.wiggle(pip); sfx.play('tick'); return; }
+        var sign = t.closest('.kt-sign');
+        if (sign) { fx.wiggle(sign); sfx.play('pop', { pitch: 520 }); return; }
         fx.wiggle(contentsEl);
         sfx.play('pop', { pitch: 600 + 60 * (wallC++ % 8) });
       }
@@ -1543,7 +1636,12 @@
         /** The element the ghost hand last pointed at (tests follow it). */
         get hinted() { return lastHinted; },
         get catSnacks() { return catSnacks; },
-        get vessel() { return { kind: vessel.kind, pieces: vessel.added, level: vessel.level, fill: fill, liq: vessel.liq, frost: vessel.frost, mix: vessel.mix }; },
+        /** `pieces` counts everything ever added (it only goes up); `contents` is what is in the dish now. */
+        get vessel() {
+          return { kind: vessel.kind, pieces: vessel.added, level: vessel.level, fill: fill, liq: vessel.liq, frost: vessel.frost, mix: vessel.mix,
+            contents: vessel.pieces.map(function (p) { return p.e; }), kept: vessel.pieces.filter(function (p) { return p.keep; }).map(function (p) { return p.e; }),
+            blobs: vessel.blobs.slice(), rim: vessel.rim.map(function (r) { return r.e; }), dots: vessel.dots.length, drizzles: vessel.drizzles.length, layers: vessel.layers };
+        },
         get locked() { return ctx.locked; },
         get events() { return events.slice(); },
         hintNext: hintNext,
