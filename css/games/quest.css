@@ -44,11 +44,13 @@
 .g-quest .aq-node:nth-child(4) { --x: 50%; --y: 72%; }
 .g-quest .aq-node:nth-child(5) { --x: 67%; --y: 34%; }
 .g-quest .aq-node:nth-child(6) { --x: 84%; --y: 72%; }
-.g-quest[data-orient="portrait"] .aq-node:nth-child(2) { --x: 30%; --y: 86%; }
-.g-quest[data-orient="portrait"] .aq-node:nth-child(3) { --x: 70%; --y: 69%; }
-.g-quest[data-orient="portrait"] .aq-node:nth-child(4) { --x: 30%; --y: 52%; }
-.g-quest[data-orient="portrait"] .aq-node:nth-child(5) { --x: 70%; --y: 35%; }
-.g-quest[data-orient="portrait"] .aq-node:nth-child(6) { --x: 30%; --y: 17%; }
+/* tall screens: the stops zigzag up from the bottom, leaving the top for the hat closets */
+.g-quest[data-orient="portrait"] .aq-node:nth-child(2) { --x: 30%; --y: 87%; }
+.g-quest[data-orient="portrait"] .aq-node:nth-child(3) { --x: 70%; --y: 72.5%; }
+.g-quest[data-orient="portrait"] .aq-node:nth-child(4) { --x: 30%; --y: 58%; }
+.g-quest[data-orient="portrait"] .aq-node:nth-child(5) { --x: 70%; --y: 43.5%; }
+.g-quest[data-orient="portrait"] .aq-node:nth-child(6) { --x: 30%; --y: 29%; }
+.g-quest[data-orient="portrait"] .aq-path { inset: 24% 14% 7% 14%; }
 .g-quest .aq-node__icon { position: relative; font-size: calc(var(--node) * 0.5); line-height: 1; }
 .g-quest .aq-node__icon[data-locked]::after {
   content: attr(data-locked);
@@ -150,3 +152,69 @@
 @media (prefers-reduced-motion: reduce) {
   .g-quest .aq-node.is-next { animation: none; }
 }
+
+/* ---------------------------------------------------------------- hats */
+
+/* each player's closet, in their colour, in their top corner: tap to try on the next earned hat */
+.g-quest .aq-map { --closet: clamp(64px, calc(var(--gmin) * 0.17), 96px); }
+.g-quest .aq-closet {
+  appearance: none;
+  position: absolute;
+  top: 14px;
+  z-index: 1;
+  width: var(--closet);
+  height: var(--closet);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 5px 0 var(--line);
+  touch-action: manipulation;
+}
+.g-quest .aq-closet[data-p="0"] { left: 14px; }
+.g-quest .aq-closet[data-p="1"] { right: 14px; }
+.g-quest .aq-closet__face { font-size: calc(var(--closet) * 0.5); line-height: 1; transform: translateY(8%); }
+.g-quest .aq-closet__hat {
+  position: absolute;
+  left: 50%;
+  top: -18%;
+  transform: translateX(-50%) rotate(-8deg);
+  font-size: calc(var(--closet) * 0.38);
+  line-height: 1;
+  pointer-events: none;
+}
+/* no hat on: a dashed ring hints that something goes up there */
+.g-quest .aq-closet.is-bare .aq-closet__hat {
+  width: 44%;
+  height: 26%;
+  top: -6%;
+  border: 3px dashed var(--ink-soft);
+  border-radius: 50% 50% 20% 20%;
+  opacity: 0.6;
+}
+
+/* how many stars, and the next hat they are saving up for */
+.g-quest .aq-nexthat {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  font-family: var(--font-display);
+  font-size: clamp(14px, calc(var(--gmin) * 0.042), 24px);
+  line-height: 1;
+  color: var(--ink);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.g-quest .aq-nexthat > span { display: inline-flex; align-items: center; gap: 3px; }
+.g-quest .aq-nexthat__next { opacity: 0.75; }
+.g-quest .aq-nexthat__hat .mg-sticker { filter: grayscale(1) brightness(1.1); opacity: 0.7; }

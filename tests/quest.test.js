@@ -380,6 +380,59 @@ h.run(ID, async (t) => {
     }
   }
 
+  // --- hats: stars earn them; each player taps their closet on the map to try the next one on; it is saved
+  {
+    const hp = await page.evaluate(() => {
+      const c = MG.current.api.cleanProgress;
+      return [c({ cleared: 5, stars: [3, 3, 3, 3, 3], hats: [5, 4] }).hats, c({ stars: [1], hats: [5, 1] }).hats, c({ stars: [3, 3], hats: ['x', -3] }).hats, c({ hats: 'no' }).hats];
+    });
+    assert.deepStrictEqual(hp, [[5, 4], [0, 1], [0, 0], [0, 0]], 'earned hats stay on; unearned or odd ones come off');
+    // no stars yet: the closet only wiggles
+    await page.evaluate(() => { localStorage.setItem('mg:game:quest:progress', JSON.stringify({ cleared: 0, stars: [] })); MG.home(); MG.open('quest'); });
+    await onMap(page);
+    assert.strictEqual(await page.locator('.g-quest .aq-closet').count(), 2, 'a hat closet for each player');
+    assert.deepStrictEqual(await t.outsidePlayArea(page, '.g-quest .aq-closet'), [], 'the closets are in view');
+    assert.ok((await t.minTargetSize(page, '.g-quest .aq-closet')).min >= 64, 'the closets are big');
+    await page.locator('.g-quest .aq-closet[data-p="0"]').tap();
+    assert.deepStrictEqual((await api(page, 'progress')).hats, [0, 0], 'no hat before any star');
+    // three stars: the bow and the cap; taps go round and back to no hat
+    await page.evaluate(() => { localStorage.setItem('mg:game:quest:progress', JSON.stringify({ cleared: 1, stars: [3] })); MG.home(); MG.open('quest'); });
+    await onMap(page);
+    const seen = [];
+    for (let k = 0; k < 4; k++) { await page.locator('.g-quest .aq-closet[data-p="1"]').tap(); seen.push((await api(page, 'progress')).hats[1]); }
+    assert.deepStrictEqual(seen, [1, 2, 0, 1], 'bow, cap, none, bow');
+    assert.strictEqual((await api(page, 'progress')).hats[0], 0, "the other player's hat is their own");
+    assert.strictEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('mg:game:quest:progress'))).hats[1], 1, 'saved');
+    assert.ok(await page.locator('.g-quest .aq-closet[data-p="1"] .aq-closet__hat .mg-sticker').count() === 1, 'the hat shows on the closet');
+    // and it is worn in the stage (still there after a stage clear saves progress)
+    await page.evaluate(() => document.querySelectorAll('.g-quest .aq-node')[0].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 78, pointerType: 'touch' })));
+    await page.waitForFunction(() => MG.current.api.state === 'play', null, { timeout: 10000 });
+    assert.deepStrictEqual(await api(page, 'hatsOn'), ['', '🎀']);
+  }
+
+  // --- the look: every stage draws a full picture (sky, scenery, ground), by day and by night, with no errors
+  for (const dark of [false, true]) {
+    page = await t.open(ID, { dark, viewport: dark ? 'phone' : 'landscape' });
+    for (let i = 0; i < 5; i++) {
+      await openStage(page, i);
+      await gameWait(page, 0.4);
+      const look = await page.evaluate(() => {
+        const cv = document.querySelector('.g-quest .aq-canvas'), g = cv.getContext('2d');
+        const d = g.getImageData(0, 0, cv.width, cv.height).data, seen = new Set();
+        let blank = 0;
+        for (let k = 0; k < d.length; k += 4 * 97) { seen.add((d[k] >> 4) + ',' + (d[k + 1] >> 4) + ',' + (d[k + 2] >> 4)); if (d[k + 3] === 0) blank++; }
+        return { colours: seen.size, blank, art: MG.current.api.art };
+      });
+      assert.ok(look.colours > 40, `stage ${i} ${dark ? 'night' : 'day'}: a detailed picture (${look.colours} colours)`);
+      assert.strictEqual(look.blank, 0, 'nothing left undrawn');
+      assert.ok(look.art.chunks >= 1 && look.art.chunks <= 3, `the stage is pre-drawn in a few pieces (${look.art.chunks})`);
+      assert.ok(look.art.decor >= 3, `stage ${i} has scenery (${look.art.decor})`);
+    }
+    // walk the length of a stage: pieces are made as needed and old ones let go
+    await page.evaluate(() => { const a = MG.current.api; for (let x = 4; x < 120; x += 6) { a.place(0, x, 2); a.place(1, x - 1, 2); a.draw(); } });
+    assert.ok((await api(page, 'art')).chunks <= 3, 'no more than three pieces kept');
+  }
+
   // --- both steering (the grown-up's choice): two full sets of controls; whoever is left behind floats along
   page = await t.open(ID);
   await t.pause(page);
