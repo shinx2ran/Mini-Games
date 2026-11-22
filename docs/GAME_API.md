@@ -179,7 +179,7 @@ for hosts that run the page in a locked-down frame.
 - A sensor question can stay unanswered for ever. Never make the touch choice
   wait for it: let "Finger" win at any time, and drop a late answer.
 - In tests: dispatch `DeviceOrientationEvent` / `DeviceMotionEvent` on
-  `window`, and run with `h.FAKE_CAMERA` (see `tests/wiggle.test.js`).
+  `window`, and run with `h.FAKE_CAMERA` (`tests/harness.js`).
 
 **Sound** — synthesized; safe to call any time (silent until the first touch,
 or when muted). Soft and musical: no harsh buzzers, no sudden loud bangs.

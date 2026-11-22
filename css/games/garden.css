@@ -1,0 +1,486 @@
+/* Happy Garden — styles. Every selector is scoped under .g-garden.
+   Sizes come from js (fit): --tool (a tool button), --gate (the visitor's band),
+   --cell (one bed). Layout: portrait = gate / beds / two rows of tools;
+   landscape = tools | beds | gate | tools. */
+
+.g-garden {
+  --gd-grass: #BDEB9B;
+  --gd-grass-2: #A6DD82;
+  --gd-soil: #B9824F;
+  --gd-soil-wet: #7B4A28;
+  --gd-soil-dry: #DDB98C;
+  --gd-furrow: rgba(42, 35, 86, 0.18);
+  --gd-paper: #FFF8E7;
+  --gd-water: #4FB0E8;
+  --tool: 72px;
+  --gate: 110px;
+  --cell: 110px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-garden { --gd-grass: #24513A; --gd-grass-2: #1E4531; --gd-soil: #7A5434; --gd-soil-wet: #4A2E1A; --gd-soil-dry: #9C7C58; --gd-paper: #3C3A6E; }
+}
+:root[data-theme="dark"] .g-garden { --gd-grass: #24513A; --gd-grass-2: #1E4531; --gd-soil: #7A5434; --gd-soil-wet: #4A2E1A; --gd-soil-dry: #9C7C58; --gd-paper: #3C3A6E; }
+
+.g-garden .gd-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 12% 20%, var(--gd-grass-2) 0 7%, transparent 7.5%),
+    radial-gradient(circle at 85% 70%, var(--gd-grass-2) 0 9%, transparent 9.5%),
+    var(--gd-grass);
+  grid-template-areas: "gate" "garden" "toolsa" "toolsb";
+  grid-template-rows: var(--gate) minmax(0, 1fr) var(--tool) var(--tool);
+  grid-template-columns: minmax(0, 1fr);
+}
+.g-garden[data-orient="landscape"] .gd-scene {
+  grid-template-areas: "toolsa garden gate toolsb";
+  grid-template-columns: var(--tool) minmax(0, 1fr) var(--gate) var(--tool);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* ---------------------------------------------------------------- tools */
+
+.g-garden .gd-tools { display: flex; justify-content: center; align-items: center; gap: 10px; }
+.g-garden .gd-tools--a { grid-area: toolsa; }
+.g-garden .gd-tools--b { grid-area: toolsb; }
+.g-garden[data-orient="landscape"] .gd-tools { flex-direction: column; }
+.g-garden .gd-tool {
+  appearance: none;
+  position: relative;
+  width: var(--tool);
+  height: var(--tool);
+  flex: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 5px 0 var(--line);
+  font-size: calc(var(--tool) * 0.5);
+  line-height: 1;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+  touch-action: manipulation;
+}
+.g-garden .gd-tool--water { background: var(--sea-soft); }
+.g-garden .gd-tool--spray { background: var(--berry-soft); }
+.g-garden .gd-tool--seed { background: var(--sun-soft); }
+.g-garden .gd-tool--leaf { background: var(--tangerine-soft); }
+.g-garden .gd-tool--bone { background: var(--surface); }
+.g-garden .gd-tool--fish { background: var(--sea-soft); }
+/* the tool in hand: lifted, bigger, with a bright ring */
+.g-garden .gd-tool.is-on {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 9px 0 var(--line), 0 0 0 5px var(--sun);
+  z-index: 1;
+}
+/* foods come in sacks, so they read as "food" before the picture */
+.g-garden .gd-sack {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 74%;
+  height: 74%;
+  border: 3px solid var(--line);
+  border-radius: 22% 22% 34% 34% / 18% 18% 40% 40%;
+  background: #E8C890;
+  font-size: calc(var(--tool) * 0.34);
+}
+.g-garden .gd-sack::before {
+  content: "";
+  position: absolute;
+  top: -9%;
+  left: 30%;
+  width: 40%;
+  height: 16%;
+  border: 3px solid var(--line);
+  border-radius: 40%;
+  background: #D2AB6E;
+}
+.g-garden .gd-sack--leaf { background: #E8A066; }
+.g-garden .gd-sack--bone { background: #F1E6CC; }
+.g-garden .gd-sack--fish { background: #9FD3F0; }
+
+/* a seed packet: paper, the vegetable, and its favourite food in the corner */
+.g-garden .gd-packet {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--line);
+  border-radius: 10% 10% 16% 16%;
+  background:
+    linear-gradient(to bottom, var(--leaf-soft) 0 22%, transparent 22%),
+    var(--gd-paper);
+  line-height: 1;
+}
+.g-garden .gd-packet--tool { width: 76%; height: 82%; font-size: calc(var(--tool) * 0.36); }
+.g-garden .gd-packet__veg { transform: translateY(8%); }
+.g-garden .gd-packet__likes {
+  position: absolute;
+  right: -14%;
+  bottom: -12%;
+  display: grid;
+  place-items: center;
+  width: 46%;
+  aspect-ratio: 1;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 0.55em;
+}
+
+/* ---------------------------------------------------------------- the seed shelf */
+
+.g-garden .gd-shelf {
+  position: absolute;
+  z-index: 5;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + 2 * var(--tool) + 20px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: 0 var(--lift, 6px) 0 var(--line);
+  animation: gd-pop-in 0.18s ease-out;
+}
+.g-garden[data-orient="landscape"] .gd-shelf {
+  left: calc(12px + var(--tool) + 14px);
+  right: auto;
+  top: 12px;
+  bottom: auto;
+  max-height: calc(100% - 24px);
+  width: calc(3 * var(--tool) + 2 * 12px + 24px + 6px);
+  align-content: flex-start;
+}
+.g-garden .gd-shelf[hidden] { display: none; }
+.g-garden .gd-packet--pick {
+  appearance: none;
+  flex: none;
+  width: var(--tool);
+  height: calc(var(--tool) * 1.1);
+  padding: 0;
+  font-size: calc(var(--tool) * 0.42);
+  box-shadow: 0 4px 0 var(--line);
+}
+.g-garden .gd-packet--pick.is-on { box-shadow: 0 4px 0 var(--line), 0 0 0 5px var(--sun); }
+@keyframes gd-pop-in { from { transform: scale(0.9); opacity: 0; } }
+
+/* ---------------------------------------------------------------- the gate: visitor and basket */
+
+.g-garden .gd-gate { grid-area: gate; display: flex; gap: 10px; min-height: 0; min-width: 0; }
+.g-garden[data-orient="landscape"] .gd-gate { flex-direction: column; }
+.g-garden .gd-visitor, .g-garden .gd-basket {
+  appearance: none;
+  position: relative;
+  min-width: 0;
+  padding: 6px;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 5px 0 var(--line);
+  touch-action: manipulation;
+}
+.g-garden .gd-visitor {
+  flex: 1 1 62%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--sun-soft);
+}
+.g-garden[data-orient="landscape"] .gd-visitor { flex-direction: column; justify-content: center; }
+.g-garden .gd-who { flex: none; font-size: calc(var(--gate) * 0.42); line-height: 1; }
+.g-garden[data-orient="landscape"] .gd-who { font-size: calc(var(--gate) * 0.36); }
+.g-garden .gd-visitor.is-ready .gd-who { animation: gd-wave 0.6s ease-in-out infinite alternate; }
+@keyframes gd-wave { to { transform: translateY(-10%) rotate(8deg); } }
+/* the wish list: a speech bubble of the vegetables they want; handed-over ones get a tick */
+.g-garden .gd-wish {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 2px 4px;
+  padding: 4px 6px;
+  border: 3px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  font-size: calc(var(--gate) * 0.2);
+  line-height: 1;
+}
+.g-garden[data-orient="landscape"] .gd-wish { flex: none; width: 100%; font-size: calc(var(--gate) * 0.17); }
+.g-garden .gd-wish__item { position: relative; display: inline-block; }
+.g-garden .gd-wish__item.is-got .mg-sticker { opacity: 0.45; }
+.g-garden .gd-wish__item.is-got::after {
+  content: "";
+  position: absolute;
+  left: 30%;
+  top: 10%;
+  width: 28%;
+  height: 55%;
+  border: solid var(--leaf-dark);
+  border-width: 0 0.22em 0.22em 0;
+  transform: rotate(40deg);
+}
+.g-garden .gd-basket {
+  flex: 1 1 38%;
+  display: grid;
+  place-items: center;
+  background: var(--tangerine-soft);
+  overflow: hidden;
+}
+.g-garden .gd-basket__can { font-size: calc(var(--gate) * 0.5); line-height: 1; opacity: 0.9; }
+.g-garden .gd-basket__items {
+  position: absolute;
+  inset: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 0 2px;
+  font-size: calc(var(--gate) * 0.17);
+  line-height: 1;
+  pointer-events: none;
+}
+.g-garden .gd-pile { display: inline-flex; }
+.g-garden .gd-pile .mg-sticker + .mg-sticker { margin-left: -0.45em; }
+.g-garden .gd-pile.is-big { font-size: 1.25em; }
+.g-garden .gd-basket:not(.is-empty) .gd-basket__can { opacity: 0.35; }
+
+/* ---------------------------------------------------------------- the beds */
+
+.g-garden .gd-garden { grid-area: garden; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; }
+.g-garden .gd-beds {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), var(--cell));
+  gap: 8px;
+}
+.g-garden .gd-plot {
+  appearance: none;
+  position: relative;
+  width: var(--cell);
+  height: var(--cell);
+  padding: 0;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-md);
+  background: #8DC26A;
+  box-shadow: 0 5px 0 var(--line);
+  overflow: visible;
+  touch-action: manipulation;
+}
+.g-garden .gd-soil {
+  position: absolute;
+  inset: 8%;
+  border-radius: 14%;
+  background: var(--gd-soil);
+  box-shadow: inset 0 0 0 3px rgba(42, 35, 86, 0.25);
+  transition: background-color 0.4s;
+  overflow: hidden;
+}
+.g-garden .gd-soil i { position: absolute; left: 12%; right: 12%; height: 6%; border-radius: 9px; background: var(--gd-furrow); }
+.g-garden .gd-soil i:nth-child(1) { top: 28%; }
+.g-garden .gd-soil i:nth-child(2) { top: 50%; }
+.g-garden .gd-soil i:nth-child(3) { top: 72%; }
+.g-garden .gd-plot.is-wet .gd-soil { background: var(--gd-soil-wet); }
+.g-garden .gd-plot.is-dry .gd-soil { background: var(--gd-soil-dry); }
+
+.g-garden .gd-plant {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  display: block;
+  font-size: calc(var(--cell) * 0.5);
+  line-height: 1;
+  transform-origin: 50% 100%;
+  transform: translateX(-50%) scale(calc(var(--s, 1) * (0.86 + 0.14 * var(--t, 0))));
+  transition: transform 0.3s ease-out;
+}
+.g-garden .gd-plot[data-stage="0"] .gd-plant { --s: 1; }
+.g-garden .gd-plot[data-stage="1"] .gd-plant { --s: 0.6; }
+.g-garden .gd-plot[data-stage="2"] .gd-plant { --s: 0.95; }
+.g-garden .gd-plot[data-stage="3"] .gd-plant { --s: 1.05; }
+.g-garden .gd-plot[data-stage="4"] .gd-plant { --s: 1.1; }
+.g-garden .gd-plot.is-root[data-stage="4"] .gd-plant { --s: 0.8; bottom: 34%; }
+.g-garden .gd-plot.is-dry .gd-plant { transform: translateX(-50%) rotate(-14deg) scale(calc(var(--s, 1) * 0.9)); filter: saturate(0.55); }
+.g-garden .gd-plot.is-bugged .gd-plant { filter: saturate(0.75); }
+/* a seed in its little mound */
+.g-garden .gd-seed {
+  display: block;
+  width: calc(var(--cell) * 0.46);
+  height: calc(var(--cell) * 0.12);
+  border: 3px solid var(--line);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: #8A5A32;
+  position: relative;
+}
+.g-garden .gd-seed::after {
+  content: "";
+  position: absolute;
+  left: 40%;
+  top: -55%;
+  width: 18%;
+  height: 80%;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: #F2D8A0;
+}
+.g-garden .gd-flowers {
+  position: absolute;
+  left: 50%;
+  top: -14%;
+  display: flex;
+  gap: 0.1em;
+  font-size: 0.4em;
+  transform: translateX(-50%);
+}
+.g-garden .gd-fruits {
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  display: flex;
+  justify-content: center;
+  font-size: calc(var(--cell) * 0.25);
+  line-height: 1;
+  transform: translateX(-50%);
+  animation: gd-ripe 0.9s ease-in-out infinite alternate;
+}
+.g-garden .gd-fruits .mg-sticker + .mg-sticker { margin-left: -0.12em; }
+.g-garden .gd-fruits .mg-sticker:nth-child(2) { transform: translateY(-38%); }
+.g-garden .gd-plot.is-root .gd-fruits { bottom: 12%; font-size: calc(var(--cell) * 0.26); }
+.g-garden .gd-plot.is-root .gd-fruits .mg-sticker { transform: rotate(150deg); }
+.g-garden .gd-plot.is-root .gd-fruits .mg-sticker:nth-child(2) { transform: rotate(150deg) translateY(10%); }
+@keyframes gd-ripe { to { transform: translateX(-50%) translateY(-6%) scale(1.06); } }
+.g-garden .gd-plot.is-ripe { box-shadow: 0 5px 0 var(--line), 0 0 0 4px var(--sun); }
+
+.g-garden .gd-bug {
+  position: absolute;
+  left: 58%;
+  bottom: 40%;
+  font-size: calc(var(--cell) * 0.24);
+  line-height: 1;
+  animation: gd-nibble 0.5s ease-in-out infinite alternate;
+}
+@keyframes gd-nibble { from { transform: rotate(-12deg); } to { transform: rotate(12deg) translateX(8%); } }
+
+/* what it needs: a thought bubble in the corner */
+.g-garden .gd-need {
+  position: absolute;
+  right: -8%;
+  top: -10%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 42%;
+  aspect-ratio: 1;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: calc(var(--cell) * 0.22);
+  line-height: 1;
+  animation: gd-bob 0.8s ease-in-out infinite alternate;
+}
+@keyframes gd-bob { to { transform: translateY(-10%); } }
+.g-garden .gd-fed {
+  position: absolute;
+  left: 4%;
+  top: 4%;
+  font-size: calc(var(--cell) * 0.16);
+  line-height: 1;
+}
+.g-garden .gd-drops {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  display: flex;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+.g-garden .gd-drops i {
+  display: block;
+  width: calc(var(--cell) * 0.085);
+  aspect-ratio: 1;
+  border: 2px solid var(--line);
+  border-radius: 0 50% 50% 50%;
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+.g-garden .gd-drops i.is-full { background: var(--gd-water); }
+
+/* scenery and helpers around the beds */
+.g-garden .gd-decor { position: absolute; inset: 0; pointer-events: none; }
+.g-garden .gd-deco {
+  position: absolute;
+  font-size: calc(var(--cell) * 0.3);
+  line-height: 1;
+  opacity: 0.95;
+}
+.g-garden .gd-deco:nth-child(4n+1) { left: 0; top: calc(var(--k) * 4%); }
+.g-garden .gd-deco:nth-child(4n+2) { right: 0; bottom: calc(var(--k) * 4%); }
+.g-garden .gd-deco:nth-child(4n+3) { left: 0; bottom: calc(var(--k) * 4%); }
+.g-garden .gd-deco:nth-child(4n) { right: 0; top: calc(var(--k) * 4%); }
+.g-garden .gd-helpers { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.g-garden .gd-helper { position: absolute; font-size: calc(var(--cell) * 0.26); line-height: 1; }
+.g-garden .gd-helper--ladybird { left: 2%; top: 0; }
+.g-garden .gd-helper--bees { right: 2%; top: 0; animation: gd-buzz 1.4s ease-in-out infinite alternate; }
+.g-garden .gd-helper--fountain { right: 2%; bottom: 0; }
+@keyframes gd-buzz { to { transform: translate(-30%, 20%) rotate(-10deg); } }
+
+/* rain: soft streaks over the beds for a moment */
+.g-garden .gd-rain {
+  position: absolute;
+  inset: -12px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+  background: repeating-linear-gradient(105deg, transparent 0 18px, rgba(79, 176, 232, 0.55) 18px 21px, transparent 21px 38px);
+  background-size: 76px 76px;
+}
+.g-garden .gd-rain.is-on { opacity: 1; animation: gd-rain 0.5s linear infinite; }
+@keyframes gd-rain { to { background-position: -20px 76px; } }
+
+/* the present */
+.g-garden .gd-gift {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.g-garden .gd-gift[hidden] { display: none; }
+.g-garden .gd-gift > * { grid-area: 1 / 1; }
+.g-garden .gd-gift__box { font-size: calc(var(--gmin) * 0.3); line-height: 1; animation: gd-gift-in 0.5s cubic-bezier(.3, 1.6, .5, 1); }
+.g-garden .gd-gift__inside { font-size: calc(var(--gmin) * 0.28); line-height: 1; transform: scale(0); }
+.g-garden .gd-gift.is-open .gd-gift__box { transform: scale(0); transition: transform 0.2s ease-in; }
+.g-garden .gd-gift.is-open .gd-gift__inside { transform: scale(1); transition: transform 0.45s cubic-bezier(.3, 1.7, .5, 1) 0.1s; }
+.g-garden .gd-packet--big { width: 1.1em; height: 1.3em; font-size: 0.9em; }
+.g-garden .gd-gift__beds { display: grid; grid-template-columns: repeat(3, 0.4em); gap: 0.06em; }
+.g-garden .gd-gift__beds i { display: block; width: 0.4em; aspect-ratio: 1; border: 3px solid var(--line); border-radius: 18%; background: var(--gd-soil-wet); }
+@keyframes gd-gift-in { from { transform: scale(0.2) rotate(-30deg); } }
+
+/* things flying to the basket and to the visitor */
+.g-garden .gd-flyer {
+  position: absolute;
+  z-index: 7;
+  font-size: calc(var(--cell) * 0.3);
+  line-height: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .g-garden .gd-fruits, .g-garden .gd-bug, .g-garden .gd-need, .g-garden .gd-helper--bees,
+  .g-garden .gd-visitor.is-ready .gd-who, .g-garden .gd-rain.is-on { animation: none; }
+}
