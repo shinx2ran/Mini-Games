@@ -412,6 +412,8 @@
         get board() { return JSON.parse(JSON.stringify(board)); },
         /** Tests only: the next die values. */
         rig: function (vals) { rigged = vals.slice(); },
+        /** Tests only: how n rolls would come out for whoever's turn it is, from where they stand (nothing moves). */
+        sampleRolls: function (n) { var c = {}; for (var k = 0; k < n; k++) { var v = chooseRoll(); c[v] = (c[v] || 0) + 1; } return c; },
         /** Tests only: put player i on square s. */
         place: function (i, sq) { pos[i] = sq; placeBoth(); },
         N: N, n: n, exact: exact,

@@ -101,18 +101,18 @@ h.run(ID, async (t) => {
     await ready(page);
     assert.strictEqual(await api(page, 'turn'), 1 - me);
   }
-  if (b.gifts.length) {
-    me = await api(page, 'turn');
-    const gift = b.gifts[0];
-    await page.evaluate(([me, s]) => MG.current.api.place(me, s), [me, gift - 1]);
-    await page.evaluate(() => MG.current.api.rig([1]));
-    await rollFor(page, me);
-    await page.waitForFunction((me) => MG.current.api.state === 'roll' && !MG.current.ctx.locked, me, { timeout: 15000 });
-    const after = (await api(page, 'pos'))[me];
-    const w = await page.evaluate((s) => MG.current.api.whatsOn(MG.current.api.board, s), gift + 1);
-    // (the gift's extra hops may in turn land on something; it never leaves you on the gift itself)
-    assert.ok(after !== gift, `the gift hopped her on (now on ${after})`);
-    assert.ok(w || after > gift || after < gift, 'moved');
+  {
+    const N0 = await api(page, 'N');
+    const gift = b.gifts.find((g) => g + 3 < N0);
+    if (gift) {
+      me = await api(page, 'turn');
+      await page.evaluate(([me, s]) => MG.current.api.place(me, s), [me, gift - 1]);
+      await page.evaluate(() => MG.current.api.rig([1]));
+      await rollFor(page, me);
+      await page.waitForFunction(() => ['roll', 'done'].includes(MG.current.api.state) && !MG.current.ctx.locked, null, { timeout: 15000 });
+      const after = (await api(page, 'pos'))[me];
+      assert.ok(after !== gift, `the gift hopped her on (now on ${after})`);
+    }
   }
 
   // --- the crown: whoever gets there first wins
@@ -158,28 +158,24 @@ h.run(ID, async (t) => {
   await page.waitForFunction(() => window.MG && document.querySelector('#mg-home'));
   await page.evaluate(() => MG.open('ular'));
   await ready(page);
-  await t.fast(page, 8);
   {
-    const little = await page.evaluate(() => MG.current.ctx.players.findIndex((p) => p.little));
-    b = await api(page, 'board');
-    let onHead = 0, tries = 0;
-    for (let k = 0; k < 36; k++) {
+    const r2 = await page.evaluate(() => {
+      const a = MG.current.api, little = MG.current.ctx.players.findIndex((p) => p.little);
+      return { little, adult: 1 - little, from: a.board.snakes[0].from };
+    });
+    // little player's turn: sample her rolls from three squares before a snake's head
+    if ((await api(page, 'turn')) !== r2.little) {
+      await page.evaluate((p) => MG.current.api.place(p, 2), r2.adult);
+      const v2 = await plainRoll(page, 2);
+      await page.evaluate((v) => MG.current.api.rig([v || 1]), v2);
+      await rollFor(page, r2.adult);
       await ready(page);
-      const turnNow = await api(page, 'turn');
-      if (turnNow !== little) { await page.evaluate((p) => MG.current.api.place(p, 2), turnNow); v = await plainRoll(page, 2); await page.evaluate((v) => MG.current.api.rig([v || 1]), v); await rollFor(page, turnNow); continue; }
-      const sn2 = b.snakes[k % b.snakes.length];
-      const start = sn2.from - 1 - (k % 3);
-      await page.evaluate(([p, s]) => MG.current.api.place(p, s), [little, start]);
-      const rolls0 = await api(page, 'rolls');
-      await rollFor(page, little);
-      await page.waitForFunction((n) => MG.current.api.rolls > n && ['moving', 'climb', 'slide', 'gift', 'roll', 'done'].includes(MG.current.api.state), rolls0);
-      await page.waitForFunction(() => MG.current.api.state !== 'rolling', null, { timeout: 5000 });
-      const landed = start + (await api(page, 'lastRoll'));
-      if (landed === sn2.from) onHead++;
-      tries++;
     }
-    assert.ok(tries >= 12, `enough tries (${tries})`);
-    assert.ok(onHead <= Math.max(1, Math.round(tries / 6) - 1), `she seldom lands on a snake's head (${onHead} of ${tries})`);
+    await page.evaluate(([p, s]) => MG.current.api.place(p, s), [r2.little, r2.from - 3]);
+    const counts = await page.evaluate(() => MG.current.api.sampleRolls(600));
+    const onHead = counts[3] || 0;
+    assert.ok(onHead < 50, `from three squares away she rolls the snake's 3 far less than 1 in 6 (${onHead} of 600, fair would be about 100)`);
+    assert.ok(Object.keys(counts).length >= 5, 'and the die still shows every other number');
   }
 
   // --- every supported size: board, both dice and both animals in view; dice big; turn the screen mid-game
