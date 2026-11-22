@@ -1,0 +1,156 @@
+/* Ular Tangga — styles. Every selector is scoped under .g-ular.
+   The board is a square (sized by the game, --cell = one square in px);
+   squares, animals and the SVG art are placed in % of it. */
+
+.g-ular {
+  --ul-a: #FFF4D6;
+  --ul-b: #D9F2C6;
+  --ul-rail: #B9763A;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-ular { --ul-a: #3B3570; --ul-b: #2E5A46; --ul-rail: #E0A35E; }
+}
+:root[data-theme="dark"] .g-ular { --ul-a: #3B3570; --ul-b: #2E5A46; --ul-rail: #E0A35E; }
+
+.g-ular .ul-scene {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "board board" "s0 s1";
+  --die: clamp(76px, calc(var(--gmin) * 0.22), 132px);
+}
+.g-ular[data-orient="landscape"] .ul-scene {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "s0 board s1";
+}
+
+.g-ular .ul-boardbox { grid-area: board; min-width: 0; min-height: 0; display: grid; place-items: center; }
+.g-ular .ul-board {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--ul-a);
+  box-shadow: 0 var(--lift, 6px) 0 var(--line);
+  overflow: hidden;
+  --cell: 37px;
+}
+.g-ular .ul-cell {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  background: var(--ul-a);
+}
+.g-ular .ul-cell.is-alt { background: var(--ul-b); }
+.g-ular .ul-num {
+  position: absolute;
+  left: 6%;
+  top: 3%;
+  font-family: var(--font-display);
+  font-size: calc(var(--cell) * 0.24);
+  line-height: 1;
+  color: var(--ink-soft);
+}
+.g-ular .ul-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--cell) * 0.5);
+  line-height: 1;
+}
+.g-ular .ul-crown { font-size: calc(var(--cell) * 0.62); }
+
+/* ladders and snakes */
+.g-ular .ul-art { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.g-ular .ul-rail { stroke: var(--ul-rail); stroke-width: 0.11; stroke-linecap: round; }
+.g-ular .ul-rung { stroke: var(--ul-rail); stroke-width: 0.08; stroke-linecap: round; }
+.g-ular .ul-ladder { filter: drop-shadow(0 0.04px 0 rgba(12, 10, 38, 0.3)); }
+.g-ular .ul-snake__edge { fill: none; stroke: #2A2356; stroke-width: 0.34; stroke-linecap: round; }
+.g-ular .ul-snake__body { fill: none; stroke: var(--c); stroke-width: 0.24; stroke-linecap: round; }
+.g-ular .ul-snake__spots { fill: none; stroke: rgba(255, 255, 255, 0.55); stroke-width: 0.08; stroke-linecap: round; stroke-dasharray: 0.02 0.3; }
+.g-ular .ul-snake__head { fill: var(--c); stroke: #2A2356; stroke-width: 0.05; }
+.g-ular .ul-snake__eye { fill: #2A2356; }
+.g-ular .ul-snake__tongue { stroke: #E8435A; stroke-width: 0.05; stroke-linecap: round; }
+.g-ular .ul-snake.is-eating .ul-snake__head { animation: ul-chomp 0.25s ease-in-out 4 alternate; transform-box: fill-box; transform-origin: center; }
+@keyframes ul-chomp { to { transform: scale(1.35); } }
+
+/* the animals */
+.g-ular .ul-token {
+  position: absolute;
+  z-index: 3;
+  width: calc(var(--cell) * 0.82);
+  height: calc(var(--cell) * 0.82);
+  margin: calc(var(--cell) * -0.41) 0 0 calc(var(--cell) * -0.41);
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--c);
+  font-size: calc(var(--cell) * 0.5);
+  line-height: 1;
+  transition: left 0.24s ease-out, top 0.24s ease-out;
+  box-shadow: 0 3px 0 var(--line);
+}
+.g-ular .ul-token.is-shared { transform: scale(0.82); }
+.g-ular .ul-token.is-turn { z-index: 4; box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--c), 0 3px 0 6px var(--line); }
+.g-ular .ul-token.is-riding { transition: none; }
+.g-ular .ul-token.is-hop .mg-sticker { animation: ul-hop 0.3s ease-out; }
+@keyframes ul-hop { 50% { transform: translateY(-45%) scale(1.1); } }
+.g-ular .ul-token.is-sliding .mg-sticker { animation: ul-spin 0.5s linear infinite; }
+@keyframes ul-spin { to { transform: rotate(360deg); } }
+.g-ular .ul-token.is-champ { animation: ul-champ 0.4s ease-in-out infinite alternate; }
+@keyframes ul-champ { to { transform: translateY(-20%) scale(1.25); } }
+
+/* each player's die, on their own side */
+.g-ular .ul-seat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: calc(var(--die) * 0.42);
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.g-ular .ul-seat[data-p="0"] { grid-area: s0; }
+.g-ular .ul-seat[data-p="1"] { grid-area: s1; flex-direction: row-reverse; }
+.g-ular[data-orient="landscape"] .ul-seat { flex-direction: column; }
+.g-ular .ul-seat.is-turn { opacity: 1; }
+.g-ular .ul-die {
+  appearance: none;
+  flex: none;
+  width: var(--die);
+  height: var(--die);
+  padding: 10%;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 22%;
+  background: var(--surface);
+  box-shadow: 0 0 0 5px var(--c-soft), 0 var(--lift, 6px) 0 5px var(--line);
+}
+.g-ular .ul-seat.is-turn .ul-die { background: #FFFFFF; box-shadow: 0 0 0 5px var(--c), 0 var(--lift, 6px) 0 5px var(--line); animation: ul-ready 0.8s ease-in-out infinite alternate; }
+@keyframes ul-ready { to { transform: rotate(-6deg) scale(1.05); } }
+.g-ular .ul-die.is-rolling { animation: ul-roll 0.16s linear infinite; }
+@keyframes ul-roll { 0% { transform: rotate(0) translateY(0); } 50% { transform: rotate(14deg) translateY(-10%); } 100% { transform: rotate(-12deg) translateY(0); } }
+.g-ular .ul-die.is-again { animation: ul-again 0.3s ease-in-out 2 alternate; }
+@keyframes ul-again { to { transform: scale(1.18) rotate(8deg); } }
+.g-ular .ul-face {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+}
+.g-ular .ul-pip { width: 62%; aspect-ratio: 1; border-radius: 50%; background: #2A2356; transform: scale(0); transition: transform 0.08s; }
+.g-ular .ul-pip.is-on { transform: scale(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-ular .ul-seat.is-turn .ul-die, .g-ular .ul-token.is-champ, .g-ular .ul-token.is-sliding .mg-sticker, .g-ular .ul-snake.is-eating .ul-snake__head { animation: none; }
+}

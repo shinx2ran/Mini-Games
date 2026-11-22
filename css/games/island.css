@@ -1,0 +1,198 @@
+/* Treasure Island — styles. Every selector is scoped under .g-island.
+   The map is a square (sized by the game; --sq = one square in px). Each
+   square is sand with something on it, under a cloud until it is explored. */
+
+.g-island {
+  --il-sea: #8FD6F0;
+  --il-sand: #FBE3A6;
+  --il-sand-2: #F4D488;
+  --il-mist: #D7ECF7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-island { --il-sea: #1F4F7A; --il-sand: #8C7440; --il-sand-2: #7A6436; --il-mist: #3E4E8A; }
+}
+:root[data-theme="dark"] .g-island { --il-sea: #1F4F7A; --il-sand: #8C7440; --il-sand-2: #7A6436; --il-mist: #3E4E8A; }
+
+.g-island .il-scene {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "map map" "s0 s1";
+  --die: clamp(70px, calc(var(--gmin) * 0.2), 120px);
+}
+.g-island[data-orient="landscape"] .il-scene {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "s0 map s1";
+}
+
+.g-island .il-mapbox { grid-area: map; min-width: 0; min-height: 0; display: grid; place-items: center; }
+.g-island .il-map {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--il-sea);
+  box-shadow: 0 var(--lift, 6px) 0 var(--line);
+  overflow: hidden;
+  --sq: 50px;
+}
+
+/* a square: the whole square is the button */
+.g-island .il-sq {
+  appearance: none;
+  position: absolute;
+  width: var(--sq);
+  height: var(--sq);
+  padding: 0;
+  border: 0;
+  background: none;
+  display: grid;
+  place-items: center;
+}
+.g-island .il-sand {
+  position: absolute;
+  inset: 3%;
+  border-radius: 22%;
+  background: var(--il-sand);
+  box-shadow: inset 0 calc(var(--sq) * -0.06) 0 var(--il-sand-2);
+}
+.g-island .il-thing { position: relative; z-index: 1; font-size: calc(var(--sq) * 0.56); line-height: 1; }
+.g-island .il-deco { opacity: 0.75; font-size: 0.8em; }
+
+/* the cloud over a square nobody has been to yet: misty, with a fluffy cloud on it */
+.g-island .il-cloud {
+  position: absolute;
+  inset: 3%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 22%;
+  background: var(--il-mist);
+  font-size: calc(var(--sq) * 0.62);
+  line-height: 1;
+  transition: transform 0.4s cubic-bezier(.5, 0, .8, .4), opacity 0.35s;
+}
+.g-island .il-sq.is-open .il-cloud { transform: translateY(-60%) scale(1.5); opacity: 0; }
+
+/* where you can go: glowing in your colour */
+.g-island .il-sq.is-reach .il-sand, .g-island .il-sq.is-reach .il-cloud { box-shadow: inset 0 0 0 calc(var(--sq) * 0.09) var(--turn, var(--sun)); }
+.g-island .il-sq.is-reach { animation: il-glow 0.8s ease-in-out infinite alternate; }
+@keyframes il-glow { to { transform: scale(0.92); } }
+.g-island .il-sq.is-locked .il-thing { animation: il-rattle 0.25s ease-in-out 2; }
+@keyframes il-rattle { 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+
+/* the treasure chest, drawn: box, lid and a gold lock */
+.g-island .il-chest { position: relative; display: block; width: calc(var(--sq) * 0.62); height: calc(var(--sq) * 0.5); }
+.g-island .il-chest__box {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 62%;
+  border: 2px solid var(--line);
+  border-radius: 0 0 18% 18%;
+  background: #B86B2E;
+}
+.g-island .il-chest__lid {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 44%;
+  border: 2px solid var(--line);
+  border-radius: 50% 50% 6% 6% / 80% 80% 6% 6%;
+  background: #D58A45;
+  transform-origin: 10% 100%;
+  transition: transform 0.4s cubic-bezier(.3, 1.6, .5, 1);
+}
+.g-island .il-chest__lock {
+  position: absolute;
+  left: 50%; top: -12%;
+  width: 26%; height: 44%;
+  margin-left: -13%;
+  border: 2px solid var(--line);
+  border-radius: 20%;
+  background: var(--sun);
+}
+.g-island .il-chest.is-open .il-chest__lid { transform: rotate(-38deg); }
+.g-island .il-chest.is-open .il-chest__lock { display: none; }
+
+/* the explorers */
+.g-island .il-walker {
+  position: absolute;
+  z-index: 3;
+  width: calc(var(--sq) * 0.74);
+  height: calc(var(--sq) * 0.74);
+  margin: calc(var(--sq) * -0.37) 0 0 calc(var(--sq) * -0.37);
+  display: grid;
+  place-items: center;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 50%;
+  background: var(--c);
+  font-size: calc(var(--sq) * 0.42);
+  line-height: 1;
+  box-shadow: 0 4px 0 var(--line);
+  transition: left 0.26s ease-out, top 0.26s ease-out;
+  pointer-events: none;
+}
+.g-island .il-walker.is-shared { transform: scale(0.82); }
+.g-island .il-walker.is-turn { z-index: 4; box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--c), 0 4px 0 6px var(--line); }
+.g-island .il-walker.is-step .mg-sticker { animation: il-step 0.26s ease-out; }
+@keyframes il-step { 50% { transform: translateY(-30%) rotate(-8deg); } }
+.g-island .il-walker.is-flying { transition: left 0.6s cubic-bezier(.4, -0.4, .6, 1.4), top 0.6s cubic-bezier(.4, -0.4, .6, 1.4); }
+.g-island .il-walker.is-flying .mg-sticker { animation: il-fly 0.3s ease-in-out infinite alternate; }
+@keyframes il-fly { to { transform: translateY(-40%) scale(1.2); } }
+.g-island .il-walker.is-champ { animation: il-champ 0.4s ease-in-out infinite alternate; }
+@keyframes il-champ { to { transform: translateY(-20%) scale(1.2); } }
+
+/* each player's side: their animal, their footprints die, their bag of gems and keys */
+.g-island .il-seat {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "who die" "bag bag";
+  justify-content: center;
+  align-items: center;
+  gap: 6px 10px;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.g-island .il-seat[data-p="0"] { grid-area: s0; }
+.g-island .il-seat[data-p="1"] { grid-area: s1; grid-template-areas: "die who" "bag bag"; }
+.g-island[data-orient="landscape"] .il-seat { grid-template-columns: auto; grid-template-areas: "who" "die" "bag"; justify-items: center; width: calc(var(--die) * 1.2); }
+.g-island .il-seat.is-turn { opacity: 1; }
+.g-island .il-who { grid-area: who; font-size: calc(var(--die) * 0.42); line-height: 1; }
+.g-island .il-die {
+  grid-area: die;
+  appearance: none;
+  width: var(--die);
+  height: var(--die);
+  padding: 6%;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 22%;
+  background: var(--surface);
+  box-shadow: 0 0 0 5px var(--c-soft), 0 var(--lift, 6px) 0 5px var(--line);
+}
+.g-island .il-seat.is-turn .il-die { background: #FFFFFF; box-shadow: 0 0 0 5px var(--c), 0 var(--lift, 6px) 0 5px var(--line); }
+.g-island .il-seat.is-turn .il-die[aria-disabled="false"] { animation: il-ready 0.8s ease-in-out infinite alternate; }
+@keyframes il-ready { to { transform: rotate(-6deg) scale(1.05); } }
+.g-island .il-die.is-rolling { animation: il-roll 0.16s linear infinite; }
+@keyframes il-roll { 50% { transform: rotate(14deg) translateY(-10%); } }
+.g-island .il-face { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; align-content: center; gap: 2px; width: 100%; height: 100%; }
+.g-island .il-foot { font-size: calc(var(--die) * 0.26); line-height: 1; }
+.g-island .il-bag {
+  grid-area: bag;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  min-height: calc(var(--die) * 0.3);
+  max-width: calc(var(--die) * 2.2);
+}
+.g-island .il-keys, .g-island .il-gems { display: contents; }
+.g-island .il-got { font-size: calc(var(--die) * 0.22); line-height: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-island .il-sq.is-reach, .g-island .il-seat.is-turn .il-die[aria-disabled="false"], .g-island .il-walker.is-champ, .g-island .il-walker.is-flying .mg-sticker { animation: none; }
+}

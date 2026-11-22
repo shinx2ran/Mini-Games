@@ -30,6 +30,9 @@ an avatar and a colour each.
 | 🧱 **Rainbow Stack** | A 3D tower of chunky blocks. Pull out one that matches the top block's colour or picture and it flies up to the top. Whoever tumbles the tower makes the big crash. | Matching, steady hands |
 | 🖍️ **Squiggle Friends** | A random squiggle appears; take turns turning it into a creature with crayons and face stickers. Then wake it up: it hops, blinks, babbles and joins your zoo. | Drawing together |
 | 🎵 **Animal Band** | Tap squares to give each animal a note on a beat; the song loops while you make it, then the band plays it as a concert. No wrong notes. | Making music together |
+| 🐍 **Ular Tangga** | Snakes and ladders: roll your big die, hop and count, climb the ladders, slide down the snakes. A new board every game, stars (roll again) and gifts (hop on). Board of 36, 64 or the classic 100. | Board game, counting |
+| 🤖 **Robo Path** | Program your robot with up to three arrows (footprints preview the plan), press go, and pick up strawberries; trees and the other robot go bonk. | Planning, early coding |
+| 🏝️ **Treasure Island** | Roll footprints and walk your explorer under the clouds: gems, keys, treasure chests, a parrot that flies you and a crab that hides a gem. Richest explorer wins. | Adventure board game |
 
 ### Camera, tilt and shake
 
