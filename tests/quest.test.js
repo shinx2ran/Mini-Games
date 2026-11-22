@@ -224,11 +224,35 @@ h.run(ID, async (t) => {
     assert.strictEqual(await api(page, 'acorns'), n1, 'a bump takes nothing');
   }
 
-  // --- a spring bounces you high
+  // --- a spring bounces you high: all the way up, whether or not jump is held
   {
     const spring = (await api(page, 'items')).find((i) => i.kind === 'spring');
-    await page.evaluate(([p, x, y]) => MG.current.api.place(p, x, y - 0.6), [lead, spring.x, spring.y]);
-    await page.waitForFunction((p) => MG.current.api.heroes[p].vy < -15, lead, { timeout: 3000 });
+    const top = await page.evaluate(([p, x, y]) => new Promise((res) => {
+      const a = MG.current.api, ctx = MG.current.ctx;
+      a.place(p, x, y - 0.6);
+      let best = 99; const t0 = ctx.time;
+      const stop = ctx.frame(() => { best = Math.min(best, a.heroes[p].y); if (ctx.time - t0 > 1.4) { stop(); res(y - best); } });
+    }), [lead, spring.x, spring.y]);
+    assert.ok(top > 4, `a spring throws you over four squares up, no button needed (${top.toFixed(2)})`);
+  }
+
+  // --- she never walks into a pit by herself: when he waits just past one, she waits at the edge for HER jump
+  {
+    const pit = await page.evaluate(() => { const a = MG.current.api, w = a.size.w; for (let c = 20; c < w; c++) if (!a.solidAt(c, 10) && !a.solidAt(c, 11)) return c; return -1; });
+    let far = pit; while (!(await page.evaluate((c) => MG.current.api.solidAt(c, 10), far))) far++;
+    await page.evaluate(([f, l, pit, far]) => { MG.current.api.place(l, far + 0.6, 10); MG.current.api.place(f, pit - 3, 10); }, [follow, lead, pit, far]);
+    const bubbles = await page.evaluate((f) => new Promise((res) => {
+      const a = MG.current.api, ctx = MG.current.ctx; let n = 0, was = false; const t0 = ctx.time;
+      const stop = ctx.frame(() => { const b = a.heroes[f].bubble; if (b && !was) n++; was = b; if (ctx.time - t0 > 5) { stop(); res({ n, x: a.heroes[f].x }); } });
+    }), follow);
+    assert.strictEqual(bubbles.n, 0, 'no splashes while she waits');
+    assert.ok(bubbles.x < pit + 0.2 && bubbles.x > pit - 1.2, `she waits right at the edge (${bubbles.x.toFixed(2)}, the pit starts at ${pit})`);
+    // ...and her one tap takes her across
+    await page.locator(`.g-quest .aq-pad[data-p="${follow}"] .aq-key`).dispatchEvent('pointerdown', { pointerId: 610, pointerType: 'touch' });
+    await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 610 })));
+    await gameWait(page, 1.5);
+    const over = await hero(page, follow);
+    assert.ok(over.x > far - 0.2 && !over.bubble, `one jump and she is across (${over.x.toFixed(2)})`);
   }
 
   // --- home: when both are home, the stage is cleared; the next stage opens on the map
@@ -298,6 +322,22 @@ h.run(ID, async (t) => {
     assert.ok(hh.x > x0 + 1.5, `carried across (${(hh.x - x0).toFixed(1)} squares)`);
   }
 
+  // --- the clouds: the lift carries whoever stands on it up to the ledge (it never drops them)
+  page = await t.open(ID);
+  await openStage(page, 3);
+  {
+    const lift = await page.evaluate(() => MG.current.api.buildStage(3).things.find((x) => x.kind === 'lift'));
+    const p = await page.evaluate(() => 1 - MG.current.api.followIdx);
+    const ride = await page.evaluate(([p, x, y]) => new Promise((res) => {
+      const a = MG.current.api, ctx = MG.current.ctx;
+      a.place(p, x + 1.5, y);
+      let top = 99, fell = false; const t0 = ctx.time;
+      const stop = ctx.frame(() => { const h = a.heroes[p]; top = Math.min(top, h.y); if (h.bubble) fell = true; if (ctx.time - t0 > 5) { stop(); res({ top, fell }); } });
+    }), [p, lift.x, lift.y]);
+    assert.ok(!ride.fell, 'nobody falls off the lift');
+    assert.ok(ride.top < lift.y - 3.5, `it carries the rider up (to y ${ride.top.toFixed(2)})`);
+  }
+
   // --- the cave: the door stays shut until someone with the key walks up to it; the baby bird is home
   page = await t.open(ID);
   await openStage(page, 4);
@@ -322,6 +362,22 @@ h.run(ID, async (t) => {
     await page.evaluate(([p, x, y]) => MG.current.api.place(p, x, y), [p, chick.x - 0.3, chick.y]);
     await page.waitForFunction(() => MG.current.api.state === 'clear', null, { timeout: 8000 });
     await t.waitForWin(page, 10000);
+  }
+
+  // --- saved progress that is damaged in any way is repaired, never breaks the map
+  page = await t.open(ID);
+  await onMap(page);
+  {
+    const fixed = await page.evaluate(() => {
+      const c = MG.current.api.cleanProgress;
+      return [c(null), c({ stars: [] }), c({ cleared: 'abc', stars: 'x' }), c({ cleared: -1, stars: [] }), c({ cleared: 1.5, stars: [9, -2, 'q'] }), c({ cleared: 99, stars: [] })].map((p) => [p.cleared, p.stars.slice(0, 3).join('')]);
+    });
+    assert.deepStrictEqual(fixed, [[0, '000'], [0, '000'], [0, '000'], [0, '000'], [1, '300'], [5, '000']]);
+    for (const bad of ['{"stars":[]}', '{"cleared":-1,"stars":[]}', '"nonsense"', '{"cleared":"x"}']) {
+      await page.evaluate((v) => { localStorage.setItem('mg:game:quest:progress', v); MG.home(); MG.open('quest'); }, bad);
+      await onMap(page);
+      assert.ok(await page.locator('.g-quest .aq-node:not(.is-locked)').count() >= 1, `the first stage is always open (${bad})`);
+    }
   }
 
   // --- both steering (the grown-up's choice): two full sets of controls; whoever is left behind floats along
@@ -356,6 +412,13 @@ h.run(ID, async (t) => {
       return a.heroes.every((h) => { const x = cv.left + (h.x - cam.x) * v.tile, y = cv.top + (h.y - 0.5 - cam.y) * v.tile; return !keys.some((k) => x > k.left && x < k.right && y > k.top && y < k.bottom); });
     });
     assert.ok(clear, `the heroes are not hidden under the buttons @${vp}`);
+    // ...and no button sits on the ground they walk on (in portrait the whole stage is shown above the controls)
+    const line = await p.evaluate(() => {
+      const a = MG.current.api, v = a.view, cv = document.querySelector('.g-quest .aq-canvas').getBoundingClientRect();
+      const ground = cv.top + (10 - a.cam.y) * v.tile, keys = Math.min(...[...document.querySelectorAll('.g-quest .aq-key')].map((k) => k.getBoundingClientRect().top));
+      return { ground, keys, portrait: v.portrait };
+    });
+    if (line.portrait) assert.ok(line.ground <= line.keys + 2, `the ground line is above the buttons @${vp} (${line.ground.toFixed(0)} vs ${line.keys.toFixed(0)})`);
     await t.shot(p, `quest-play-${vp}.png`);
     if (vp === 'phone') {
       await p.setViewportSize({ width: 844, height: 390 });

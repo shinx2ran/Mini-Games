@@ -97,6 +97,21 @@
 
   /* ---------------------------------------------------------- pure rules */
 
+  /** Saved progress, checked: {cleared: whole stages done in a row, done: [bool], stars: [0..3]}. Anything odd is repaired. */
+  function cleanProgress(p) {
+    var n = STAGES.length, out = { cleared: 0, done: [], stars: [] };
+    if (!p || typeof p !== 'object') p = {};
+    var cleared = Math.floor(Number(p.cleared));
+    cleared = isFinite(cleared) ? Math.max(0, Math.min(n, cleared)) : 0;
+    for (var i = 0; i < n; i++) {
+      out.done[i] = !!(Array.isArray(p.done) && p.done[i]) || i < cleared;
+      var s = Array.isArray(p.stars) ? Math.floor(Number(p.stars[i])) : 0;
+      out.stars[i] = isFinite(s) ? Math.max(0, Math.min(3, s)) : 0;
+    }
+    while (out.cleared < n && out.done[out.cleared]) out.cleared++;
+    return out;
+  }
+
   /** Lay a stage out: {w, h, grid: [row][col] chars, things: [{kind, x, y}], start: {x, y}}. */
   function buildStage(def) {
     var cols = 0, rows = [];
@@ -144,8 +159,7 @@
       var el = ctx.el, sfx = ctx.sfx, fx = ctx.fx, util = ctx.util;
       var players = ctx.players;
 
-      var progress = ctx.load('progress', null);
-      if (!progress || typeof progress !== 'object' || !Array.isArray(progress.stars)) progress = { cleared: 0, stars: [] };
+      var progress = cleanProgress(ctx.load('progress', null));
       var allOpen = ctx.opt('stages') === 'all';
 
       var littleIdx = players[0].little !== players[1].little ? (players[0].little ? 0 : 1) : -1;
@@ -227,12 +241,12 @@
         pen.setTransform(dpr, 0, 0, dpr, 0, 0);
         var portrait = r.height > r.width;
         // portrait: the whole stage height shows, with the controls underneath; landscape: about ten rows, following the heroes
-        var tile = portrait ? Math.floor(r.width / 9.5) : Math.floor(Math.min(r.height / 9.6, r.width / 16));
-        tile = util.clamp(tile, 18, 72);
         // the controls take the bottom of the screen: the camera may look that far below the stage (more ground),
         // so the heroes are never under a button
         var padH = 0;
         pads.forEach(function (pd) { padH = Math.max(padH, pd.node.offsetHeight || 0); });
+        var tile = portrait ? Math.floor(Math.min(r.width / 9.5, (r.height - padH - 24) / (ROWS + 0.5))) : Math.floor(Math.min(r.height / 9.6, r.width / 16));
+        tile = util.clamp(tile, 18, 72);
         view = { tile: tile, px: r.width, py: r.height, w: r.width / tile, h: portrait ? Math.min(ROWS + 0.5, r.height / tile) : r.height / tile, portrait: portrait, under: (padH + 16) / tile };
         sprites = {};
         dark = isDark();
@@ -331,7 +345,7 @@
           // sail to the far bank and back
           var far = c + 3;
           while (far < stage.w && !solid(far, r)) far++;
-          m.x1 = far - 3; m.speed = 2;
+          m.x1 = far - 3; m.speed = 3;
         } else { m.y1 = r - 4; m.speed = 1.6; }
         return m;
       }
@@ -381,6 +395,15 @@
         }
       }
 
+      /** Is there ground (or a branch, raft or lift) under x, a little below height y? */
+      function floorUnder(x, y) {
+        var c = Math.floor(x);
+        for (var r = Math.floor(y + 0.05); r <= Math.floor(y + 0.05) + 2; r++) {
+          if (solid(c, r) || tileAt(c, r) === '-') return true;
+        }
+        return movers.some(function (m) { return x >= m.x && x <= m.x + m.w && m.y >= y - 0.5 && m.y <= y + 2; });
+      }
+
       function groundAhead(b, dir) {
         var c = Math.floor(b.x + dir * (b.w / 2 + 0.2)), r = Math.floor(b.y + 0.05);
         return solid(c, r) || tileAt(c, r) === '-';
@@ -407,10 +430,17 @@
           // a little player's hero runs after the grown-up's by itself: she only jumps
           var lead = leaderOf(hero.i);
           var behind = lead.face >= 0 ? -1.1 : 1.1;
-          var gap = lead.x + behind - hero.x;
+          // her spot behind him, moved towards him until there is something to stand on there (never over a gap)
+          var spot = lead.x + behind, toward = behind < 0 ? 1 : -1;
+          for (var tries = 0; tries < 8 && !floorUnder(spot, lead.y); tries++) spot += toward * 0.25;
+          if (!floorUnder(spot, lead.y)) spot = lead.x;
+          var gap = spot - hero.x;
           if (lead.home) gap = lead.x - hero.x;
           if (lead.on === hero || Math.abs(lead.x - hero.x) < 0.35 && lead.y < hero.y - 0.5) gap = 0;   // the grown-up is standing on her: keep still
+          if (hero.on === lead) gap = 0;                                                               // she is standing on his head: stay up there
           if (Math.abs(gap) > 0.3) want = gap > 0 ? 1 : -1;
+          // she never walks off an edge by herself: over a gap is HER jump (only at the most help does she hop it alone)
+          if (want && hero.ground && !groundAhead(hero, want) && ctx.helpFor(hero.i) < 2 && hero.buffer <= 0) { needJump(hero.i); want = 0; }
           // at the most help she hops over a gap or up a step by herself, if she has not jumped in time
           if (want && hero.ground && ctx.helpFor(hero.i) >= 2 && (!groundAhead(hero, want) || hero.stuck > 0.5)) hero.buffer = BUFFER;
           if (want && hero.ground && (!groundAhead(hero, want) || hero.stuck > 0.25)) needJump(hero.i);
@@ -430,20 +460,25 @@
         if (hero.buffer > 0 && hero.coyote > 0 && hero.dizzy <= 0) {
           var boost = hero.on && hero.on.i != null ? BOOST : 1;
           hero.vy = -JUMP * boost;
+          hero.ownJump = true;
           hero.buffer = 0; hero.coyote = 0; hero.ground = false;
           hero.squash = -0.25;
           sfx.tone({ freq: boost > 1 ? 380 : 300, to: boost > 1 ? 900 : 640, dur: 0.14, type: 'triangle', gain: 0.14 });
           if (boost > 1) { var c = screenOf(hero); fx.burst(c.x, c.y, { emoji: '✨', count: 5, distance: 40, size: 16 }); }
         }
-        if (!holding && hero.vy < -JUMP * 0.45) hero.vy = -JUMP * 0.45;   // let go early: a smaller hop
+        if (hero.ownJump && !holding && hero.vy < -JUMP * 0.45) hero.vy = -JUMP * 0.45;   // let go early: a smaller hop (only for a jump of your own: never a spring)
+        if (hero.vy >= 0) hero.ownJump = false;
         hero.vy = Math.min(hero.vy + GRAV * dt, 22);
-        // carried by a raft, a lift or a buddy
-        if (hero.on && hero.on.dx != null) moveX(hero, hero.on.dx);
+        // carried by a raft or a lift: moved along with it first, then the hero's own move
+        if (hero.on && hero.on.dx != null) {
+          moveX(hero, hero.on.dx);
+          if (hero.on.dy && hero.vy >= 0) hero.y = hero.on.y;
+        }
         var wasGround = hero.ground, fallV = hero.vy;
         var hit = moveX(hero, hero.vx * dt);
         hero.stuck = hit && want === hit && hero.ground ? hero.stuck + dt : 0;
         if (hit) hero.vx = 0;
-        moveY(hero, hero.vy * dt + (hero.on && hero.on.dy ? hero.on.dy : 0), heroes);
+        moveY(hero, hero.vy * dt, heroes);
         if (hero.ground && !wasGround && fallV > 6) { hero.squash = 0.25; sfx.tone({ freq: 160, to: 110, dur: 0.06, type: 'sine', gain: 0.08 }); }
         hero.squash *= Math.pow(0.0005, dt);
         hero.walkT += Math.abs(hero.vx) * dt;
@@ -534,6 +569,7 @@
             // bop! it runs off giggling, and leaves an acorn
             cr.alive = false;
             hero.vy = -BOP * (input(hero.i).jump || hero.i === followIdx ? 1.2 : 1);
+            hero.ownJump = false;
             sfx.play('pop', { pitch: 500 });
             sfx.play('boing');
             var c = screenOf(cr);
@@ -555,7 +591,7 @@
           var near = Math.abs(hero.x - it.x) < it.r + hero.w / 2 && hero.y - hero.h < it.y + it.r && hero.y > it.y - it.r;
           if (it.kind === 'spring') {
             if (Math.abs(hero.x - it.x) < 0.55 && hero.vy >= 0 && Math.abs(hero.y - it.y) < 0.25 && hero.ground) {
-              hero.vy = -SPRING; hero.ground = false; it.squash = 1;
+              hero.vy = -SPRING; hero.ownJump = false; hero.ground = false; it.squash = 1;
               sfx.play('boing');
             }
             return;
@@ -609,7 +645,10 @@
         state = 'clear';
         var best = progress.stars[stageNo] || 0;
         progress.stars[stageNo] = Math.max(best, stars);
-        progress.cleared = Math.max(progress.cleared, stageNo + 1);
+        progress.done[stageNo] = true;
+        // 'cleared' is how many stages in a row from the first are done (with all stages open, one can be skipped)
+        progress.cleared = 0;
+        while (progress.cleared < STAGES.length && progress.done[progress.cleared]) progress.cleared++;
         try { ctx.save('progress', progress); } catch (e) {}
         sfx.play('match');
         var c = fx.centerOf(canvas);
@@ -630,8 +669,10 @@
         var fxp;
         if (followIdx >= 0) fxp = heroes[1 - followIdx];
         else fxp = { x: (live[0].x + live[live.length - 1].x) / 2, y: (live[0].y + live[live.length - 1].y) / 2 };
-        var tx = util.clamp(fxp.x - view.w * 0.45, 0, Math.max(0, stage.w - view.w));
-        var ty = view.portrait ? ROWS - view.h : util.clamp(fxp.y - view.h * 0.55, 0, Math.max(0, ROWS - view.h + view.under));
+        var aimX = fxp.x - view.w * 0.45;
+        if (followIdx >= 0) { var fh = heroes[followIdx]; if (!fh.bubble && !fh.home) aimX = Math.min(aimX, fh.x - 0.9); }   // keep her on the screen too
+        var tx = util.clamp(aimX, 0, Math.max(0, stage.w - view.w));
+        var ty = view.portrait ? ROWS - view.h : util.clamp(fxp.y - view.h * 0.62, 0, Math.max(0, ROWS - view.h + view.under));
         cam.x += (tx - cam.x) * Math.min(1, dt * 6);
         cam.y += (ty - cam.y) * Math.min(1, dt * 6);
         // with two steering heroes: whoever is left behind off the screen floats over to the other
@@ -642,7 +683,7 @@
         // a follower far behind (stuck, or lost) floats along too
         if (followIdx >= 0) {
           var f = heroes[followIdx], l = heroes[1 - followIdx];
-          if (!f.bubble && !f.home && Math.abs(f.x - l.x) > 7 && steadyBuddy(f)) bubbleTo(f, { x: l.x - l.face, y: l.y - 1.2 });
+          if (!f.bubble && !f.home && Math.abs(f.x - l.x) > Math.min(7, view.w - 2) && steadyBuddy(f)) bubbleTo(f, { x: l.x - l.face, y: l.y - 1.2 });
         }
       }
 
@@ -884,15 +925,15 @@
           var locked = i >= open;
           n.btn.classList.toggle('is-locked', locked);
           n.btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
-          n.btn.classList.toggle('is-next', i === open - 1 && i >= progress.cleared);
+          n.btn.classList.toggle('is-next', i === Math.min(progress.cleared, STAGES.length - 1) && !locked);
           n.stars.textContent = '';
           for (var s = 0; s < 3; s++) n.stars.appendChild(el('span', { class: 'aq-star' + (s < (progress.stars[i] || 0) ? ' is-got' : ''), text: '⭐' }));
           if (locked) n.btn.querySelector('.aq-node__icon').setAttribute('data-locked', '🔒');
           else n.btn.querySelector('.aq-node__icon').removeAttribute('data-locked');
         });
         ctx.setTurn(null);
-        var next = mapNodes[Math.min(open, STAGES.length) - 1];
-        ctx.hint(next.btn, { delay: 900 });
+        var next = mapNodes[Math.min(progress.cleared, STAGES.length - 1)];
+        if (next) ctx.hint(next.btn, { delay: 900 });
       }
       ctx.tap(mapEl, function (ev, node) {
         if (state !== 'map') return;
@@ -933,6 +974,7 @@
         solidAt: function (c, r) { return solid(c, r); },
         STAGES: STAGES.map(function (s) { return { name: s.name, icon: s.icon, chunks: s.chunks.slice() }; }),
         buildStage: function (i) { return buildStage(STAGES[i]); },
+        cleanProgress: cleanProgress,
         CHUNKS: CHUNKS,
         tuning: { GRAV: GRAV, JUMP: JUMP, BOOST: BOOST, SPRING: SPRING, WALK: WALK, HERO_H: HERO_H },
       });
