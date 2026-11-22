@@ -27,6 +27,9 @@ an avatar and a colour each.
 | 🐺 **Run & Freeze** | The wolf sings with his back turned: run! The song stops and he spins round: freeze! | Both at once |
 | 🐞 **Wobble Tray** | Hold the phone flat between you and tip it together to roll the ladybird to the strawberries. | Team, tilt sensor |
 | 👋 **Wiggle Pop** | Prop the phone up, stand back, and wave at the bubbles to pop them. | Team, camera |
+| 🧱 **Rainbow Stack** | A 3D tower of chunky blocks. Pull out one that matches the top block's colour or picture and it flies up to the top. Whoever tumbles the tower makes the big crash. | Matching, steady hands |
+| 🖍️ **Squiggle Friends** | A random squiggle appears; take turns turning it into a creature with crayons and face stickers. Then wake it up: it hops, blinks, babbles and joins your zoo. | Drawing together |
+| 🎵 **Animal Band** | Tap squares to give each animal a note on a beat; the song loops while you make it, then the band plays it as a concert. No wrong notes. | Making music together |
 
 ### Camera, tilt and shake
 

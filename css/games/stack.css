@@ -1,0 +1,227 @@
+/* Rainbow Stack — styles. Every selector is scoped under .g-stack.
+   The tower is built from CSS 3D boxes. --u (one block width, in px) is set
+   on .sk-scene by the game; every size below is a multiple of it. Each block
+   is placed with --x/--y/--z (in block widths) and --r (its quarter turn). */
+
+.g-stack .sk-scene {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "s0 match s1" "stage stage stage";
+  --u: 40px;
+  --seat: clamp(56px, calc(var(--gmin) * 0.16), 100px);
+  --tile: clamp(64px, calc(var(--gmin) * 0.19), 120px);
+}
+.g-stack[data-orient="landscape"] .sk-scene {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "match stage ." "s0 stage s1";
+}
+
+/* the panel is just a wrapper: its children take their own places in the scene's grid */
+.g-stack .sk-panel { display: contents; }
+
+.g-stack .sk-seat {
+  align-self: center;
+  justify-self: center;
+  width: var(--seat);
+  height: var(--seat);
+  display: grid;
+  place-items: center;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 50%;
+  background: var(--c-soft);
+  font-size: calc(var(--seat) * 0.56);
+  line-height: 1;
+  opacity: 0.55;
+  transform: scale(0.82);
+  transition: transform 0.25s cubic-bezier(.3, 1.8, .5, 1), opacity 0.2s;
+}
+.g-stack .sk-seat[data-p="0"] { grid-area: s0; }
+.g-stack .sk-seat[data-p="1"] { grid-area: s1; }
+.g-stack .sk-seat.is-turn {
+  opacity: 1;
+  transform: scale(1);
+  background: var(--c);
+  box-shadow: 0 0 0 5px var(--c-soft), 0 var(--lift, 6px) 0 5px var(--line);
+  animation: sk-bob 0.9s ease-in-out infinite alternate;
+}
+@keyframes sk-bob { to { transform: translateY(-8%) scale(1.04); } }
+
+/* "find one like this": the block on top, big and flat */
+.g-stack .sk-match {
+  grid-area: match;
+  align-self: center;
+  justify-self: center;
+  padding: 8px;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 var(--lift, 6px) 0 var(--line);
+}
+.g-stack .sk-tile {
+  display: grid;
+  place-items: center;
+  width: var(--tile);
+  height: calc(var(--tile) * 0.8);
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--c);
+}
+.g-stack .sk-tile .sk-sym { width: 52%; }
+
+/* ---------------------------------------------------------------- stage */
+
+.g-stack .sk-stage {
+  grid-area: stage;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  perspective: calc(var(--u) * 26);
+  perspective-origin: 50% 35%;
+}
+.g-stack .sk-view {
+  position: absolute;
+  left: 50%;
+  top: 80%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform: var(--view, rotateX(-24deg) rotateY(-38deg));
+  transition: transform 0.6s cubic-bezier(.4, 1.3, .5, 1);
+}
+.g-stack .sk-sway {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+  --amp: 1deg;
+}
+.g-stack .sk-sway.is-swaying { animation: sk-sway 0.19s ease-in-out 4 alternate; }
+.g-stack .sk-sway.is-proud { animation: sk-proud 0.35s ease-in-out infinite alternate; }
+@keyframes sk-sway { from { transform: rotateZ(calc(var(--amp) * -1)); } to { transform: rotateZ(var(--amp)); } }
+@keyframes sk-proud { from { transform: rotateZ(-2deg); } to { transform: rotateZ(2deg) translateY(calc(var(--u) * -0.2)); } }
+
+.g-stack .sk-floor {
+  position: absolute;
+  left: calc(var(--u) * -2.5);
+  top: calc(var(--u) * -2.5);
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 5);
+  box-sizing: border-box;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  transform: rotateX(90deg);
+}
+
+/* ---------------------------------------------------------------- blocks */
+
+.g-stack .sk-block {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform:
+    translate3d(calc(var(--x, 0) * var(--u)), calc(var(--y, 0) * var(--u)), calc(var(--z, 0) * var(--u)))
+    rotateY(var(--r, 0deg)) rotateX(var(--rx, 0deg)) rotateZ(var(--rz, 0deg));
+  transition: transform 0.3s ease-in-out;
+}
+.g-stack .sk-block.is-moving { z-index: 2; }
+.g-stack .sk-block.is-falling { transition: transform 0.85s cubic-bezier(.45, 0, .85, .55) var(--fall, 0s); }
+
+.g-stack .sk-face {
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--line);
+  background: var(--c);
+  backface-visibility: hidden;
+}
+.g-stack .sk-side {
+  left: calc(var(--u) * -1.5);
+  top: calc(var(--u) * -0.4);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 0.8);
+  box-shadow: inset 0 calc(var(--u) * -0.12) 0 rgba(12, 10, 38, 0.16);
+}
+.g-stack .sk-side--p { transform: translateZ(calc(var(--u) * 0.5)); }
+.g-stack .sk-side--n { transform: rotateY(180deg) translateZ(calc(var(--u) * 0.5)); }
+.g-stack .sk-end {
+  left: calc(var(--u) * -0.5);
+  top: calc(var(--u) * -0.4);
+  width: var(--u);
+  height: calc(var(--u) * 0.8);
+  box-shadow: inset 0 calc(var(--u) * -0.1) 0 rgba(12, 10, 38, 0.22);
+}
+.g-stack .sk-end--p { transform: rotateY(90deg) translateZ(calc(var(--u) * 1.5)); }
+.g-stack .sk-end--n { transform: rotateY(-90deg) translateZ(calc(var(--u) * 1.5)); }
+.g-stack .sk-top, .g-stack .sk-bottom {
+  left: calc(var(--u) * -1.5);
+  top: calc(var(--u) * -0.5);
+  width: calc(var(--u) * 3);
+  height: var(--u);
+}
+.g-stack .sk-top { transform: rotateX(90deg) translateZ(calc(var(--u) * 0.4)); background: var(--c); background: color-mix(in srgb, var(--c) 78%, #FFFFFF); }
+.g-stack .sk-bottom { transform: rotateX(-90deg) translateZ(calc(var(--u) * 0.4)); }
+
+/* the picture on a block: drawn with a clip-path, the same on every phone */
+.g-stack .sk-sym {
+  width: calc(var(--u) * 0.5);
+  aspect-ratio: 1;
+  background: #2A2356;
+  pointer-events: none;
+}
+.g-stack .sk-end .sk-sym { width: calc(var(--u) * 0.46); }
+.g-stack [data-shape="star"] .sk-sym { clip-path: polygon(50% 2%, 62% 36%, 98% 37%, 69% 59%, 80% 95%, 50% 73%, 20% 95%, 31% 59%, 2% 37%, 38% 36%); }
+.g-stack [data-shape="heart"] .sk-sym { clip-path: polygon(50% 94%, 9% 54%, 2% 36%, 6% 18%, 19% 7%, 34% 6%, 50% 20%, 66% 6%, 81% 7%, 94% 18%, 98% 36%, 91% 54%); }
+.g-stack [data-shape="dot"] .sk-sym { border-radius: 50%; transform: scale(0.82); }
+.g-stack [data-shape="peak"] .sk-sym { clip-path: polygon(50% 6%, 97% 92%, 3% 92%); }
+
+/* rainbow blocks match anything */
+.g-stack .sk-block.is-wild .sk-face, .g-stack .sk-tile.is-wild {
+  background: linear-gradient(90deg, var(--berry) 0 25%, var(--sun) 25% 50%, var(--leaf) 50% 75%, var(--sea) 75% 100%);
+}
+.g-stack .sk-block.is-wild .sk-sym, .g-stack .sk-tile.is-wild .sk-sym {
+  background: #FFFFFF;
+  border-radius: 0;
+  transform: none;
+  clip-path: polygon(50% 2%, 62% 36%, 98% 37%, 69% 59%, 80% 95%, 50% 73%, 20% 95%, 31% 59%, 2% 37%, 38% 36%);
+}
+
+/* not yours to pull right now: dim, and taps go past it to the bright ones */
+.g-stack .sk-block.is-off .sk-face { filter: saturate(0.4) brightness(0.8); pointer-events: none; }
+
+/* turn the tower */
+.g-stack .sk-turn {
+  appearance: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 3;
+  width: clamp(64px, calc(var(--gmin) * 0.15), 84px);
+  height: clamp(64px, calc(var(--gmin) * 0.15), 84px);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 var(--lift, 6px) 0 var(--line);
+  font-size: calc(clamp(64px, calc(var(--gmin) * 0.15), 84px) * 0.48);
+  line-height: 1;
+}
+.g-stack .sk-turn:active { transform: translateY(3px); box-shadow: 0 3px 0 var(--line); }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-stack .sk-seat.is-turn, .g-stack .sk-sway.is-swaying, .g-stack .sk-sway.is-proud { animation: none; }
+  .g-stack .sk-block { transition-duration: 0.12s; }
+  .g-stack .sk-block.is-falling { transition-duration: 0.3s; }
+}
