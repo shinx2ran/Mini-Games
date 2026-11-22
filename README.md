@@ -33,6 +33,7 @@ an avatar and a colour each.
 | 🐍 **Ular Tangga** | Snakes and ladders: roll your big die, hop and count, climb the ladders, slide down the snakes. A new board every game, stars (roll again) and gifts (hop on). Board of 36, 64 or the classic 100. | Board game, counting |
 | 🤖 **Robo Path** | Program your robot with up to three arrows (footprints preview the plan), press go, and pick up strawberries; trees and the other robot go bonk. | Planning, early coding |
 | 🏝️ **Treasure Island** | Roll footprints and walk your explorer under the clouds: gems, keys, treasure chests, a parrot that flies you and a crab that hides a gem. Richest explorer wins. | Adventure board game |
+| 🌰 **Acorn Quest** | A side-scrolling adventure for two in five stages (meadow, woods, pond, clouds, cave): run, jump, bop critters, springs, a gate button, rafts, a lift, a key for the cave door, three hidden stars per stage, and a stand-on-your-buddy super jump. The little one's hero runs after the grown-up's: she just jumps. Nobody loses: falling in floats you back in a bubble. | Co-op platformer |
 
 ### Camera, tilt and shake
 
