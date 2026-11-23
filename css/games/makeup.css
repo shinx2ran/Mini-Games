@@ -520,6 +520,14 @@
 @keyframes mk-dab { from { transform: scale(0.4); opacity: 0.3; } }
 @keyframes mk-drop { from { transform: translateY(-30em); opacity: 0; } }
 @keyframes mk-rise { from { transform: translateY(14em); opacity: 0; } }
+/* a dab past the named slots: a big sparkle pops in with a burst ring (the ring shows only while it is new) */
+.g-makeup .mk-spare { transition: scale 0.3s ease-in; }
+.g-makeup .mk-spare.is-settled { scale: 0.45; }
+.g-makeup .mk-at.is-new > .mk-spare { animation: mk-spare 0.42s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes mk-spare { from { scale: 0.2; } 55% { scale: 1.6; } }
+.g-makeup .mk-at > .mk-burst { opacity: 0; border: 1.6em solid var(--sun, #FFC933); }
+.g-makeup .mk-at.is-new > .mk-burst { animation: mk-burst 0.5s ease-out; }
+@keyframes mk-burst { from { opacity: 1; scale: 0.4; } to { opacity: 0; scale: 1.9; } }
 .g-makeup .mk-model.is-flush .mk-blush { opacity: calc(var(--op, 0.55) + 0.15); }
 .g-makeup .mk-specs i { position: absolute; top: 0; width: 18em; height: 18em; box-sizing: border-box; border-radius: 50%; border: 2.6em solid #127DBA; background: rgba(255, 255, 255, 0.25); }
 .g-makeup .mk-specs i:first-child { left: 4em; }
@@ -783,6 +791,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .g-makeup .mk-at.is-new, .g-makeup .mk-at.is-drop, .g-makeup .mk-at.is-rise { animation: mk-fadein 0.12s ease-out; }
+  .g-makeup .mk-at.is-new > .mk-spare, .g-makeup .mk-at.is-new > .mk-burst { animation: none; }
+  .g-makeup .mk-spare { transition: none; }
   .g-makeup .mk-bulbs i, .g-makeup .mk-rock, .g-makeup .mk-frame.is-posed .mk-model.is-still .mk-rock, .g-makeup .mk-card__new, .g-makeup .mk-card.is-pop,
   .g-makeup .mk-glass.is-sweep .mk-glint, .g-makeup .mk-googly.is-spin s, .g-makeup .mk-board.is-waving .mk-wave > .mg-sticker,
   .g-makeup .mk-scene.is-flash .mk-bulbs i, .g-makeup .mk-model.is-whisk .mk-bib, .g-makeup .mk-model.is-blink .mk-lid { animation: none; }

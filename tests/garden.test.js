@@ -135,6 +135,7 @@ h.run(ID, async (t) => {
           a.becomesGiant({ crop: 'potato', fed: 'bone', perfect: true }, { done: 9, giants: 1 }, 0.21),
         ],
         tree: [0, 2, 3, 6, 7, 11, 12, 17, 18, 24, 25, 99].map(a.treeStage),
+        damp: a.cleanFarm({ done: 4, plots: [{ water: 2 }, { crop: 'pumpkin', stage: 2, water: 3 }, { crop: 'tomato', stage: 1, water: 2 }] }).plots.slice(0, 3).map((p) => [p.crop, p.water]),
         repair: a.cleanFarm({ done: 9, plots: [{ crop: 'pumpkin', stage: 4, giant: true, fruits: 1 }, { crop: 'tomato', stage: 4, giant: true }, { crop: 'carrot', stage: 2, giant: true }] }).plots.slice(0, 3).map((p) => [p.giant, p.fruits]),
       };
     });
@@ -148,6 +149,7 @@ h.run(ID, async (t) => {
     assert.deepStrictEqual([r.later.plots[2].fruits, r.later.plots[2].picks], [1, 0], 'a ripe plant always has something to pick (and a carrot is picked whole)');
     assert.deepStrictEqual([r.later.plots[3].bug, r.later.plots[3].fed, r.later.plots[3].t], ['🐛', 'fish', 1]);
     assert.strictEqual(r.later.plots[4].crop, null);
+    assert.deepStrictEqual(r.damp, [[null, 0], [null, 0], ['tomato', 2]], 'only a plant holds water: an empty bed (or one dug up) is plain soil');
     assert.deepStrictEqual(r.later.basket, { tomato: 3 }, 'the basket holds up to three of a kind (all of them show)');
     assert.strictEqual(r.later.seed, false, 'no seed in hand any more: a saved one is read nowhere');
     assert.strictEqual(r.later.order, null, 'an order for unearned vegetables is dropped');
@@ -452,12 +454,13 @@ h.run(ID, async (t) => {
   await setFarm(page, Object.assign(f, { plots: f.plots.map((p) => Object.assign(p, { stage: 4, fruits: 1 })) }));
   await tap(page, bed(0), 0);
   f = await farm(page);
-  assert.deepStrictEqual([f.plots[0].crop, f.plots[0].water], [null, 2], 'picked a second time: the bed is free (and still damp)');
+  assert.deepStrictEqual([f.plots[0].crop, f.plots[0].water], [null, 0], 'picked a second time: the bed is free, plain soil holding no water');
+  assert.deepStrictEqual(await page.locator(bed(0)).evaluate((b) => [b.classList.contains('is-wet'), b.querySelectorAll('.gd-drops i.is-full').length]), [false, 0], 'so it shows no wet soil and no drops');
   assert.strictEqual((await api(page, 'ghosts'))[0], 'chilli', 'and it shows the chilli the visitor wants');
   await page.waitForTimeout(250);
   await tap(page, bed(0));
   f = await farm(page);
-  assert.deepStrictEqual([f.plots[0].crop, f.plots[0].stage, f.plots[0].water], ['chilli', 0, 0], 'sown in the damp bed, the new seed still wants its first drink');
+  assert.deepStrictEqual([f.plots[0].crop, f.plots[0].stage, f.plots[0].water], ['chilli', 0, 0], 'sown there, the new seed wants its first drink');
   assert.strictEqual(await page.locator(bed(0) + ' .gd-need').textContent(), '💧', 'and asks for it');
   // a child tapping anything at random still fills the order
   await openGarden(page, { bugs: 'some' });
@@ -608,7 +611,6 @@ h.run(ID, async (t) => {
   f = await farm(page);
   assert.deepStrictEqual([f.plots[1].stage, f.plots[1].giant], [4, false], 'one giant a round: the next carrot is an ordinary one');
   assert.strictEqual(await page.evaluate(() => MG.current.api.hintNext() || MG.current.api.hinted.dataset.i), '0', 'the hand goes to the giant first');
-  const water0 = f.plots[0].water;
   await tap(page, bed(0), 0);
   assert.strictEqual(await api(page, 'state'), 'pull', 'a tap on the giant: everybody pulls');
   assert.ok(await page.locator('.g-garden .gd-pull').isVisible());
@@ -624,7 +626,7 @@ h.run(ID, async (t) => {
     }
   }
   assert.ok(fin && fin.taps <= Math.ceil((need + 1) / 2), `pulling together, it comes out in ${fin && fin.taps} taps`);
-  assert.deepStrictEqual([fin.r.basket, fin.r.plot.crop, fin.r.plot.water, fin.r.giants, fin.r.saved], [3, null, water0 - 1, 1, 1], 'out it comes: three into the basket, the bed free, and saved at once');
+  assert.deepStrictEqual([fin.r.basket, fin.r.plot.crop, fin.r.plot.water, fin.r.giants, fin.r.saved], [3, null, 0, 1, 1], 'out it comes: three into the basket, the bed free (plain soil, no water), and saved at once');
   await page.waitForFunction(() => MG.current.api.state === 'play', null, { timeout: 2000 });
   assert.ok(!(await page.locator('.g-garden .gd-pull').isVisible()), 'and back to the garden');
   // pulling alone: it still comes out
@@ -767,7 +769,14 @@ h.run(ID, async (t) => {
   await tap(page, bed(2), 0);
   assert.strictEqual((await farm(page)).plots[2].fed, null, 'a tap on a hungry plant uses nothing up');
   await page.evaluate(() => MG.current.api.rain());
-  assert.ok((await farm(page)).plots.every((p) => p.water === 3), 'rain waters every bed');
+  f = await farm(page);
+  assert.ok(f.plots.every((p) => p.water === (p.crop ? 3 : 0)) && f.plots.some((p) => !p.crop), 'rain waters every plant, and leaves an empty bed plain soil');
+  // sowing never seems to empty a bed: an empty bed shows no water before the tap, so nothing vanishes at sowing
+  const empty = f.plots.findIndex((p) => !p.crop);
+  const looks = (i) => page.locator(bed(i)).evaluate((b) => [b.classList.contains('is-wet'), b.querySelectorAll('.gd-drops i.is-full').length]);
+  assert.deepStrictEqual(await looks(empty), [false, 0], 'after the rain an empty bed shows no wet soil and no drops');
+  await tap(page, bed(empty), 0);
+  assert.deepStrictEqual([(await farm(page)).plots[empty].crop !== null, await looks(empty)], [true, [false, 0]], 'sown: still no drops, and now the seed asks for its first drink');
   // a plant that waits (for its food, or for the bug to go) is not growing, so it drinks nothing meanwhile
   await setFarm(page, { done: 0, rainIn: 110, plots: [P('chilli', 2, { t: 0.6, water: 1 }), P('tomato', 1, { t: 0.3, water: 1, bug: '🐛' }), null, null] });
   await grow(page, 30);

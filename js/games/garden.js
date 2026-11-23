@@ -71,7 +71,7 @@
 
   var STAGE_S = [6, 7, 8, 8];     // seconds in each stage, at normal speed, when cared for
   var STAGE_S_EARLY = [3, 5, 7, 7]; // the first two rounds: things happen sooner
-  var MAX_WATER = 3;              // drops of water a bed holds
+  var MAX_WATER = 3;              // drops of water a planted bed holds (an empty bed holds none)
   var DRINK = 4 / 3;              // drops a plant drinks per stage it grows (by itself or tickled; waiting, it drinks nothing): a seed is sown
                                   // in dry soil and a full bed lasts it 2.25 of its 4 stages, so it is watered when sown and once more on
                                   // the way (never right at the food ask at 2.5, nor at ripe)
@@ -156,9 +156,9 @@
     for (var i = 0; i < u.beds; i++) {
       var p = emptyPlot(), q = rawPlots[i];
       if (q && typeof q === 'object') {
-        p.water = Math.floor(num(q.water, 0, MAX_WATER, 0));
         if (u.crops.indexOf(q.crop) >= 0) {
           p.crop = q.crop;
+          p.water = Math.floor(num(q.water, 0, MAX_WATER, 0));   // (only a plant holds water: an empty bed is plain soil)
           p.stage = Math.floor(num(q.stage, 0, 4, 0));
           p.t = num(q.t, 0, 1, 0);
           p.dry = num(q.dry, 0, 1, 0);          // the part of the next drop already drunk
@@ -479,7 +479,7 @@
         b.dataset.stage = p.crop ? String(p.stage) : 'empty';
         b.dataset.crop = p.crop || '';
         b.dataset.form = c ? c.form : '';
-        b.classList.toggle('is-wet', p.water > 0);
+        b.classList.toggle('is-wet', !!p.crop && p.water > 0);
         b.classList.toggle('is-dry', !!p.crop && p.stage < 4 && p.water === 0);
         b.classList.toggle('is-hungry', hungry);
         b.classList.toggle('is-bugged', !!p.bug);
@@ -530,7 +530,7 @@
           add(el('span', { class: 'gd-packet gd-marker is-ghost' }, packet(ghost[i])));
         }
         var drops = el('span', { class: 'gd-drops', 'aria-hidden': 'true' });
-        for (var d = 0; d < MAX_WATER; d++) drops.appendChild(el('i', { class: d < p.water ? 'is-full' : '' }));
+        for (var d = 0; d < MAX_WATER; d++) drops.appendChild(el('i', { class: p.crop && d < p.water ? 'is-full' : '' }));
         add(drops);
       }
 
@@ -776,7 +776,7 @@
         if (!ghost[i]) planSeeds();
         var crop = ghost[i];
         if (!crop) return;
-        // sowing turns the soil over: a new seed always wants its first drink (whatever the bed held before)
+        // a new seed is sown into dry soil (an empty bed holds no water) and always wants its first drink
         farm.plots[i] = emptyPlot();
         farm.plots[i].crop = crop;
         delete ghost[i];
@@ -959,10 +959,9 @@
           // back to leafy for a second crop: it will ask for food again, and flower, and fruit
           p.picks = 1; p.stage = 2; p.t = 0; p.fed = null; p.fruits = 0; p.perfect = true; p.bug = null; p.thirst = 0; p.bugT = 0;
         } else {
-          // picked whole: the bed is free for new seeds
-          var keep = Math.max(0, p.water - 1);
+          // picked whole: the bed is free for new seeds (plain soil, holding no water: a seed sown in it starts dry and
+          // asks for its first drink, so nothing seen there vanishes at sowing)
           farm.plots[i] = emptyPlot();
-          farm.plots[i].water = keep;
           if (c.regrow) fx.burst(from.x, from.y, { emoji: '🍃', count: 5, distance: 40, size: 18 });
         }
         care[i].tk = 0;
@@ -1106,9 +1105,7 @@
         hint(null);
         // everything is settled now; what follows is the show
         farm.basket[crop] = Math.min(MAX_BASKET, (farm.basket[crop] || 0) + 3);
-        var keep = Math.max(0, p.water - 1);
         farm.plots[i] = emptyPlot();
-        farm.plots[i].water = keep;
         care[i].tk = 0;
         bonusAt[i] = null;
         farm.giants++;
@@ -1485,7 +1482,8 @@
         raining = 3.5;
         rainEl.classList.add('is-on');
         sfx.noise({ freq: 1200, to: 600, dur: 2.5, q: 0.4, gain: 0.05 });
-        farm.plots.forEach(function (p) { p.water = MAX_WATER; p.dry = 0; p.thirst = 0; });
+        // it waters every plant; an empty bed holds no water (a seed is sown into dry soil), so it stays plain soil
+        farm.plots.forEach(function (p) { if (p.crop) { p.water = MAX_WATER; p.dry = 0; p.thirst = 0; } });
         after();
         farm.plots.forEach(function (p, i) { if (p.crop && plotEls[i]) fx.bounce(plotEls[i]); });
         if (lastHinted) hintNext();                   // the hand moves on from a job the rain has done

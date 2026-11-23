@@ -193,7 +193,8 @@
   // n/plus: base dabs and the grown-up's extra; fixed: [hers, his] whatever the options; named: slots with a look of their own
   // (dabs past them add a spare sparkle); clip: drawn inside the skin; react/sound are per item (ITEMS.r) and per kind (S).
   // At Normal with help Some (the default) every step but the pose is 3 taps for her: base 4 less one for the help, and 3 for
-  // every fixed kind. That is what makes a Full round last about a minute (see zonesFor).
+  // every fixed kind. That is what makes a Full round last about a minute (see zonesFor). Every kind but the pose has 3 named
+  // slots, so each of those taps changes the look; only help Off or Dabs Lots go past them, to a big popping sparkle.
   var KINDS = {
     foam:     { n: 4, plus: 0, clip: true, named: 3 },
     blush:    { n: 4, plus: 1, clip: true, named: 3 },
@@ -203,33 +204,34 @@
     shadow:   { n: 4, plus: 1, clip: true, named: 3 },
     lashes:   { n: 4, plus: 1, named: 3 },
     googly:   { n: 4, plus: 1, named: 3 },
-    glasses:  { fixed: [3, 3], named: 2 },
+    glasses:  { fixed: [3, 3], named: 3 },
     mask:     { n: 4, plus: 0, named: 3 },
-    ball:     { fixed: [3, 3], named: 2 },
-    tip:      { fixed: [3, 3], named: 2 },
+    ball:     { fixed: [3, 3], named: 3 },
+    tip:      { fixed: [3, 3], named: 3 },
     whisk:    { fixed: [3, 3], named: 3 },
     cream:    { n: 4, plus: 1, clip: true, named: 3 },
     lips:     { n: 4, plus: 1, named: 3 },
-    smile:    { fixed: [3, 3], named: 2 },
+    smile:    { fixed: [3, 3], named: 3 },
     stache:   { n: 4, plus: 1, named: 3 },
-    bowtie:   { fixed: [3, 3], named: 2 },
-    cape:     { fixed: [3, 3], named: 2 },
-    wear:     { fixed: [3, 3], named: 2 },
+    bowtie:   { fixed: [3, 3], named: 3 },
+    cape:     { fixed: [3, 3], named: 3 },
+    wear:     { fixed: [3, 3], named: 3 },
     ring:     { n: 4, plus: 1, named: 3 },
-    cone:     { fixed: [3, 3], named: 2 },
+    cone:     { fixed: [3, 3], named: 3 },
     wig:      { n: 4, plus: 1, named: 3 },
-    antennae: { fixed: [3, 3], named: 2 },
+    antennae: { fixed: [3, 3], named: 3 },
     glitter:  { fixed: [3, 3], named: 3 },
     pose:     { fixed: [1, 1], named: 1 },
   };
-  var DABS = { few: -1, normal: 0, lots: 2 };
+  var DABS = { few: -1, normal: 0, lots: 1 };
+  var MAX_DABS = [5, 6];   // [hers, his]: about five taps a step at most for her; his one more stays even at Lots
   var GAP = 0.16, SWITCH_GAP = 0.25, TICKLE_GAP = 0.3, CHEER_GAP = 0.15;
 
   // where the 15 glitter pieces go (shuffled once per board per round)
   var GLITTER = [[30, 44], [70, 44], [22, 62], [78, 62], [50, 50], [40, 36], [60, 36], [26, 88], [74, 88], [50, 92], [18, 50], [82, 50], [38, 66], [62, 66], [50, 38]];
   // the mud a friend brings from playing outside (Full only): brow and left cheek (blobs), right cheek (a leaf)
   var MUD = [[50, 44], [27, 76], [73, 76]];
-  // a dab past a kind's named slots: a tiny sparkle at the next of these
+  // a dab past a kind's named slots: a big sparkle that pops in at the next of these (then settles small when another comes)
   var SPARE = {
     wash: [[30, 50], [70, 50], [50, 90], [36, 88], [64, 88], [50, 40]],
     cheeks: [[20, 68], [80, 68], [32, 88], [68, 88], [22, 84], [78, 84]],
@@ -241,6 +243,7 @@
     sparkle: [[34, 40], [66, 40], [50, 30], [28, 70], [72, 70], [50, 96]],
     pose: [[30, 30], [70, 30], [50, 24], [24, 60], [76, 60], [50, 96]],
   };
+  var SPARE_BIG = 12;   // em: about 11px on the smallest phone
   var RAINBOW = ['#FF5D8F', '#FF8A3D', '#FFC933', '#4CCB6B', '#2FB4F5', '#9B6BFF'];
 
   /* ---------------------------------------------------------- pure rules */
@@ -318,7 +321,7 @@
     var K = KINDS[kind];
     if (!K) return 1;
     if (K.fixed) return K.fixed[isB ? 1 : 0];
-    return clamp(K.n + (isB ? K.plus : 0) + (DABS[dabs] || 0) - (help || 0), 1, 6);
+    return clamp(K.n + (isB ? K.plus : 0) + (DABS[dabs] || 0) - (help || 0), 1, MAX_DABS[isB ? 1 : 0]);
   }
 
   /** The zones of a round: Full washes first and keeps the party's two extra zones (8 steps); Short drops them (5; the
@@ -466,7 +469,10 @@
         while (first < n && foamed(first, n) <= i) first++;
         FOAM.forEach(function (q) { out.push(shp([MUD[i][0] + q[0], MUD[i][1] + q[1]], q[2], q[2], { bg: 'var(--mk-foam)', br: '50%', thin: true, d: o.foamAll ? 0 : first - 1 })); });
       }
-      for (var j = 0; j < k; j++) out.push(shp(BUBBLES[j % BUBBLES.length], 4, 4, { bg: 'var(--mk-foam)', br: '50%', thin: true, d: j }));
+      for (var j = 0; j < k; j++) {   // a bubble a dab; a dab that brings no new foam (Lots) brings a cluster of them
+        var bp = BUBBLES[j % BUBBLES.length], more = !o.foamAll && foamed(j + 1, n) === foamed(j, n);
+        (more ? [[0, 0, 7], [-6, -4, 5], [6, -4, 5]] : [[0, 0, 5]]).forEach(function (q) { out.push(shp([bp[0] + q[0], bp[1] + q[1]], q[2], q[2], { bg: 'var(--mk-foam)', br: '50%', thin: true, d: j })); });
+      }
       return out;
     },
     blush: function (it, kk, o, k) {
@@ -505,7 +511,7 @@
       var out = [], lid = function (x, d) { return shp([x, 51.25], 13, 6.5, { bg: it.c, br: '50% 50% 0 0 / 100% 100% 0 0', ln: false, op: 0.85, d: d, cls: 'mk-shade' }); };
       if (kk >= 1) out.push(lid(37, 0));
       if (kk >= 2) out.push(lid(63, 1));
-      if (kk >= 3) { out.push(emo([37, 49.5], '✨', 5, { d: 2, l: 'model' })); out.push(emo([63, 49.5], '✨', 5, { d: 2, l: 'model' })); }
+      if (kk >= 3) { out.push(emo([37, 49.5], '✨', 8, { d: 2, l: 'model' })); out.push(emo([63, 49.5], '✨', 8, { d: 2, l: 'model' })); }
       return out;
     },
     lashes: function (it, kk) {
@@ -525,12 +531,12 @@
     googly: function (it, kk, o) {
       var out = [], ang = o.seed || [0.7, 3.6];
       var eye = function (at, a, d) {
-        out.push(shp(at, 13, 13, { bg: '#FFFFFF', br: '50%', d: d, cls: 'mk-googly' + (kk >= 3 ? ' is-spin' : ''),
+        out.push(shp(at, 13, 13, { bg: '#FFFFFF', br: '50%', d: kk >= 3 ? 2 : d, cls: 'mk-googly' + (kk >= 3 ? ' is-spin' : ''),
           html: '<s><i style="left:calc(50% + ' + (3 * Math.cos(a)).toFixed(2) + 'em);top:calc(50% + ' + (3 * Math.sin(a)).toFixed(2) + 'em)"></i></s>' }));
       };
       if (kk >= 1) eye(SLOTS.eyeL, ang[0], 0);
       if (kk >= 2) eye(SLOTS.eyeR, ang[1], 1);
-      if (kk >= 3) out.push(emo([50, 49], '✨', 5, { d: 2 }));
+      if (kk >= 3) out.push(emo([50, 49], '✨', 8, { d: 2 }));
       return out;
     },
     glasses: function (it, kk) {
@@ -539,7 +545,11 @@
         out.push(shp([50, 58], 72, 2.6, { bg: '#5B6B7F', ln: false, d: 0, drop: true }));
         out.push(shp([50, 58], 56, 20, { bg: 'rgba(127, 219, 255, 0.55)', br: '10em', ln: false, cls: 'mk-goggle', d: 0, drop: true }));
       } else out.push(shp([50, 58], 50, 18, { ln: false, cls: 'mk-specs' + (it.v === 'shades' ? ' is-shades' : ''), html: '<i></i><b></b><i></i>', d: 0, drop: true }));
-      if (kk >= 2) out.push(emo([42, 52], '✨', 7, { d: 1 }));
+      if (kk >= 2) {   // a shine on both lenses
+        [[35, 54], [59, 54]].forEach(function (p) { out.push(shp(p, 7, 2.6, { bg: '#FFFFFF', br: '2em', ln: false, t: 'rotate(-30deg)', d: 1 })); });
+        out.push(emo([44, 50], '✨', 8, { d: 1 }));
+      }
+      if (kk >= 3) [[23, 50], [77, 50]].forEach(function (p) { out.push(emo(p, '⭐', 11, { d: 2 })); });   // a star at each corner
       return out;
     },
     mask: function (it, kk) {
@@ -553,48 +563,52 @@
         out.push(shp([15, 63], 4, 14, { bg: it.c, br: '2em', t: 'rotate(16deg)', d: 1, cls: 'mk-tail' }));
         out.push(shp([85, 63], 4, 14, { bg: it.c, br: '2em', t: 'rotate(-16deg)', d: 1, cls: 'mk-tail' }));
       }
-      if (kk >= 3) out.push(emo([50, 49], '✨', 6, { d: 2 }));
+      if (kk >= 3) out.push(emo([50, 47], '💎', 10, { d: 2 }));   // a gem on the brow
       return out;
     },
     ball: function (it, kk) {
-      var s = kk >= 2 ? 12 : 7, out = [shp(SLOTS.nose, s, s, { bg: it.c, br: '50%', cls: 'mk-ball', html: '<i></i>', d: kk >= 2 ? 1 : 0 })];
-      if (kk >= 2) out.push(emo([60, 65], '✨', 5, { d: 1 }));
+      var s = [9, 12, 16][kk - 1], out = [shp(SLOTS.nose, s, s, { bg: it.c, br: '50%', cls: 'mk-ball', html: '<i></i>', d: kk - 1 })];
+      if (kk === 2) out.push(emo([60, 65], '✨', 6, { d: 1 }));
+      if (kk >= 3) [[35, 66], [65, 66]].forEach(function (p) { out.push(emo(p, '✨', 9, { d: 2 })); });   // bigger, with a boing
       return out;
     },
     tip: function (it, kk) {
-      var out = [emo(SLOTS.nose, it.e, kk >= 2 ? 11 : 7, { d: kk >= 2 ? 1 : 0 })];
-      if (kk >= 2) out.push(emo([61, 65], '✨', 5, { d: 1 }));
+      var out = [emo(SLOTS.nose, it.e, [9, 12, 15][kk - 1], { d: kk - 1 })];
+      if (kk >= 2) out.push(emo([62, 64], '✨', 6, { d: 1 }));
+      if (kk >= 3) out.push(emo([36, 63], '💕', 10, { d: 2 }));
       return out;
     },
     whisk: function (it, kk) {
-      var out = [];
+      var out = [], long = kk >= 3;   // the third dab: longer, bolder whiskers
       var fan = function (at, side, d) {   // side -1: the left cheek (the inner end on the right)
         [-12, 0, 12].forEach(function (a, i) {
-          out.push(shp([at[0], at[1] + (i - 1) * 2.6], 18, 0.9, { bg: 'var(--line)', br: '1em', ln: false, cls: 'mk-whisk', to: side < 0 ? '100% 50%' : '0% 50%', t: 'rotate(' + (side < 0 ? a : -a) + 'deg)', d: d }));
+          out.push(shp([at[0] + (long ? side * 2 : 0), at[1] + (i - 1) * 2.6], long ? 22 : 18, long ? 1.2 : 0.9, { bg: 'var(--line)', br: '1em', ln: false, cls: 'mk-whisk', to: side < 0 ? '100% 50%' : '0% 50%', t: 'rotate(' + (side < 0 ? a : -a) + 'deg)', d: long ? 2 : d }));
         });
       };
       if (kk >= 1) fan(SLOTS.whiskL, -1, 0);
       if (kk >= 2) fan(SLOTS.whiskR, 1, 1);
-      if (kk >= 3) out.push(emo([50, 64], '✨', 5, { d: 2 }));
+      if (kk >= 3) out.push(emo([50, 64], '✨', 7, { d: 2 }));
       return out;
     },
     cream: function (it, kk) {
       var out = [], W = '#FFFFFF';
       if (kk >= 1) out.push(shp(SLOTS.nose, 14, 10, { bg: W, br: '60% 40% 55% 45% / 55% 60% 40% 45%', d: 0, l: 'model' }));
       if (kk >= 2) [SLOTS.cheekL, SLOTS.cheekR].forEach(function (c) { [-2.5, 2.5].forEach(function (dy) { out.push(shp([c[0], c[1] + dy], 10, 3, { bg: W, br: '2em', thin: true, d: 1 })); }); });
-      if (kk >= 3) out.push(shp(SLOTS.brow, 8, 6, { bg: W, br: '50% 45% 55% 50%', thin: true, d: 2 }));
+      if (kk >= 3) out.push(shp(SLOTS.brow, 12, 8, { bg: W, br: '50% 45% 55% 50%', thin: true, d: 2 }));
       return out;
     },
     lips: function (it, kk) {
       var out = [];
-      if (kk >= 2) out.push(shp([50, 83.5], 18, 5, { bg: it.c, br: '20% 20% 50% 50% / 20% 20% 80% 80%', d: 1 }));
-      if (kk >= 1) out.push(shp([50, 79.25], 18, 4.5, { ln: false, cls: 'mk-upper', vars: { '--c': it.c }, html: '<i></i><i></i>', d: 0 }));
-      if (kk >= 3) out.push(shp([55, 80], 2.5, 2.5, { bg: '#FFFFFF', br: '50%', ln: false, d: 2 }));
+      var gloss = kk >= 3;   // the third dab: glossy, so the lips pop again with a shine
+      if (kk >= 2) out.push(shp([50, 83.5], 18, 5, { bg: it.c, br: '20% 20% 50% 50% / 20% 20% 80% 80%', d: gloss ? 2 : 1 }));
+      if (kk >= 1) out.push(shp([50, 79.25], 18, 4.5, { ln: false, cls: 'mk-upper', vars: { '--c': it.c }, html: '<i></i><i></i>', d: gloss ? 2 : 0 }));
+      if (gloss) { out.push(shp([55, 83], 3.5, 2.2, { bg: '#FFFFFF', br: '50%', ln: false, d: 2 })); out.push(emo([64, 77], '✨', 8, { d: 2 })); }
       return out;
     },
     smile: function (it, kk) {
       var out = [shp([50, 77], 30, 10, { ln: false, cls: 'mk-smile', vars: { '--c': it.c, '--sw': kk >= 2 ? '3.5em' : '2em' }, d: kk >= 2 ? 1 : 0 })];
-      if (kk >= 2) [[35, 80], [65, 80]].forEach(function (p) { out.push(shp(p, 4, 4, { bg: '#F0383B', br: '50%', ln: false, d: 1 })); });
+      if (kk >= 2) [[35, 80], [65, 80]].forEach(function (p) { var s = kk >= 3 ? 8 : 4; out.push(shp(p, s, s, { bg: '#F0383B', br: '50%', ln: false, d: kk - 1 })); });
+      if (kk >= 3) out.push(shp([50, 83.5], 9, 6, { bg: '#FF8FB1', br: '0 0 50% 50% / 0 0 100% 100%', d: 2 }));   // and a tongue out
       return out;
     },
     stache: function (it, kk) {
@@ -605,25 +619,31 @@
       return out;
     },
     bowtie: function (it, kk) {
+      var W = kk >= 3 ? 15 : 12, H = kk >= 3 ? 14 : 11;   // the third dab: bigger, with white polka dots
       var wing = function (x, r, d) {
-        return shp([x, 104.5], 12, 11, { ln: false, cls: 'mk-wing', vars: { '--c': it.c }, d: d,
+        return shp([x, 104.5], W, H, { ln: false, cls: 'mk-wing', vars: { '--c': it.c }, d: kk >= 3 ? 2 : d,
           html: '<svg viewBox="0 0 12 11" preserveAspectRatio="none" aria-hidden="true"><polygon points="' + (r ? '11.4,0.6 0.6,5.5 11.4,10.4' : '0.6,0.6 11.4,5.5 0.6,10.4') + '"/></svg>' });
       };
       var out = [];
-      if (kk >= 1) out.push(wing(44, false, 0));
-      if (kk >= 2) { out.push(wing(56, true, 1)); out.push(shp([50, 104.5], 5, 5, { bg: it.c, br: '30%', d: 1 })); }
+      if (kk >= 1) out.push(wing(50 - W / 2, false, 0));
+      if (kk >= 2) { out.push(wing(50 + W / 2, true, 1)); out.push(shp([50, 104.5], kk >= 3 ? 6 : 5, kk >= 3 ? 6 : 5, { bg: it.c, br: '30%', d: kk - 1 })); }
+      if (kk >= 3) [[-10, -2.5], [-10, 2.5], [-6.5, 0]].forEach(function (q) {
+        [1, -1].forEach(function (sg) { out.push(shp([50 + sg * q[0], 104.5 + q[1]], 3.4, 3.4, { bg: '#FFFFFF', br: '50%', ln: false, d: 2 })); });
+      });
       return out;
     },
     cape: function (it, kk) {
       var out = [];
       if (kk >= 1) out.push(shp([50, 105], 84, 30, { bg: it.c, br: '30em 30em 4em 4em', l: 'under', d: 0, cls: 'mk-cape' }));
       if (kk >= 2) out.push(emo([50, 108], it.e, 10, { d: 1 }));
+      if (kk >= 3) [[27, 111], [73, 111]].forEach(function (p) { out.push(emo(p, it.e, 8, { d: 2 })); });
       return out;
     },
     wear: function (it, kk) {
       var top = it.z === 'top', out = [];
       out.push(emo(top ? SLOTS.top : SLOTS.neck, it.e, top ? 30 : 22, { ty: top ? '-88%' : null, t: kk >= 2 ? 'rotate(-12deg)' : null, d: kk >= 2 ? 1 : 0, drop: top && kk < 2, rise: !top && kk < 2, cls: 'mk-worn' }));
       if (kk >= 2) out.push(emo(top ? [72, 14] : [70, 96], '✨', 8, { d: 1 }));
+      if (kk >= 3) out.push(emo(top ? [36, 27] : [37, 104], it.e === '🌸' ? '🌼' : '🌸', 11, { d: 2 }));   // a flower in the band, or a brooch
       return out;
     },
     ring: function (it, kk) {
@@ -631,7 +651,7 @@
       var P = top ? [[24, 36], [50, 26], [76, 36]] : [[32, 98], [50, 104], [68, 98]];
       var bead = function (t, d, big) {
         var p = arcAt(P[0], P[1], P[2], t);
-        return pearl ? shp(p, big ? 7.8 : 6, big ? 7.8 : 6, { bg: '#FFFFFF', br: '50%', thin: true, d: d, cls: 'mk-pearl' }) : emo(p, it.e, (top ? 10 : 9) * (big ? 1.3 : 1), { d: d });
+        return pearl ? shp(p, big ? 10 : 6, big ? 10 : 6, { bg: '#FFFFFF', br: '50%', thin: true, d: d, cls: 'mk-pearl' }) : emo(p, it.e, (top ? 10 : 9) * (big ? 1.3 : 1), { d: d });
       };
       var ts = pearl ? [[0, 1 / 6, 2 / 6], [3 / 6, 4 / 6, 5 / 6, 1]] : [[0, 0.17, 0.34], [0.66, 0.83, 1]];
       if (kk >= 1) ts[0].forEach(function (t) { out.push(bead(t, 0)); });
@@ -643,10 +663,12 @@
       var out = [];
       if (it.horn) {
         out.push(shp(SLOTS.top, 10, 28, { cls: 'mk-horn2', tx: '-50%', ty: '-100%', to: '50% 100%', t: 'rotate(-8deg)', br: '50% 50% 10% 10% / 90% 90% 10% 10%', d: 0, drop: true }));
-        if (kk >= 2) out.push(emo([46, 10], '✨', 8, { d: 1 }));
+        if (kk >= 2) out.push(emo([46, 10], '✨', 10, { d: 1 }));
+        if (kk >= 3) [[42, 33], [58, 33]].forEach(function (p) { out.push(emo(p, '🌸', 9, { d: 2 })); });   // flowers round its foot
       } else {
         out.push(shp(SLOTS.top, 26, 34, { ln: false, cls: 'mk-cone', vars: { '--c1': o.c1 || 'var(--berry)' }, tx: '-50%', ty: '-100%', to: '50% 100%', t: 'rotate(-8deg)', d: 0, drop: true }));
-        if (kk >= 2) out.push(shp([45.5, 5.5], 7, 7, { bg: '#FFFFFF', br: '50%', d: 1 }));
+        if (kk >= 2) out.push(shp([45.5, 6], 9, 9, { bg: '#FFFFFF', br: '50%', d: 1 }));   // a pompom
+        if (kk >= 3) out.push(emo([33, 17], '🎉', 14, { t: 'scaleX(-1)', d: 2 }));   // streamers (on the left: the reaction bubble is on the right)
       }
       return out;
     },
@@ -660,7 +682,9 @@
       var stalk = function (x, a, d) {
         var r = a * Math.PI / 180;
         out.push(shp([x, 34], 2, 24, { bg: 'var(--line)', br: '1em', ln: false, tx: '-50%', ty: '-100%', to: '50% 100%', t: 'rotate(' + a + 'deg)', d: d }));
-        out.push(shp([x + 24 * Math.sin(r), 34 - 24 * Math.cos(r)], 9, 9, { bg: '#7BC96F', br: '50%', d: d, cls: 'mk-bob' }));
+        var at = [x + 24 * Math.sin(r), 34 - 24 * Math.cos(r)], glow = kk >= 3;   // the third dab lights the bobbles up
+        if (glow) out.push(shp(at, 17, 17, { bg: 'rgba(255, 225, 77, 0.55)', br: '50%', ln: false, d: 2 }));
+        out.push(shp(at, glow ? 11 : 9, glow ? 11 : 9, { bg: glow ? '#FFE14D' : '#7BC96F', br: '50%', d: glow ? 2 : d, cls: 'mk-bob' }));
       };
       if (kk >= 1) stalk(42, -18, 0);
       if (kk >= 2) stalk(58, 18, 1);
@@ -679,8 +703,8 @@
     },
   };
 
-  /** Every piece item `id` shows after k dabs of n. One dab of a one-dab variable kind draws all its named slots; dabs past
-   *  the named slots add a tiny sparkle each. */
+  /** Every piece item `id` shows after k dabs of n. One dab of a one-dab variable kind draws all its named slots; each dab
+   *  past the named slots adds a sparkle: the newest big (it pops in with a burst), the ones before it settled small. */
   function piecesFor(id, k, o) {
     var it = ITEMS[id], K = it && KINDS[it.k];
     if (!K || k <= 0) return [];
@@ -692,7 +716,11 @@
     var out = DRAW[it.k](it, kk, oo, k);
     if (!foam) {
       var sp = SPARE[it.z] || SPARE.top;
-      for (var j = K.named; j < k; j++) out.push(emo(sp[(j - K.named) % sp.length], '✨', 5, { d: j, l: 'model' }));
+      for (var j = K.named; j < k; j++) {
+        var at = sp[(j - K.named) % sp.length], last = j === k - 1;
+        if (last) out.push(shp(at, 14, 14, { br: '50%', ln: false, cls: 'mk-burst', d: j, l: 'model' }));
+        out.push(emo(at, '✨', last ? SPARE_BIG : 5, { d: j, l: 'model', cls: last ? 'mk-spare' : null }));
+      }
     }
     out.forEach(function (p) { p.d = n === 1 ? 0 : Math.min(p.d || 0, k - 1); });
     return out;
@@ -1325,6 +1353,7 @@
           b.busyUntil = ctx.time + 0.3;      // a moment to see the new step before a hammering finger can use it up
           b.nextAt = 0;
           b.el.classList.remove('is-done');
+          b.F.el.querySelectorAll('.mk-spare').forEach(function (n) { n.classList.add('is-settled'); });   // last step's big sparkle settles small
           buildTray(b);
         });
         setState('zone');

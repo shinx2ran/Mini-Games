@@ -360,9 +360,26 @@ h.run(ID, async (t) => {
       });
       Object.keys(a.KINDS).forEach((k) => [false, true].forEach((isB) => ['few', 'normal', 'lots'].forEach((d) => [0, 1, 2].forEach((hp) => {
         const n = a.nFor(k, isB, d, hp), K = a.KINDS[k];
-        if (n < 1 || n > 6) out.push(`nFor ${k} ${n}`);
+        if (n < 1 || n > (isB ? 6 : 5)) out.push(`nFor ${k} ${n}: at most 5 taps a step for her, 6 for him`);
         if (K.fixed && n !== K.fixed[isB ? 1 : 0]) out.push(`nFor fixed ${k}`);
+        if (isB && !K.fixed && K.plus && hp === 0 && n <= a.nFor(k, false, d, 0)) out.push(`nFor ${k} ${d}: his one more holds at every Dabs option`);
       }))));
+      // every dab visibly changes the face: at least 9em of new pieces (a named stage; past the named slots, a big sparkle
+      // that pops in, the ones before it settled small); every fixed dab is a named stage
+      Object.keys(a.ITEMS).forEach((id) => {
+        const it = a.ITEMS[id], K = a.KINDS[it.k];
+        if (it.k === 'pose') return;
+        if (K.fixed && K.named < Math.max(...K.fixed)) out.push(`${it.k}: every fixed dab has a look of its own`);
+        (K.fixed ? [...new Set(K.fixed)] : [3, 4, 5, 6]).forEach((n) => { for (let k = 1; k <= n; k++) {
+          const ps = a.piecesFor(id, k, { n }), fr = ps.filter((q) => q.d === k - 1);
+          const size = fr.reduce((sum, q) => sum + (q.e ? q.fs : Math.max(q.w, q.h)), 0);
+          if (size < 9) out.push(`${id} dab ${k} of ${n}: only ${size}em is new`);
+          if (k > K.named && it.k !== 'foam') {
+            const big = ps.filter((q) => /mk-spare/.test(q.cls || ''));
+            if (big.length !== 1 || big[0].d !== k - 1 || big[0].fs < 11 || !fr.some((q) => /mk-burst/.test(q.cls || ''))) out.push(`${id} dab ${k} of ${n}: the newest spare sparkle is big and bursts, the rest small`);
+          }
+        } });
+      });
       if (!eq(Object.keys(a.ANIMALS).sort(), MG.AVATARS.slice().sort())) out.push('ANIMALS = MG.AVATARS');
       for (let n = 2; n <= 6; n++) { let last = 0; for (let k = 1; k < n; k++) { const f = a.foamed(k, n); if (f < last) out.push('foamed falls'); last = f; } if (a.foamed(n - 1, n) !== 3) out.push('foamed reaches 3 at n-1, n=' + n); }
       // trays: 200 seeds x every party x zone
@@ -408,6 +425,7 @@ h.run(ID, async (t) => {
       const z = zones[zi];
       await page.waitForFunction((zi) => MG.current.api.state === 'zone' && MG.current.api.zoneIndex === zi, zi, { timeout: 8000 });
       await gameWait(page, 0.32);
+      if (z === 'pose') assert.ok(await page.locator('.g-makeup .mk-spare.is-settled').count() >= 2, 'help Off: past the named slots (the cheeks, at least) the dabs made big sparkles, now settled');
       for (const s of [0, 1]) {
         const b0 = (await boards(page))[s];
         const id = z === 'pose' ? (s === 0 ? 'ears' : 'kiss') : b0.tray[0];
@@ -438,6 +456,7 @@ h.run(ID, async (t) => {
       }
       if (zi < zones.length - 1) {
         await page.waitForFunction((zi) => MG.current.api.zoneIndex === zi + 1, zi, { timeout: 5000 });
+        assert.strictEqual(await page.locator('.g-makeup .mk-spare:not(.is-settled)').count(), 0, 'the last step\'s big spare sparkles settle small');
         assert.strictEqual(await page.locator('.g-makeup .mk-pip.is-done').count(), zi + 1, 'the pips get a tick one by one');
       }
     }
@@ -928,7 +947,7 @@ h.run(ID, async (t) => {
     await startAt(page, 'circus');
     assert.deepStrictEqual(await api(page, 'zones'), ['cheeks', 'nose', 'top', 'sparkle', 'pose'], 'Short: no wash, no extra zone, ending sparkle and pose');
     const n = await A(page, (a) => ['few', 'normal', 'lots'].map((d) => [a.nFor('blush', false, d, 0), a.nFor('blush', true, d, 0), a.nFor('wear', false, d, 0), a.nFor('glitter', true, d, 0)]));
-    assert.deepStrictEqual(n, [[3, 4, 3, 3], [4, 5, 3, 3], [6, 6, 3, 3]], 'Few and Lots change only the variable kinds (Few < Normal < Lots)');
+    assert.deepStrictEqual(n, [[3, 4, 3, 3], [4, 5, 3, 3], [5, 6, 3, 3]], 'Few and Lots change only the variable kinds (Few < Normal < Lots; at Lots she has 5, he his one more)');
     // at Normal with help Some (the default) every step but the pose is three taps for her, whatever the tray holds
     const some = await A(page, (a) => Object.keys(a.KINDS).filter((k) => k !== 'pose' && a.nFor(k, false, 'normal', 1) !== 3));
     assert.deepStrictEqual(some, [], 'help Some: three taps a step for her');
