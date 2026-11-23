@@ -74,7 +74,8 @@
   var MAX_WATER = 3;              // drops of water a planted bed holds (an empty bed holds none)
   var DRINK = 4 / 3;              // drops a plant drinks per stage it grows (by itself or tickled; waiting, it drinks nothing): a seed is sown
                                   // in dry soil and a full bed lasts it 2.25 of its 4 stages, so it is watered when sown and once more on
-                                  // the way (never right at the food ask at 2.5, nor at ripe)
+                                  // the way (a regrowing plant, picked with a little water left, can run dry right at its food ask: the
+                                  // hand shows the water first, then the sack)
   var MAX_BASKET = 3;             // of one vegetable (the basket shows them all: no hidden amounts)
 
   var BED_GAP = 0.18;             // s between counted actions on one bed
