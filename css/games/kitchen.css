@@ -33,6 +33,7 @@
   --kt-cone: #E0A85C;
   --kt-cone-dark: #B07A3A;
   --kt-ice: #CFE9F7;
+  --kt-porridge: #E9D7AE;   /* (bubur's mix in kitchen.js: one cream in both themes, clear of --kt-tile and --kt-wall) */
   --wall: 150px; --pip: 24px; --vessel: 120px; --board-w: 125px; --board-h: 290px; --chef: 30px; --want: 40px;
   --top: 46px; --pip-ov: 0px; --obj: 110px; --jar: 72px; --card: 100px; --cols: 3; --pcols: 3; --tab-w: 80px; --tab-h: 64px; --gift: 100px; --deco: 20px; --shelf-row: 0px;
   background: var(--kt-counter);
@@ -177,7 +178,7 @@
 .g-kitchen .kt-pip + .kt-pip { margin-left: var(--pip-ov, 0px); }   /* (a negative overlap only when 20px stickers would not fit) */
 .g-kitchen .kt-pip.is-in { transform: scale(1); }
 .g-kitchen .kt-pip.is-now { transform: scale(1.12); box-shadow: 0 0 0 3px var(--tangerine); }
-.g-kitchen .kt-pip.is-done > .mg-sticker { opacity: 0.45; }
+.g-kitchen .kt-pip.is-done > .mg-sticker, .g-kitchen .kt-pip.is-done > .kt-scoopball { opacity: 0.45; }
 .g-kitchen .kt-pip__tick { position: absolute; right: -14%; bottom: -14%; font-size: 0.62em; transform: scale(0); transition: transform 0.2s ease-out; }
 .g-kitchen .kt-pip.is-done .kt-pip__tick { transform: scale(1); }
 
@@ -231,6 +232,9 @@
 .g-kitchen .kt-contents { z-index: 2; pointer-events: none; transition: transform 0.3s ease-in, opacity 0.3s; }   /* (its box never hides the sign; a piece still takes a tap: a tap on the dish) */
 .g-kitchen .kt-contents.is-morph { transform: scale(0.2); opacity: 0; }
 .g-kitchen .kt-liq { display: none; position: absolute; }
+/* (the liquid paints over the vessel's own inside, its back's ::after, and under what is in it (z 2), the front (z 3)
+   and the lid (z 4): without this the inside covers it and a stirred bowl or pot looks empty) */
+.g-kitchen .kt-vback .kt-liq { z-index: 1; }
 
 /* a plate */
 .g-kitchen .kt-vessel[data-kind="plate"] .kt-vback::before { left: 3%; right: 3%; top: 46%; height: 40%; border: 3px solid var(--line); border-radius: 50%; background: var(--kt-plate); box-shadow: 0 5px 0 var(--line); }
@@ -318,6 +322,29 @@
 .g-kitchen .kt-jelly { position: relative; display: inline-block; width: 1.2em; height: 1em; box-sizing: border-box; border: 3px solid var(--line); border-radius: 42% 42% 12% 12% / 56% 56% 12% 12%; background: var(--c); vertical-align: middle; }
 .g-kitchen .kt-jelly::before { content: ""; position: absolute; left: 18%; top: 14%; width: 18%; height: 40%; border-radius: 999px; background: rgba(255, 255, 255, 0.45); }
 .g-kitchen .kt-jelly::after { content: ""; position: absolute; left: 0; right: 0; top: 52%; border-top: 2px solid rgba(42, 35, 86, 0.25); }
+/* a scoop of es krim in her colour, like the cone's (in the fridge, in the air, on its step sticker) */
+.g-kitchen .kt-scoopball { position: relative; display: inline-block; width: 1em; height: 0.94em; box-sizing: border-box; border: clamp(2px, 0.08em, 3px) solid var(--line); border-radius: 50% 50% 46% 46%; background: var(--c); vertical-align: middle; }
+.g-kitchen .kt-scoopball::after { content: ""; position: absolute; left: 20%; top: 16%; width: 24%; height: 18%; border-radius: 50%; background: rgba(255, 255, 255, 0.45); }
+/* bubur's 🥣 is an empty bowl in the emoji fonts: porridge across its mouth, with chicken, spring onion and fried
+   shallots on it (the sticker's white edge goes round it too). It is part of the dish sticker wherever that shows. */
+.g-kitchen .kt-bubur { position: relative; }
+.g-kitchen .kt-porridge {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 30%;
+  height: 20%;
+  box-sizing: border-box;
+  border: max(1px, 0.03em) solid var(--line);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 42%, #F2B84B 0 7%, transparent 8%),
+    radial-gradient(circle at 56% 34%, #5FB04A 0 6%, transparent 7%),
+    radial-gradient(circle at 70% 58%, #A8642E 0 6%, transparent 7%),
+    radial-gradient(circle at 44% 64%, #5FB04A 0 5%, transparent 6%),
+    var(--kt-porridge);
+  pointer-events: none;
+}
 /* the donut glaze in her colour */
 .g-kitchen .kt-glaze { position: absolute; left: 50%; top: 50%; width: 0.74em; height: 0.74em; margin: -0.37em; box-sizing: border-box; border: 0.2em solid var(--c); border-radius: 50%; box-shadow: 0 0 0 2px var(--line), inset 0 0 0 2px var(--line); pointer-events: none; }
 /* the pizza's oven door: drops over the dish, its window glows, then it lifts */
@@ -740,6 +767,17 @@
 .g-kitchen .kt-menu.has-tabs .kt-rail { display: flex; flex-direction: row; padding-top: 3px; }   /* (room for the open tab, which stands 3px proud) */
 .g-kitchen[data-orient="landscape"] .kt-menu.has-tabs .kt-rail { flex-direction: column; }
 .g-kitchen .kt-page { flex: none; width: var(--page-w, auto); height: var(--page-h, auto); display: grid; grid-template-columns: repeat(var(--pcols, var(--cols)), var(--card)); grid-auto-rows: var(--card); gap: 10px; justify-content: center; align-content: start; }
+/* a short tab's cards sit in the middle of the page beside the centred column of tabs (on top in portrait: under the tabs) */
+.g-kitchen[data-orient="landscape"] .kt-page { align-content: center; }
+/* near misses: the page takes a tap up to 10px outside its cards (its slop snaps it to the nearest card), with no
+   change to the layout (an invisible padding, given back by the margin). Toward the tabs the 10px gap is shared: the
+   half by the cards is the page's, the half by the tabs is the rail's (its slop snaps it to the tab), so a tap
+   beside a tab never opens a dish. */
+.g-kitchen .kt-page { box-sizing: content-box; padding: 10px; margin: -10px; }
+.g-kitchen[data-orient="portrait"] .kt-menu.has-tabs .kt-page { padding-top: 5px; margin-top: -5px; }
+.g-kitchen[data-orient="portrait"] .kt-menu.has-tabs .kt-rail { padding-bottom: 5px; margin-bottom: -5px; }
+.g-kitchen[data-orient="landscape"] .kt-menu.has-tabs .kt-page { padding-left: 5px; margin-left: -5px; }
+.g-kitchen[data-orient="landscape"] .kt-menu.has-tabs .kt-rail { padding-right: 5px; margin-right: -5px; }
 .g-kitchen .kt-tab {
   appearance: none;
   position: relative;
@@ -787,11 +825,12 @@
 .g-kitchen .kt-card__medals .mg-sticker + .mg-sticker { margin-left: -0.45em; }
 .g-kitchen .kt-card__new { position: absolute; right: 6%; top: 5%; font-size: 0.2em; animation: kt-twinkle 0.9s ease-in-out infinite alternate; }
 .g-kitchen .kt-card__star { position: absolute; right: 6%; top: 5%; font-size: 0.2em; }
-/* the three variants to collect: lit once made (on a disc of its colour), a faint silhouette until then */
+/* the three variants to collect: lit once made (on a disc of its colour), a faded grey sticker until then (its
+   shape still says which one is still to come) */
 .g-kitchen .kt-card__vs { position: absolute; left: 0; right: 0; bottom: 5%; display: flex; justify-content: center; gap: 0.02em; font-size: 0.17em; }
 .g-kitchen .kt-card__v { position: relative; width: 1.3em; height: 1.3em; display: grid; place-items: center; }
 .g-kitchen .kt-card__v > .mg-sticker { position: relative; z-index: 1; font-size: 0.9em; }
-.g-kitchen .kt-card__v:not(.is-made) { filter: var(--kt-sil); opacity: 0.25; }
+.g-kitchen .kt-card__v:not(.is-made) { filter: grayscale(1); opacity: 0.45; }
 .g-kitchen .kt-card__v.has-paint::before { content: ""; position: absolute; inset: 0.06em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 50%; background: var(--c); }
 .g-kitchen .kt-next { border-style: dashed; box-shadow: none; }
 .g-kitchen .kt-next__dish { filter: var(--kt-sil); opacity: 0.3; font-size: 0.44em; }

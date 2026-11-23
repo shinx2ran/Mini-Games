@@ -84,6 +84,39 @@ async function gameWait(page, dt) {
   await page.waitForFunction(([t0, dt]) => MG.current.ctx.time >= t0 + dt, [t0, dt], { timeout: 10000 });
 }
 const cssVar = (page, k) => page.evaluate((k) => getComputedStyle(document.querySelector('.g-kitchen')).getPropertyValue(k).trim(), k);
+/** The colour really painted on screen at (x, y): a 1x1 screenshot, decoded in the page. */
+async function pixelAt(page, x, y) {
+  const png = await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } });
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + b64;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = c.height = 1;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    return [...g.getImageData(0, 0, 1, 1).data].slice(0, 3);
+  }, png.toString('base64'));
+}
+const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const near = (a, b, tol = 14) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
+/** What the dish's liquid really looks like: the pixel 30% down the middle of .kt-liq (above the front of a pot or a
+ *  bowl), with what floats in it and the stir streaks hidden for that moment (they sit above the liquid on purpose;
+ *  this checks that the vessel's own inside does not paint over it). Also its inside colour, for the message. */
+async function liquidPixel(page) {
+  const at = await page.evaluate(() => {
+    const n = document.querySelector('.g-kitchen .kt-liq'), r = n.getBoundingClientRect();
+    const st = document.createElement('style');
+    st.id = 'kt-px';
+    st.textContent = '.g-kitchen .kt-contents, .g-kitchen .kt-swirl, .g-kitchen .kt-ghost { visibility: hidden !important; }';
+    document.head.appendChild(st);
+    return { x: r.left + r.width / 2, y: r.top + r.height * 0.3, inside: getComputedStyle(n.parentElement, '::after').backgroundColor };
+  });
+  await page.waitForTimeout(50);
+  const px = await pixelAt(page, at.x, at.y);
+  await page.evaluate(() => document.querySelector('#kt-px').remove());
+  return { px, inside: at.inside.match(/\d+/g).slice(0, 3).map(Number) };
+}
 /** Wait until the menu's cards have popped in (they start small: a size check must wait for them). */
 const settledMenu = (page) => page.waitForFunction(() => ![...document.querySelectorAll('.g-kitchen .kt-card, .g-kitchen .kt-next, .g-kitchen .kt-tab')].some((n) => n.getAnimations().some((a) => a.playState === 'running')), null, { timeout: 4000 });
 /** Tap a menu tab and wait until its page has popped in. */
@@ -281,7 +314,7 @@ h.run(ID, async (t) => {
             if (toks.length && i <= pickAt) rules.push(`${id}:${i} '$' only after the pick`);
             if ([j.liquid, j.dots].includes('$c') && !(pk && pk.paint)) rules.push(`${id}:${i} '$c' needs paint`);
             if (j.prop === 'fridge' && j.end !== 'out') rules.push(`${id}:${i} a fridge ends 'out'`);
-            if (j.e === 'jelly' && j.prop !== 'fridge') rules.push(`${id}:${i} a jelly comes from the fridge`);
+            if ((j.e === 'jelly' || j.e === 'scoop') && j.prop !== 'fridge') rules.push(`${id}:${i} a jelly or a scoop comes from the fridge`);
             if (j.base && !(j.do === 'roll' && j.to === 'mid' && R.vessel === 'pizza')) rules.push(`${id}:${i} a base is rolled onto the pizza peel`);
           });
         });
@@ -1223,12 +1256,30 @@ h.run(ID, async (t) => {
     // puding: the pot turns her colour, two fridges, two jellies in her colour
     await fresh();
     await startAt(page, 'puding', 1);
+    // (he stirs while she chooses: his bowl holds what is in the pot, then follows it to her colour; never see-through)
+    const stirBg = () => page.evaluate((s) => getComputedStyle(document.querySelector(`.g-kitchen .kt-board[data-side="${s}"] .kt-mswirl`)).backgroundColor, 1 - aS);
+    const stir0 = await stirBg();
+    await choose(page, 0);
+    await gameWait(page, 0.5);                       // (the pot is redrawn once her strawberries land)
+    assert.deepStrictEqual([stir0, await stirBg()], ['rgb(255, 244, 220)', 'rgb(244, 154, 193)'], 'puding: his stir bowl holds the pot, then her strawberry pink');
     await playTo(page, 2);
     assert.strictEqual((await api(page, 'vessel')).liq, '#F49AC1', 'puding: the pot is her strawberry pink');
+    await page.waitForTimeout(400);                  // (the liquid fades in on the wall clock)
+    const potPx = await liquidPixel(page);
+    assert.ok(near(potPx.px, rgbOf('#F49AC1')) && !near(potPx.px, potPx.inside, 30), 'puding: the pink really shows in the pot (not its dark inside): ' + JSON.stringify(potPx));
     await gameWait(page, 0.35);
-    assert.deepStrictEqual(await A(page, (a) => [a.cook(0), a.cook(1)]), ['gold', 'gold'], 'puding: both fridges chill by themselves');
-    await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
-    assert.deepStrictEqual((await boards(page)).map((b) => [b.phase, b.done]), [['gold', false], ['gold', false]], 'puding: a tap the moment it is cold does nothing');
+    // (cook, both taps and the read in one go: the golden latch is 0.45 game seconds, which a few round trips at a
+    // fast clock could use up under load)
+    const cold = await page.evaluate(() => {
+      const a = MG.current.api, ph = [a.cook(0), a.cook(1)];
+      [0, 1].forEach((s) => {
+        const n = document.querySelector(`.g-kitchen .kt-board[data-side="${s}"] .kt-obj`), r = n.getBoundingClientRect();
+        const o = { bubbles: true, cancelable: true, pointerId: 8300 + s, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+        n.dispatchEvent(new PointerEvent('pointerdown', o)); n.dispatchEvent(new PointerEvent('pointerup', o));
+      });
+      return { ph, after: a.boards.map((b) => [b.phase, b.done]) };
+    });
+    assert.deepStrictEqual(cold, { ph: ['gold', 'gold'], after: [['gold', false], ['gold', false]] }, 'puding: both fridges chill by themselves, and a tap the moment it is cold does nothing');
     await gameWait(page, 0.5);
     await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
     const out = await page.evaluate(() => [MG.current.api.boards.map((b) => b.done), document.querySelectorAll('.g-kitchen .kt-obj.is-out').length]);
@@ -1237,15 +1288,48 @@ h.run(ID, async (t) => {
     const jel = await page.evaluate(() => [MG.current.api.vessel.contents, [...document.querySelectorAll('.g-kitchen .kt-contents .kt-jelly')].map((n) => n.style.getPropertyValue('--c'))]);
     assert.deepStrictEqual(jel, [['jelly', 'jelly'], ['#F49AC1', '#F49AC1']], 'puding: two pink jellies on the plate');
     assert.strictEqual(await api(page, 'locked'), false, 'never locked');
-    // eskrim: two scoops stack on the cone
+    // eskrim: she chooses mango; both stir bowls hold mango batter, the bowl in the middle really shows it, the fridges
+    // hold mango scoops (and its step shows one), and two mango scoops stack on the cone
     await fresh();
-    await startAt(page, 'eskrim', 3);
+    await startAt(page, 'eskrim', 0);
+    await choose(page, 2);
+    await tap(page, board(1 - aS) + ' .kt-jar[data-e="🥛"]', 0);
+    await playTo(page, 2);
+    const MANGO = '#F7B23A';
+    const swirls = await page.evaluate(() => [...document.querySelectorAll('.g-kitchen .kt-mswirl')].map((n) => getComputedStyle(n).backgroundColor));
+    assert.deepStrictEqual(swirls, ['rgb(247, 178, 58)', 'rgb(247, 178, 58)'], 'eskrim: both stir bowls hold her mango batter (never see-through)');
+    await playTo(page, 3);
+    await page.waitForTimeout(400);                  // (the liquid fades in on the wall clock)
+    const bowlPx = await liquidPixel(page);
+    assert.ok(near(bowlPx.px, rgbOf(MANGO)) && !near(bowlPx.px, bowlPx.inside, 30), 'eskrim: the mango batter really shows in the bowl (not its light inside): ' + JSON.stringify(bowlPx));
+    const cold3 = await page.evaluate(() => [...document.querySelectorAll('.g-kitchen .kt-fridge__win .kt-scoopball'), document.querySelector('.g-kitchen .kt-pip[data-i="3"] > .kt-scoopball')].map((n) => n && n.style.getPropertyValue('--c')));
+    assert.deepStrictEqual(cold3, [MANGO, MANGO, MANGO], 'eskrim: a mango scoop in each fridge, and on its step');
     await A(page, (a) => { a.cook(0); a.cook(1); });
     await gameWait(page, 0.5);
     await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
     await page.waitForFunction(() => MG.current.api.beat === 4 && MG.current.api.state === 'beat', null, { timeout: 5000 });
     const ve = await api(page, 'vessel');
-    assert.deepStrictEqual([ve.kind, ve.scoops.length], ['cone', 2], 'eskrim: two scoops on the cone');
+    assert.deepStrictEqual([ve.kind, ve.scoops], ['cone', [MANGO, MANGO]], 'eskrim: two mango scoops on the cone');
+    // bubur: the stirred porridge shows in the bowl, clear of its light inside; its 🥣 is never an empty bowl (the
+    // porridge is drawn in it on the card, the taste bowls, the goal in the corner and the finished dish)
+    await fresh();
+    assert.ok(await page.evaluate(() => !!document.querySelector('.g-kitchen .kt-card[data-id="bubur"] .kt-card__dish .mg-sticker > .kt-porridge')), 'bubur: the card shows porridge in the bowl');
+    await startAt(page, 'bubur', 1);
+    await playTo(page, 2);
+    await page.waitForTimeout(400);
+    const porPx = await liquidPixel(page), PORRIDGE = (await api(page, 'vessel')).liq;
+    assert.ok(near(porPx.px, rgbOf(PORRIDGE)) && !near(porPx.px, porPx.inside, 24), 'bubur: the porridge really shows in the bowl, clear of its inside: ' + JSON.stringify([PORRIDGE, porPx]));
+    await A(page, (a) => a.jump(a.beats.length - 1));
+    await page.waitForFunction(() => MG.current.api.boards.every((b) => b.do === 'taste'), null, { timeout: 5000 });
+    assert.strictEqual(await page.evaluate(() => document.querySelectorAll('.g-kitchen .kt-tbowl__food .mg-sticker > .kt-porridge').length), 2, 'bubur: both taste bowls hold porridge');
+    await gameWait(page, 0.35);
+    await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
+    await stateIs(page, 'finale');
+    await page.waitForFunction(() => !document.querySelector('.g-kitchen .kt-dish').hidden, null, { timeout: 5000 });
+    const dishPor = await page.evaluate(() => { const n = document.querySelector('.g-kitchen .kt-dish .kt-dish__main .mg-sticker > .kt-porridge'); return n ? Math.round(n.getBoundingClientRect().width) : 0; });
+    assert.ok(dishPor > 10, 'bubur: the finished dish shows its porridge: ' + dishPor + 'px');
+    assert.ok(await page.evaluate(() => !!document.querySelector('.g-kitchen .kt-ghost .kt-porridge')), 'bubur: the goal in the corner shows porridge too');
+    await t.waitForWin(page, 6000);
     // pizza: the rolled base lands on the empty peel; the tomato sauce spreads on it
     await fresh();
     await startAt(page, 'pizza', 0);
@@ -1286,8 +1370,36 @@ h.run(ID, async (t) => {
     await page.evaluate(() => { const c = document.querySelector('.g-kitchen .kt-card[data-id="pisang"]'); c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7301, pointerType: 'touch', clientX: 1, clientY: 1 })); });
     assert.strictEqual(await api(page, 'state'), 'menu', 'a card on a closed tab cannot be picked');
     await gameWait(page, 0.2);
+    await settledMenu(page);
+    // a tap on the open tab: it wiggles, and nothing else happens (no card pops in again)
+    const again = await page.evaluate(async () => {
+      const f = MG.current.ctx.fx, wig = f.__ktw || (f.__ktw = f.wiggle), seen = [];   // (fx is the shell's: wrap it once)
+      f.wiggle = function (n) { seen.push(n && n.classList && n.classList.contains('kt-tab') ? n.dataset.group : 'other'); return wig.apply(this, arguments); };
+      const cards = () => [...document.querySelectorAll('.g-kitchen .kt-card, .g-kitchen .kt-next')].filter((n) => n.offsetParent);
+      const popIn = (n) => n.getAnimations().filter((x) => x.animationName === 'kt-card-in');
+      const before = cards().map(popIn);
+      const t = document.querySelector('.g-kitchen .kt-tab[data-group="meal"]'), r = t.getBoundingClientRect();
+      const o = { bubbles: true, cancelable: true, pointerId: 7303, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+      t.dispatchEvent(new PointerEvent('pointerdown', o)); t.dispatchEvent(new PointerEvent('pointerup', o));
+      await new Promise((res) => setTimeout(res, 80));
+      f.wiggle = wig;
+      const restarted = cards().filter((n, i) => popIn(n).some((x) => x.playState === 'running' || !before[i].includes(x))).length;
+      return { tab: MG.current.api.tab, wiggled: seen, restarted, shown: cards().length };
+    });
+    assert.deepStrictEqual(again, { tab: 'meal', wiggled: ['meal'], restarted: 0, shown: 6 }, 'the open tab only wiggles: no card pops in again');
+    // near misses, with real touches: a tap in the gap beside a tab is the tab's (or nobody's), never a dish
+    await settledMenu(page);                         // (measure the tabs once the wiggle is over)
+    const gaps = await page.evaluate(() => {
+      const tabs = [...document.querySelectorAll('.g-kitchen .kt-tab')].map((n) => n.getBoundingClientRect()), low = Math.max(...tabs.map((r) => r.bottom));
+      return [[(tabs[0].left + tabs[0].right) / 2, low + 3], [(tabs[0].right + tabs[1].left) / 2, (tabs[1].top + tabs[1].bottom) / 2], [(tabs[2].left + tabs[2].right) / 2, low + 3]];
+    });
+    for (const [x, y] of gaps) {
+      await page.touchscreen.tap(x, y);
+      await gameWait(page, 0.2);
+      assert.strictEqual(await api(page, 'state'), 'menu', `a tap in the gap beside a tab (${Math.round(x)}, ${Math.round(y)}) never opens a dish`);
+    }
     await openTab(page, 'meal');
-    assert.strictEqual(await api(page, 'tab'), 'meal', 'the open tab only wiggles');
+    await gameWait(page, 0.2);
     // turned on its side with the meals open: the tabs become a column on the left, nothing changes
     await page.setViewportSize(h.VIEWPORTS.phoneWide);
     await page.waitForTimeout(300);
@@ -1305,6 +1417,12 @@ h.run(ID, async (t) => {
     assert.strictEqual(await api(page, 'state'), 'deal', 'a card starts its dish');
     await page.evaluate(() => { const t = document.querySelector('.g-kitchen .kt-tab[data-group="cold"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7302, pointerType: 'touch', clientX: r.left + 5, clientY: r.top + 5 })); });
     assert.deepStrictEqual([await api(page, 'tab'), await api(page, 'state')], ['meal', 'deal'], 'and a tab tap after that does nothing');
+    // a real touch 8px outside the first card's left edge is still that card (the page takes near misses past its grid)
+    await openKitchen(page, { kitchen: { v: 2, done: 9, legacy: 0 } });
+    await openTab(page, 'meal');
+    const first = await page.evaluate(() => { const n = [...document.querySelectorAll('.g-kitchen .kt-card')].filter((c) => c.offsetParent)[0], r = n.getBoundingClientRect(); return { id: n.dataset.id, x: r.left - 8, y: r.top + r.height / 2 }; });
+    await page.touchscreen.tap(first.x, first.y);
+    assert.deepStrictEqual([await api(page, 'state'), await api(page, 'recipe')], ['deal', 'ceplok'], 'a touch 8px left of the first card opens that dish ' + JSON.stringify(first));
     await page.evaluate(() => MG.home());
   }
 });

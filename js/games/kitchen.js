@@ -27,6 +27,10 @@
   // at the merge: into the dish ('mid'), kept on the same board for its next job ('stay'),
   // or handed to the other board's next job ('across').
   // '$' = the variant she picked (its emoji), '$c' = its paint colour: see resolveJob().
+  // A fridge's `e` may also be 'jelly' or 'scoop': drawn in CSS in her colour (in the fridge, in the air, in the dish).
+  // Bubur's porridge: a warm cream that stands out from the bowl's light inside and the wall, in both themes (the same
+  // colour as --kt-porridge in the stylesheet, which draws it across the mouth of the 🥣 sticker).
+  var PORRIDGE = '#E9D7AE';
   var RECIPES = {
     /* ---- meals ---- */
     ceplok: { e: '🍳', vessel: 'plate', beats: [   // Telur Ceplok: fried egg (start)
@@ -64,7 +68,7 @@
       { a: { do: 'pick', choices: ['🥟', '🍤', '🍗'] },                      b: { do: 'scoop', e: '🍜' } },                        // pangsit / udang goreng / ayam; he scoops the noodles
       { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
-    bubur: { e: '🥣', vessel: 'bowl', mix: '#F6EEDC', stir: 'swish', taste: 'hot', beats: [   // Bubur Ayam
+    bubur: { e: '🥣', vessel: 'bowl', mix: PORRIDGE, stir: 'swish', taste: 'hot', beats: [   // Bubur Ayam
       { a: { do: 'pour', e: '💧', liquid: '#8FD3F4', n: 3 },                b: { do: 'scoop', e: '🍚' } },
       { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },                           // rice + water -> porridge
       { a: { do: 'chop', e: '🍗', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🍗', n: 4, to: 'mid' } },       // ayam suwir
@@ -139,7 +143,7 @@
       { a: { do: 'pick', choices: ['🍓', '🍫', '🥭'], paint: ['#F49AC1', '#8B5A3C', '#F7B23A'] }, b: { do: 'fetch', e: '🥛', jars: ['🥛', '🧂', '🌶️'], to: 'mid' } },
       { a: { do: 'chop', e: '$', n: 3, to: 'mid' },                        b: { do: 'chop', e: '$', n: 4, to: 'mid' } },
       { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },
-      { serve: 'cone', a: { do: 'fry', e: '🍨', prop: 'fridge', end: 'out', to: 'mid' }, b: { do: 'fry', e: '🍨', prop: 'fridge', end: 'out', to: 'mid' } },   // two scoops on the cone
+      { serve: 'cone', a: { do: 'fry', e: 'scoop', prop: 'fridge', end: 'out', to: 'mid' }, b: { do: 'fry', e: 'scoop', prop: 'fridge', end: 'out', to: 'mid' } },   // two scoops (her colour) on the cone
       { extra: true, a: { do: 'shake', e: '🍬', dots: 'rainbow', n: 3 },   b: { do: 'pour', e: '🍫', liquid: '#5A3A22', n: 2, drizzle: true } },
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
   };
@@ -527,11 +531,20 @@
         });
       }
 
-      /** What flies: a sticker, or the rolled pizza base, or a jelly in her colour. */
+      /** What flies: a sticker, or the rolled pizza base, or a jelly or a scoop of ice cream in her colour. */
       function flyThing(e) {
         if (e === 'base') return el('span', { class: 'kt-flybase' });
         if (e === 'jelly') return jellyEl(variantColour());
+        if (e === 'scoop') return scoopEl(variantColour());
         return ctx.sticker(e);
+      }
+
+      /** A dish's own sticker. Bubur's 🥣 is an empty bowl in the emoji fonts, so it gets its porridge across the
+       *  mouth (in CSS: a cream ellipse with a few toppings). Used wherever the dish itself is shown. */
+      function dishSticker(id, cls) {
+        var s = ctx.sticker(RECIPES[id].e, cls);
+        if (id === 'bubur') { s.classList.add('kt-bubur'); s.appendChild(el('span', { class: 'kt-porridge' })); }
+        return s;
       }
 
       function burstAt(node, o) { if (!node || !node.isConnected) return; var c = fx.centerOf(node); fx.burst(c.x, c.y, o); }
@@ -614,7 +627,7 @@
             var medals = el('span', { class: 'kt-card__medals' });
             for (var k = 0; k < m; k++) medals.appendChild(ctx.sticker('🏅'));
             pageEl.appendChild(el('button', { type: 'button', class: 'kt-card' + (n ? '' : ' is-new'), 'data-id': id, 'data-group': g.id, 'data-made': String(mk), 'aria-label': NAMES[id], style: { '--tone': tone } },
-              el('span', { class: 'kt-card__dish' }, ctx.sticker(R.e)), vs, medals,
+              el('span', { class: 'kt-card__dish' }, dishSticker(id)), vs, medals,
               !n ? el('span', { class: 'kt-card__new' }, ctx.sticker('✨')) : mk === 7 ? el('span', { class: 'kt-card__star' }, ctx.sticker('⭐')) : null));
           });
         });
@@ -622,7 +635,7 @@
           var dots = el('span', { class: 'kt-next__dots' });
           for (var d = 0; d < u.nextIn; d++) dots.appendChild(el('i'));
           var next = el('div', { class: 'kt-next', 'data-group': GROUP_OF[u.next].id, 'aria-label': 'Next present', style: { '--tone': 'var(--' + GROUP_OF[u.next].tone + '-soft)' } },
-            el('span', { class: 'kt-next__dish' }, ctx.sticker(RECIPES[u.next].e)), el('span', { class: 'kt-next__tag' }, ctx.sticker('🎁')), dots);
+            el('span', { class: 'kt-next__dish' }, dishSticker(u.next)), el('span', { class: 'kt-next__tag' }, ctx.sticker('🎁')), dots);
           pageEl.appendChild(next);   // (last overall on one page; last of its group on a tab: the groups come in order)
           // the next dish is not a button: a tap only wiggles its present
           ctx.tap(next, function () { lastHinted = null; fx.wiggle(next.querySelector('.kt-next__tag')); sfx.play('flip'); });
@@ -694,6 +707,7 @@
 
       var CONE_SVG = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="6,2 94,2 50,98" fill="var(--kt-cone)" stroke="var(--line)" stroke-width="3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><line x1="24" y1="12" x2="62" y2="60" stroke="var(--kt-cone-dark)" stroke-width="3" vector-effect="non-scaling-stroke"/><line x1="76" y1="12" x2="38" y2="60" stroke="var(--kt-cone-dark)" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>';
       function jellyEl(c) { return el('span', { class: 'kt-jelly', style: { '--c': c || '#F49AC1' } }); }
+      function scoopEl(c) { return el('span', { class: 'kt-scoopball', style: { '--c': c || '#F49AC1' } }); }
 
       /** Draw the dish. Only what has just landed gets `is-new` (the drop-in animation). */
       function renderVessel() {
@@ -751,6 +765,17 @@
           contentsEl.appendChild(el('span', { class: 'kt-piece kt-piece--rim' + lk.cls, 'data-e': r.e, style: { left: s[0] + '%', top: s[1] + '%', animationDelay: lk.delay } }, ctx.sticker(r.e)));
         });
         vesselEl.style.setProperty('--fill', String(fill));
+        boards.forEach(function (b) { if (b.verb === 'stir' && b.obj) b.obj.style.setProperty('--batter', batterOf()); });   // (a stir bowl follows the pot)
+      }
+
+      /** The batter in a stir board's bowl: the dish's mix, in her colour on a '$c' dish. While she is still choosing
+       *  that colour in this same step (puding: she picks while he stirs), it is what is in the pot, and it follows
+       *  the pot to her colour as she taps. */
+      function batterOf() {
+        if (!recipe || !recipe.mix) return '#FFF4DC';
+        var bt = beats[beatI];
+        if (recipe.mix === '$c' && bt && (bt.a.do === 'pick' || bt.b.do === 'pick')) return vessel.level > 0 && vessel.liq ? vessel.liq : '#FFF4DC';
+        return mixOf();
       }
 
       /** The piece that gives way when the eight places are full: never what she cooked (a `keep` piece) while
@@ -805,30 +830,34 @@
       function renderGhost() {
         ghostEl.textContent = '';
         if (!recipe) return;
-        ghostEl.appendChild(el('span', { class: 'kt-ghost__grey' }, ctx.sticker(recipe.e)));
-        ghostEl.appendChild(el('span', { class: 'kt-ghost__fill' }, ctx.sticker(recipe.e)));
+        ghostEl.appendChild(el('span', { class: 'kt-ghost__grey' }, dishSticker(recipeId)));
+        ghostEl.appendChild(el('span', { class: 'kt-ghost__fill' }, dishSticker(recipeId)));
       }
 
       /* ---- the pips: one sticker per beat, an overview only ---- */
 
-      /** A step's sticker: her job's thing ('$' once she has chosen, else the job's own icon), her bowl, or his thing. */
+      /** A step's sticker: her job's thing ('$' once she has chosen, else the job's own icon), her bowl, or his thing.
+       *  'scoop' (es krim's fridge): a scoop in her colour, not a sticker. */
       function pipIcon(beat) {
         var j = beat.a, pk = pickOf(recipe);
         var tok = function (e) { return e === '$' ? (pickedChoice != null && pk ? pk.choices[pickedChoice] : null) : e === 'jelly' ? recipe.e : e; };
         if (j.do === 'pick') return j.choices[pickedChoice != null ? pickedChoice : 0];
         return tok(j.e) || VERBS[j.do].icon || tok(beat.b.e) || '✨';
       }
-      /** She has chosen: every step sticker that showed a stand-in now shows what she chose. */
+      function pipFace(e) { return e === 'scoop' ? scoopEl(variantColour()) : ctx.sticker(e); }
+      /** She has chosen: every step sticker that showed a stand-in now shows what she chose (a scoop: her colour). */
       function refreshPips() {
         stripEl.querySelectorAll('.kt-pip').forEach(function (p, i) {
           var st = p.querySelector(':scope > .mg-sticker'), e = beats[i] ? pipIcon(beats[i]) : null;
           if (st && e && st.textContent !== e) { st.textContent = e; fx.pop(p); }
+          var sc = p.querySelector(':scope > .kt-scoopball'), c = variantColour();
+          if (sc && sc.style.getPropertyValue('--c') !== c) { sc.style.setProperty('--c', c); fx.pop(p); }
         });
       }
       function buildPips() {
         stripEl.textContent = '';
         beats.forEach(function (bt, i) {
-          var p = el('span', { class: 'kt-pip', 'data-i': String(i) }, ctx.sticker(pipIcon(bt)), el('span', { class: 'kt-pip__tick' }, ctx.sticker('✔️')));
+          var p = el('span', { class: 'kt-pip', 'data-i': String(i) }, pipFace(pipIcon(bt)), el('span', { class: 'kt-pip__tick' }, ctx.sticker('✔️')));
           stripEl.appendChild(p);
           ctx.after(i * 60, function () { p.classList.add('is-in'); sfx.play('tick'); });
         });
@@ -1304,8 +1333,8 @@
       }
 
       function giftFace(g) {
-        if (g.kind === 'recipe') return el('span', { class: 'kt-minicard', style: { '--tone': 'var(--' + GROUP_OF[g.id].tone + '-soft)' } }, ctx.sticker(g.e), el('span', { class: 'kt-minicard__new' }, ctx.sticker('✨')));
-        if (g.kind === 'medal') return el('span', { class: 'kt-medal' }, ctx.sticker(g.e), el('span', { class: 'kt-medal__m' }, ctx.sticker('🏅')));
+        if (g.kind === 'recipe') return el('span', { class: 'kt-minicard', style: { '--tone': 'var(--' + GROUP_OF[g.id].tone + '-soft)' } }, dishSticker(g.id), el('span', { class: 'kt-minicard__new' }, ctx.sticker('✨')));
+        if (g.kind === 'medal') return el('span', { class: 'kt-medal' }, dishSticker(g.id), el('span', { class: 'kt-medal__m' }, ctx.sticker('🏅')));
         if (g.kind === 'tier' && g.n === 3) return el('span', { class: 'kt-signgift' }, ctx.sticker('🏮'), ctx.sticker(players[0].emoji), ctx.sticker(players[1].emoji), ctx.sticker('🏮'));
         return ctx.sticker(g.e);
       }
@@ -1321,7 +1350,7 @@
           if (pk.paint) { dishEl.appendChild(el('span', { class: 'kt-dish__disc', style: { '--c': pk.paint[choice] } })); dishEl.appendChild(el('span', { class: 'kt-dish__top', 'data-i': '2' }, ctx.sticker(e))); }
           else for (var t = 0; t < 3; t++) dishEl.appendChild(el('span', { class: 'kt-dish__top', 'data-i': String(t) }, ctx.sticker(e)));
         }
-        dishEl.appendChild(el('span', { class: 'kt-dish__main' }, ctx.sticker(recipe.e)));
+        dishEl.appendChild(el('span', { class: 'kt-dish__main' }, dishSticker(recipeId)));
         if (u.helpers.herbs) dishEl.appendChild(el('span', { class: 'kt-dish__herb' }, ctx.sticker('🌿')));
         dishEl.hidden = false;
       }
@@ -1467,7 +1496,7 @@
           o.appendChild(el('span', { class: 'kt-mswirl' }, el('i'), el('i')));
           o.appendChild(spoon);
           o.style.setProperty('--turn', '0deg');
-          o.style.setProperty('--batter', recipe.mix || '#FFF4DC');
+          o.style.setProperty('--batter', batterOf());        // (her colour on a '$c' dish: never the raw token)
           b.parts = { spoon: spoon };
         },
         pour: function (b, o) {
@@ -1496,7 +1525,7 @@
           b.parts = { dome: dome, spoon: spoon };
         },
         fry: function (b, o) {
-          var job = b.job, food = el('span', { class: 'kt-food' }, job.e === 'jelly' ? jellyEl(variantColour()) : ctx.sticker(job.e));
+          var job = b.job, food = el('span', { class: 'kt-food' }, job.e === 'jelly' ? jellyEl(variantColour()) : job.e === 'scoop' ? scoopEl(variantColour()) : ctx.sticker(job.e));
           o.classList.add('kt-prop--' + job.prop);
           o.style.setProperty('--cook', '0');
           o.style.setProperty('--side2', '0');
@@ -1547,7 +1576,7 @@
           b.parts = { btn: btn, swirl: swirl };
         },
         taste: function (b, o) {
-          o.appendChild(el('span', { class: 'kt-tbowl' }, el('span', { class: 'kt-tbowl__food' }, ctx.sticker(recipe.e))));
+          o.appendChild(el('span', { class: 'kt-tbowl' }, el('span', { class: 'kt-tbowl__food' }, dishSticker(recipeId))));
           var spoon = el('span', { class: 'kt-tspoon' }, ctx.sticker('🥄'));
           o.appendChild(spoon);
           b.parts = { spoon: spoon };
