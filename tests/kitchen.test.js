@@ -8,7 +8,8 @@ const ID = 'kitchen';
 const KEY = 'mg:game:kitchen:kitchen';
 
 // Appendix A of the spec: every emoji the game may use (all Unicode 11 or older)
-const ALLOWED = [...'🍳🍌🍛🍢🍲🥞🍧🎂🍰🥚🥒🍅🍚🍶🍯🥛🧀🍫🍓🥬🥕🍗🥜🍙🍋🥔🥦💧🧂🍉🥭🥥❄🍈🍊🌶🍘🚰🔪🥄🔥💦✨💨♨💕⭐✔👋🎁💡🏮🌷🏅😋🤤😍🥰🥶🐈🐔🐣📻🌿🌻🧺🍵🏺🎐🍍🐇💪'];
+const ALLOWED = [...'🍳🍌🍛🍢🍲🥞🍧🎂🍰🥚🥒🍅🍚🍶🍯🥛🧀🍫🍓🥬🥕🍗🥜🍙🍋🥔🥦💧🧂🍉🥭🥥❄🍈🍊🌶🍘🚰🔪🥄🔥💦✨💨♨💕⭐✔👋🎁💡🏮🌷🏅😋🤤😍🥰🥶🐈🐔🐣📻🌿🌻🧺🍵🏺🎐🍍🐇💪' +
+  '🍜🥣🥗🍕🍩🥤🍮🍦🍨🥟🍤🦐🌭🌽🥑🍬🍒🌀🍞🍭'];
 
 const api = (page, k) => page.evaluate((k) => MG.current.api[k], k);
 /** Run fn(api, arg) in the page. */
@@ -83,22 +84,36 @@ async function gameWait(page, dt) {
   await page.waitForFunction(([t0, dt]) => MG.current.ctx.time >= t0 + dt, [t0, dt], { timeout: 10000 });
 }
 const cssVar = (page, k) => page.evaluate((k) => getComputedStyle(document.querySelector('.g-kitchen')).getPropertyValue(k).trim(), k);
+/** Wait until the menu's cards have popped in (they start small: a size check must wait for them). */
+const settledMenu = (page) => page.waitForFunction(() => ![...document.querySelectorAll('.g-kitchen .kt-card, .g-kitchen .kt-next, .g-kitchen .kt-tab')].some((n) => n.getAnimations().some((a) => a.playState === 'running')), null, { timeout: 4000 });
+/** Tap a menu tab and wait until its page has popped in. */
+async function openTab(page, g) { await tap(page, `.g-kitchen .kt-tab[data-group="${g}"]`, 60); await settledMenu(page); }
+const FULL = { v: 2, done: 21, legacy: 0 };
 /** Wait until the new jobs have finished sliding in from the boards' outer edges. */
 const settled = (page) => page.waitForFunction(() => ![...document.querySelectorAll('.g-kitchen .kt-board *')].some((n) => n.getAnimations().some((a) => /^kt-(in-l|in-r|pop-in)$/.test(a.animationName) && a.playState === 'running')), null, { timeout: 4000 });
-/** Each fry, crack or skewer result that lands in the dish ('mid') after the last time the dish is cleared, per recipe. */
+/** Per recipe: each fry, crack, skewer or (non-base) roll result that lands in the dish ('mid') after the last time
+ *  the dish is cleared (`keep`), and how many of what she picked are still in it at the end (`picks`: 3, or 0 when a
+ *  serve or a blend comes after her pick). Fry results on a cone are scoops, not pieces. */
 const keptOf = (page) => A(page, (a) => {
-  const out = {};
+  const out = {}, picks = {};
   a.MENU.forEach((id) => {
     const R = a.RECIPES[id];
-    let kind = R.vessel, keep = [];
+    let kind = R.vessel, keep = [], pk = 0;
     a.beatsFor(R, 'full').slice(0, -1).forEach((bt) => {
-      if (bt.serve) { kind = bt.serve; keep = []; }                       // served onto a new plate
-      [bt.a, bt.b].forEach((j) => { if (j.to === 'mid' && ['fry', 'crack', 'skewer'].includes(j.do) && kind !== 'cake') keep.push(j.do === 'crack' ? 'yolk' : a.resultOf(j)); });
-      if ((bt.a.do === 'stir' || bt.b.do === 'stir') && R.mix && kind !== 'pot') keep = [];   // stirred smooth on purpose
+      if (bt.serve) { kind = bt.serve; keep = []; pk = 0; }                // served onto a new plate
+      [bt.a, bt.b].forEach((j) => {
+        if (j.do === 'pick') pk = 3;
+        if (j.to !== 'mid' || kind === 'cake' || (j.do === 'fry' && kind === 'cone')) return;
+        if (['fry', 'crack', 'skewer'].includes(j.do) || (j.do === 'roll' && !j.base)) keep.push(j.do === 'crack' ? 'yolk' : a.resultOf(j));
+      });
+      const stir = ['stir', 'blend'].includes(bt.a.do) || ['stir', 'blend'].includes(bt.b.do);
+      if (stir && R.mix && kind !== 'pot') keep = [];                     // stirred smooth on purpose (what she chose stays)
+      if (bt.a.do === 'blend' || bt.b.do === 'blend') pk = 0;             // blended: everything
     });
     out[id] = keep;
+    picks[id] = pk;
   });
-  return out;
+  return { keep: out, picks };
 });
 /** Is every item of `want` in `have` (as many times)? */
 const within = (want, have) => { const h = (have || []).slice(); return want.every((e) => { const i = h.indexOf(e); if (i < 0) return false; h.splice(i, 1); return true; }); };
@@ -107,10 +122,10 @@ const ONLY = process.env.MG_KT_ONLY ? process.env.MG_KT_ONLY.split(',') : null;
 const part = (n) => !ONLY || ONLY.includes(String(n));
 
 /** Follow only the ghost hand until the round is won. Watches where the hand points on the way. */
-function followHand(page, max = 400, pauseFor = []) {
-  return page.evaluate(async ([max, pauseFor]) => {
+function followHand(page, max = 400, pauseFor = [], o = {}) {
+  return page.evaluate(async ([max, pauseFor, opt]) => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    let id = 40000 + Math.floor(Math.random() * 1000) * 100, steps = 0, herOk = true, picked = null, last = null;
+    let id = 40000 + Math.floor(Math.random() * 1000) * 100, steps = 0, herOk = true, picked = null, last = null, pickAt = null;
     const bad = [];
     const objNow = () => getComputedStyle(document.querySelector('.g-kitchen')).getPropertyValue('--obj').trim();
     for (; steps < max && MG.current && !MG.current.ctx.over; steps++) {
@@ -118,13 +133,15 @@ function followHand(page, max = 400, pauseFor = []) {
       // the start of the last beat: what is in the dish, and the size of the job objects
       if (!last && a.state === 'beat' && a.beat === a.beats.length - 1) {
         const v = a.vessel;
-        last = { contents: v.contents, obj: objNow() };
-        if (pauseFor.includes(a.recipe)) return { paused: true, steps, bad, herOk, picked, last, recipe: a.recipe };   // (the caller looks, then calls again)
+        last = { contents: v.contents, obj: objNow(), picks: v.picks, scoops: v.scoops, base: v.base, baked: v.baked };
+        if (pauseFor.includes(a.recipe)) return { paused: true, steps, bad, herOk, picked, last, pickAt, recipe: a.recipe };   // (the caller looks, then calls again)
       }
       a.hintNext();
       const n = a.hinted;
       if (!n) { await sleep(50); continue; }
-      if (a.state === 'menu') picked = n.dataset.id;
+      if (a.state === 'menu' && n.dataset.id) picked = n.dataset.id;
+      if (opt.noTabs && n.classList.contains('kt-tab')) bad.push('a tab (the open tab holds the dish)');
+      if (pickAt === null && n.classList.contains('kt-bowl') && !n.closest('.kt-bowls').querySelector('.is-chosen')) pickAt = n.dataset.i;
       if (n.closest('.kt-board.is-done')) bad.push('a done board');
       if (n.closest('.kt-vessel, .kt-strip, .kt-shelf, .kt-next')) bad.push(n.className);
       if (n.classList.contains('kt-jar') && n.dataset.e !== n.closest('.kt-board').querySelector('.kt-want').textContent) bad.push('a wrong jar');
@@ -136,20 +153,21 @@ function followHand(page, max = 400, pauseFor = []) {
       n.dispatchEvent(new PointerEvent('pointerup', o));
       await sleep(35);
     }
-    return { steps, bad, herOk, picked, last, objEnd: objNow(), over: !!(MG.current && MG.current.ctx.over), recipe: MG.current && MG.current.api.recipe };
-  }, [max, pauseFor]);
+    return { steps, bad, herOk, picked, last, pickAt, objEnd: objNow(), over: !!(MG.current && MG.current.ctx.over), recipe: MG.current && MG.current.api.recipe };
+  }, [max, pauseFor, o]);
 }
 
 /** Every layout rule for what is on screen now. */
 async function layoutChecks(t, p, label, o = {}) {
   const { assert } = t;
-  const targets = '.g-kitchen .kt-board, .g-kitchen .kt-jar, .g-kitchen .kt-bowl:not(.is-gone), .g-kitchen .kt-card, .g-kitchen .kt-next';
+  await settledMenu(p);
+  const targets = '.g-kitchen .kt-board, .g-kitchen .kt-jar, .g-kitchen .kt-bowl:not(.is-gone), .g-kitchen .kt-card, .g-kitchen .kt-next, .g-kitchen .kt-tab';
   const visible = (sel) => p.evaluate((sel) => [...document.querySelectorAll(sel)].filter((n) => n.offsetParent && getComputedStyle(n).visibility !== 'hidden').length, sel);
   if (await visible(targets)) {
     const min = (await t.minTargetSize(p, targets)).min;
     assert.ok(min >= 64, `targets at least 64px ${label}: ${min}`);
   }
-  if (await visible('.g-kitchen .kt-card')) assert.ok((await t.minTargetSize(p, '.g-kitchen .kt-card')).min >= 80, `menu cards at least 80px ${label}`);
+  if (await visible('.g-kitchen .kt-card')) { const m = (await t.minTargetSize(p, '.g-kitchen .kt-card')).min; assert.ok(m >= 80, `menu cards at least 80px ${label}: ${m}`); }
   const inset = await p.evaluate((sel) => {
     const g = document.querySelector('#mg-game').getBoundingClientRect();
     return [...document.querySelectorAll(sel)].filter((n) => n.offsetParent).map((n) => { const r = n.getBoundingClientRect(); return Math.min(r.left - g.left, r.top - g.top, g.right - r.right, g.bottom - r.bottom); });
@@ -164,7 +182,7 @@ async function layoutChecks(t, p, label, o = {}) {
     pairs(rects('.g-kitchen .kt-board'));
     pairs(rects('.g-kitchen .kt-jar'));
     pairs(rects('.g-kitchen .kt-bowl'));
-    pairs(rects('.g-kitchen .kt-card, .g-kitchen .kt-next'));
+    pairs(rects('.g-kitchen .kt-tab, .g-kitchen .kt-card, .g-kitchen .kt-next'));
     const items = rects('.g-kitchen .kt-item');
     pairs(items);
     const v = rects('.g-kitchen .kt-vessel');
@@ -198,18 +216,27 @@ async function layoutChecks(t, p, label, o = {}) {
   }
 }
 
-/** Every part of each job (the object and its knife, spoon, faucet...) stays inside its board, give or take 4px. */
+/** Every part of each job (the object and its knife, spoon, faucet...) stays inside its board, give or take 4px;
+ *  the dish's cone and scoops stay inside the wall. */
 async function jobsInside(t, p, label) {
   const bad = await p.evaluate(() => {
     const out = [];
     document.querySelectorAll('.g-kitchen .kt-board').forEach((bd) => {
       const B = bd.getBoundingClientRect();
       bd.querySelectorAll('.kt-main .kt-obj, .kt-main .kt-obj *').forEach((n) => {
-        const r = n.getBoundingClientRect();
-        if (!r.width && !r.height) return;
+        const q = n.getBoundingClientRect();
+        if (!q.width && !q.height) return;
+        // (the rolling pin's handles are its ::before and ::after, 0.1em past each end)
+        const hx = n.classList.contains('kt-pin') ? n.closest('.kt-obj').offsetWidth * 0.1 : 0;
+        const r = { left: q.left - hx, right: q.right + hx, top: q.top, bottom: q.bottom };
         const o = Math.max(B.left - r.left, r.right - B.right, B.top - r.top, r.bottom - B.bottom);
         if (o > 4) out.push(`${bd.dataset.verb}: ${n.getAttribute('class') || n.tagName} ${o.toFixed(1)}px out`);
       });
+    });
+    const W = document.querySelector('.g-kitchen .kt-wall').getBoundingClientRect();
+    document.querySelectorAll('.g-kitchen .kt-vfront svg, .g-kitchen .kt-contents .kt-scoop').forEach((n) => {
+      const r = n.getBoundingClientRect(), o = Math.max(W.left - r.left, r.right - W.right, W.top - r.top, r.bottom - W.bottom);
+      if (o > 4) out.push(`the dish: ${n.getAttribute('class') || n.tagName} ${o.toFixed(1)}px out of the wall`);
     });
     return out;
   });
@@ -236,23 +263,47 @@ h.run(ID, async (t) => {
   if (part(1)) {
     const r = await page.evaluate(() => {
       const a = MG.current.api;
-      const fresh = { v: 1, done: 0, cooked: {}, chicks: 0, seen: [] };
+      const fresh = { v: 2, done: 0, legacy: 0, cooked: {}, made: {}, chicks: 0, seen: [] };
       const rules = [];
+      const FIX = /^#[0-9A-F]{6}$/i;
       a.MENU.forEach((id) => {
         const R = a.RECIPES[id], beats = R.beats, last = beats[beats.length - 1];
+        const pickAt = beats.findIndex((bt) => bt.a.do === 'pick');
+        const pk = pickAt >= 0 ? beats[pickAt].a : null;
         beats.forEach((bt, i) => {
           if (!bt.a || !bt.b || !a.VERBS[bt.a.do] || !a.VERBS[bt.b.do]) rules.push(`${id}:${i} has both jobs, known verbs`);
           if (bt.a.do === 'fetch') rules.push(`${id}:${i} a never fetches`);
           if (bt.b.do === 'pick') rules.push(`${id}:${i} b never picks`);
           if (bt.extra && [bt.a, bt.b].some((j) => j.to === 'stay' || j.to === 'across')) rules.push(`${id}:${i} an extra beat hands nothing on`);
+          if (bt.extra && i > 0 && [beats[i - 1].a, beats[i - 1].b].some((j) => j.to === 'stay' || j.to === 'across')) rules.push(`${id}:${i} an extra beat is never handed anything`);
+          [bt.a, bt.b].forEach((j) => {
+            const toks = [j.e, j.liquid, j.dots].filter((v) => v === '$' || v === '$c');
+            if (toks.length && i <= pickAt) rules.push(`${id}:${i} '$' only after the pick`);
+            if ([j.liquid, j.dots].includes('$c') && !(pk && pk.paint)) rules.push(`${id}:${i} '$c' needs paint`);
+            if (j.prop === 'fridge' && j.end !== 'out') rules.push(`${id}:${i} a fridge ends 'out'`);
+            if (j.e === 'jelly' && j.prop !== 'fridge') rules.push(`${id}:${i} a jelly comes from the fridge`);
+            if (j.base && !(j.do === 'roll' && j.to === 'mid' && R.vessel === 'pizza')) rules.push(`${id}:${i} a base is rolled onto the pizza peel`);
+          });
         });
         const end = id === 'cake' ? 'blow' : 'taste';
         if (last.a.do !== end || last.b.do !== end) rules.push(`${id} ends with ${end}`);
         const extras = beats.map((b, i) => (b.extra ? i : -1)).filter((i) => i >= 0);
-        const nx = ['ceplok', 'pisang'].includes(id) ? 2 : 1;   // the two starter dishes have one more real step
+        const nx = id === 'ceplok' ? 2 : 1;   // Telur Ceplok has one more real step
         if (extras.length !== nx || extras[0] === 0 || extras[extras.length - 1] === beats.length - 1) rules.push(`${id} has ${nx} extra beat(s) in the middle`);
+        if (extras.includes(pickAt)) rules.push(`${id}: the pick is never extra`);
         if (beats.length > 6) rules.push(`${id} has at most six steps`);
-        if (beats.filter((b) => b.serve).length > 1) rules.push(`${id} serves once at most`);
+        const serves = beats.filter((b) => b.serve);
+        if (serves.length > 1 || serves.some((b) => !['plate', 'cake', 'cone'].includes(b.serve))) rules.push(`${id} serves once at most, onto a plate, cake or cone`);
+        if (R.bake && R.vessel !== 'pizza') rules.push(`${id}: only a pizza bakes`);
+        // exactly one pick, hers, not extra; three different choices; paint is three colours
+        const picks = beats.reduce((n, bt) => n + [bt.a, bt.b].filter((j) => j.do === 'pick').length, 0);
+        if (picks !== 1 || !pk) rules.push(`${id} has exactly one pick, on her side`);
+        if (pk && (pk.choices.length !== 3 || new Set(pk.choices).size !== 3)) rules.push(`${id}: three different choices`);
+        if (pk && pk.paint && (pk.paint.length !== 3 || !pk.paint.every((c) => FIX.test(c)))) rules.push(`${id}: paint is three colours`);
+        if (R.mix === '$c') {
+          const firstStir = beats.findIndex((bt) => ['stir', 'blend'].includes(bt.a.do) || ['stir', 'blend'].includes(bt.b.do));
+          if (!(pk && pk.paint) || firstStir < pickAt) rules.push(`${id}: a mix in her colour is stirred after she chooses`);
+        }
         ['short', 'full'].forEach((len) => {
           const bs = a.beatsFor(R, len);
           bs.forEach((bt, i) => ['a', 'b'].forEach((s) => {
@@ -263,47 +314,97 @@ h.run(ID, async (t) => {
         });
         if (id !== 'cake' && !beats.some((b) => b.a.do === 'chop' || b.a.do === 'pound')) rules.push(`${id}: she gets the knife or the pestle`);
       });
+      // the menu data: every recipe in exactly one group of at most 8; 16 unique ids and dish emoji; every gift once
+      const inGroups = a.GROUPS.reduce((o, g) => { g.ids.forEach((id) => { o[id] = (o[id] || 0) + 1; }); return o; }, {});
+      if (a.GROUPS.some((g) => g.ids.length > 8) || Object.keys(a.RECIPES).some((id) => inGroups[id] !== 1)) rules.push('every dish is in exactly one group of at most 8');
+      if (new Set(a.MENU).size !== 16 || a.MENU.length !== 16 || new Set(a.MENU.map((id) => a.RECIPES[id].e)).size !== 16) rules.push('16 dishes, each its own emoji');
+      const fresh21 = [...Array(21).keys()].map((i) => a.giftFor(i, 0));
+      const recs = fresh21.filter((g) => g.kind === 'recipe').map((g) => g.id).sort();
+      if (JSON.stringify(recs) !== JSON.stringify(a.MENU.filter((id) => !['ceplok', 'pisang'].includes(id)).sort())) rules.push('the gift list holds every new dish once');
+      if (JSON.stringify(fresh21.filter((g) => g.kind === 'helper').map((g) => g.id).sort()) !== '["cat","hen","herbs","radio"]') rules.push('every helper once');
+      if (JSON.stringify(fresh21.filter((g) => g.kind === 'tier').map((g) => g.n)) !== '[1,2,3]') rules.push('tiers 1 to 3 once');
+      // at most 5 kept things per dish (so there is always room for chopped pieces)
       const ns = [], fixed = [];
       a.MENU.forEach((id) => a.RECIPES[id].beats.forEach((bt) => ['a', 'b'].forEach((s) => ['few', 'normal', 'lots'].forEach((tp) => [0, 1, 2].forEach((hp) => {
         const j = bt[s], n = a.nFor(j, hp, tp);
         ns.push(n);
         if (a.VERBS[j.do].fixed != null && n !== a.VERBS[j.do].fixed) fixed.push(j.do);
       })))));
+      const kit = (raw) => a.cleanKitchen(raw);
+      // nothing is ever lost: whatever a save had, it keeps; every save reaches everything
+      const lost = [];
+      const holds = (big, small) => small.recipes.every((x) => big.recipes.includes(x)) && Object.keys(small.helpers).every((x) => big.helpers[x]) && big.tier >= small.tier
+        && small.decor.every((x) => big.decor.includes(x)) && Object.keys(small.medals).every((m) => (big.medals[m] || 0) >= small.medals[m]);
+      for (let d = 0; d <= 40; d++) {
+        const base = a.unlocks(d, d);
+        let prev = base;
+        for (let k = 0; k <= 60; k++) {
+          const u = a.unlocks(d + k, d);
+          if (!holds(u, base)) lost.push(`${d}+${k} lost what the save had`);
+          if (!holds(u, prev)) lost.push(`${d}+${k} lost what it had a dish before`);
+          prev = u;
+        }
+        const end = a.unlocks(d + 60, d);
+        if (end.recipes.length !== 16 || Object.keys(end.helpers).length !== 4 || end.tier !== 3 || end.decor.length !== 6 || a.MENU.some((id) => end.medals[id] !== 2)) lost.push(`${d}: everything within 60 dishes`);
+      }
+      const ks = (g) => g.kind + ':' + (g.id || g.n || g.e);
       return {
-        rules, ns: [Math.min(...ns), Math.max(...ns)], fixed,
+        rules, lost: lost.slice(0, 5), ns: [Math.min(...ns), Math.max(...ns)], fixed,
         fixedN: { fetch: a.nFor({ do: 'fetch' }, 2, 'lots'), fry: a.nFor({ do: 'fry' }, 0, 'few'), taste: a.nFor({ do: 'taste' }, 0, 'lots'), scoop: a.nFor({ do: 'scoop' }, 2, 'lots'), skewer: a.nFor({ do: 'skewer' }, 0, 'few'), garnish: a.nFor({ do: 'garnish' }, 0, 'lots'), pick: a.nFor({ do: 'pick' }, 1, 'few'), blow: a.nFor({ do: 'blow' }, 2, 'lots') },
-        bad: [null, 'x', [1, 2, 3], { done: 'abc' }, { done: true }, { done: '' }, { done: NaN }].map((v) => JSON.stringify(a.cleanKitchen(v)) === JSON.stringify(fresh)),
-        junk: a.cleanKitchen({ done: 5, cooked: { rock: 3, sate: 'x', ceplok: 99999 }, chicks: 99, seen: ['fly', 7, 'crack', 'crack'] }),
-        early: a.cleanKitchen({ done: 0, cooked: { sate: 2 } }),
-        big: a.cleanKitchen({ done: 1e9, chicks: -4 }),
-        u0: a.unlocks(0), u1: a.unlocks(1), u13: a.unlocks(13), u19: a.unlocks(19).decor.length, u35: a.unlocks(35).medals,
-        gifts: [...Array(13).keys()].map((i) => a.giftFor(i).kind + ':' + (a.giftFor(i).id || a.giftFor(i).n)),
-        later: [a.giftFor(13).kind, a.giftFor(18).kind, a.giftFor(19).kind, a.giftFor(19).id, a.giftFor(34).id, a.giftFor(35).kind, a.giftFor(500).kind],
-        GIFTS: a.GIFTS, tuning: a.tuning,
+        variable: ['roll', 'blend'].map((v) => [0, 1, 2].map((hp) => ['few', 'normal', 'lots'].map((tp) => a.nFor({ do: v, n: 4 }, hp, tp))).flat()).flat(),
+        bad: [null, 'x', [1, 2, 3], { done: 'abc' }, { done: true }, { done: '' }, { done: NaN }].map((v) => JSON.stringify(kit(v)) === JSON.stringify(fresh)),
+        junk: kit({ done: 5, cooked: { rock: 3, sate: 'x', ceplok: 99999 }, chicks: 99, seen: ['fly', 7, 'crack', 'crack', 'roll', 'fridge'] }),
+        v13: kit({ v: 1, done: 13, cooked: { ceplok: 1, sop: 2 } }),
+        v21: kit({ v: 2, done: 21, legacy: 0, cooked: { jus: 1 }, made: { jus: 5, rock: 1, pizza: 99 } }),
+        clampL: kit({ v: 2, done: 3, legacy: 9 }).legacy,
+        early: kit({ v: 2, done: 0, legacy: 0, cooked: { pizza: 2 }, made: { pizza: 1 } }),
+        big: kit({ done: 1e9, chicks: -4 }),
+        v1: [...Array(36).keys()].map((i) => ks(a.giftV1(i))),
+        u0: a.unlocks(0, 0), u1: a.unlocks(1, 0), u21: a.unlocks(21, 0), u27: a.unlocks(27, 0).decor.length, u59: a.unlocks(59, 0).medals,
+        l13: a.unlocks(13, 13), l21: a.unlocks(21, 13).recipes.length, l30: a.unlocks(30, 30), l38: a.unlocks(38, 30),
+        gifts: [...Array(21).keys()].map((i) => ks(a.giftFor(i, 0))),
+        later: [a.giftFor(21, 0).kind, a.giftFor(26, 0).kind, ks(a.giftFor(27, 0)), ks(a.giftFor(58, 0)), a.giftFor(59, 0).kind, a.giftFor(500, 0).kind],
+        GIFTS: a.GIFTS, LIST: a.LIST, tuning: a.tuning,
         full: a.MENU.map((id) => a.beatsFor(a.RECIPES[id], 'full').length),
         cut: a.MENU.map((id) => a.beatsFor(a.RECIPES[id], 'full').length - a.beatsFor(a.RECIPES[id], 'short').length),
+        menu: a.MENU,
       };
     });
-    // the two starter dishes have one more real step (salt and sambal; meses and condensed milk), which Short leaves out
-    assert.deepStrictEqual(r.full, [6, 6, 6, 6, 6, 6, 6, 6], 'every dish has six steps (Full)');
-    assert.deepStrictEqual(r.cut, [2, 2, 1, 1, 1, 1, 1, 1], 'Short leaves out two steps of ceplok and pisang, one of every other dish');
+    assert.deepStrictEqual(r.menu, ['ceplok', 'goreng', 'sate', 'sop', 'mie', 'bubur', 'gado', 'pizza', 'pisang', 'martabak', 'cake', 'donat', 'campur', 'jus', 'puding', 'eskrim'], 'sixteen dishes, in group order');
+    assert.deepStrictEqual(r.full, [6, 6, 6, 6, 6, 6, 6, 5, 6, 6, 6, 6, 6, 6, 6, 6], 'six steps a dish (Full), five for the pizza');
+    assert.deepStrictEqual(r.cut, [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'Short leaves out two steps of Telur Ceplok, one of every other dish');
     assert.deepStrictEqual(r.rules, [], 'every recipe keeps the data rules');
+    const kept = await keptOf(page);
+    assert.ok(Object.entries(kept.keep).every(([id, k]) => k.length + kept.picks[id] <= 5), 'at most five kept things in any dish: ' + JSON.stringify(kept));
+    assert.deepStrictEqual(r.lost, [], 'no save ever loses anything, and every save reaches everything');
     assert.ok(r.ns[0] >= 1 && r.ns[1] <= 8, `taps per job stay between 1 and 8 (${r.ns})`);
+    assert.ok(r.variable.every((n) => n >= 1 && n <= 8) && new Set(r.variable).size > 1, 'rolling and blending follow the Taps option and help');
     assert.deepStrictEqual(r.fixed, [], 'fixed jobs never change');
     assert.deepStrictEqual(r.fixedN, { fetch: 1, fry: 1, taste: 1, scoop: 2, skewer: 3, garnish: 3, pick: 3, blow: 3 });
     assert.ok(r.bad.every(Boolean), 'nonsense becomes a fresh kitchen: ' + r.bad);
-    assert.deepStrictEqual([r.junk.done, r.junk.cooked, r.junk.chicks, r.junk.seen], [5, { ceplok: 999 }, 3, ['crack']], 'a junk save is repaired');
-    assert.deepStrictEqual(r.early.cooked, {}, 'a dish not yet earned is dropped');
-    assert.deepStrictEqual([r.big.done, r.big.chicks], [9999, 0]);
-    assert.deepStrictEqual([r.u0.recipes, r.u0.next], [['ceplok', 'pisang'], 'goreng'], 'a new kitchen: two dishes, nasi goreng next');
-    assert.deepStrictEqual(r.u1.recipes, ['ceplok', 'pisang', 'goreng']);
-    assert.strictEqual(r.u13.recipes.length, 8);
-    assert.deepStrictEqual([r.u13.helpers, r.u13.tier, r.u13.next], [{ cat: true, hen: true, radio: true, herbs: true }, 3, null], 'thirteen dishes: everything open');
-    assert.strictEqual(r.u19, 6, 'then six shelf decorations');
-    assert.ok(Object.keys(r.u35).length === 8 && Object.values(r.u35).every((n) => n === 2), 'then two gold medals for every dish');
-    assert.deepStrictEqual(r.gifts, ['recipe:goreng', 'helper:cat', 'recipe:sate', 'tier:1', 'recipe:sop', 'helper:hen', 'recipe:martabak', 'tier:2', 'recipe:campur', 'helper:radio', 'recipe:cake', 'tier:3', 'helper:herbs']);
-    assert.deepStrictEqual(r.later, ['decor', 'decor', 'medal', 'ceplok', 'cake', 'thanks', 'thanks']);
-    assert.strictEqual(r.GIFTS, 13);
+    assert.deepStrictEqual([r.junk.done, r.junk.legacy, r.junk.cooked, r.junk.made, r.junk.chicks, r.junk.seen], [5, 5, { ceplok: 999 }, { ceplok: 7 }, 3, ['crack', 'roll', 'fridge']], 'a v1 junk save is repaired and keeps what it had');
+    assert.deepStrictEqual([r.v13.legacy, r.v13.made], [13, { ceplok: 1, sop: 3 }], 'a v1 save: as many variant marks as it had stars');
+    assert.deepStrictEqual(r.v21.made, { jus: 5, pizza: 7 }, 'a v2 save keeps its marks (clamped)');
+    assert.strictEqual(r.clampL, 3, 'legacy is never more than done');
+    assert.deepStrictEqual([r.early.cooked, r.early.made], [{}, {}], 'a dish not yet earned is dropped');
+    assert.deepStrictEqual([r.big.done, r.big.legacy, r.big.chicks], [9999, 9999, 0]);
+    // v1 is frozen
+    assert.deepStrictEqual(r.v1.slice(0, 13), ['recipe:goreng', 'helper:cat', 'recipe:sate', 'tier:1', 'recipe:sop', 'helper:hen', 'recipe:martabak', 'tier:2', 'recipe:campur', 'helper:radio', 'recipe:cake', 'tier:3', 'helper:herbs'], 'the v1 gift list is unchanged');
+    assert.deepStrictEqual([r.v1[13].split(':')[0], r.v1[18].split(':')[0], r.v1[19], r.v1[34], r.v1[35].split(':')[0]], ['decor', 'decor', 'medal:ceplok', 'medal:cake', 'thanks']);
+    // new kitchens
+    assert.deepStrictEqual([r.u0.recipes, r.u0.next, r.u0.nextIn], [['ceplok', 'pisang'], 'goreng', 1], 'a new kitchen: two dishes, nasi goreng next');
+    assert.deepStrictEqual([r.u1.recipes, r.u1.next, r.u1.nextIn], [['ceplok', 'goreng', 'pisang'], 'pizza', 2], 'then the cat, then pizza');
+    assert.deepStrictEqual([r.u21.recipes.length, Object.keys(r.u21.helpers).length, r.u21.tier, r.u21.next], [16, 4, 3, null], 'twenty-one dishes: everything open');
+    assert.strictEqual(r.u27, 6, 'then six shelf decorations');
+    assert.ok(Object.keys(r.u59).length === 16 && Object.values(r.u59).every((n) => n === 2), 'then two gold medals for every dish');
+    // old kitchens
+    assert.deepStrictEqual([r.l13.recipes.slice().sort(), Object.keys(r.l13.helpers).length, r.l13.tier, r.l13.next, r.l13.nextIn], [['cake', 'campur', 'ceplok', 'goreng', 'martabak', 'pisang', 'sate', 'sop'], 4, 3, 'pizza', 1], 'a full v1 kitchen keeps everything; pizza next');
+    assert.strictEqual(r.l21, 16, 'and eight dishes later it has all sixteen');
+    assert.deepStrictEqual([r.l30.medals, r.l30.decor.length, r.l30.next], [{ ceplok: 2, pisang: 2, goreng: 2, sate: 1, sop: 1, martabak: 1, campur: 1, cake: 1 }, 6, 'pizza'], 'a v1 kitchen with medals keeps them');
+    assert.deepStrictEqual([r.l38.recipes.length, r.l38.medals], [16, r.l30.medals], 'the new dishes come before any more medals');
+    assert.deepStrictEqual(r.gifts, ['recipe:goreng', 'helper:cat', 'recipe:pizza', 'tier:1', 'recipe:sate', 'recipe:donat', 'helper:hen', 'recipe:sop', 'recipe:eskrim', 'tier:2', 'recipe:mie', 'recipe:martabak', 'helper:radio', 'recipe:jus', 'recipe:gado', 'tier:3', 'recipe:campur', 'recipe:puding', 'recipe:bubur', 'recipe:cake', 'helper:herbs']);
+    assert.deepStrictEqual(r.later, ['decor', 'decor', 'medal:ceplok', 'medal:eskrim', 'thanks', 'thanks']);
+    assert.deepStrictEqual([r.GIFTS, r.LIST], [21, 59]);
     assert.deepStrictEqual([r.tuning.GAP, r.tuning.LATCH, r.tuning.COOK_S], [0.16, 0.45, [3, 2.2, 1.6]]);
     // the emoji audit: everything in the game's file is on the list (Unicode 11 or older)
     const src = fs.readFileSync(path.join(h.ROOT, 'js', 'games', 'kitchen.js'), 'utf8').replace(/️/g, '');
@@ -337,9 +438,10 @@ h.run(ID, async (t) => {
       await page.waitForFunction((i) => MG.current.api.state === 'beat' && MG.current.api.beat === i, i, { timeout: 8000 });
       await gameWait(page, 0.35);                  // (a new job can be used once it has been seen for 0.3 game seconds)
       if (i === nBeats - 1) {
-        // tasting: the fried egg she made is still in the dish, on top, not covered by the slices
+        // tasting: the fried egg she made is still in the dish, on top, not covered by the slices; and the bread she chose
         const v = await api(page, 'vessel');
         assert.ok(v.contents.includes('🍳') && v.kept.includes('🍳'), 'the fried egg is still in the dish when it is tasted: ' + v.contents.join(''));
+        assert.deepStrictEqual(v.picks, ['🍞', '🍞', '🍞'], 'what she chose is still in the dish: ' + v.contents.join(''));
         const egg = await page.evaluate(() => {
           const n = [...document.querySelectorAll('.g-kitchen .kt-contents .kt-piece')].find((p) => p.textContent === '🍳');
           if (!n) return 'no egg';
@@ -364,14 +466,14 @@ h.run(ID, async (t) => {
           continue;
         }
         for (let k = 0; k < b.n; k++) {
-          const add = b.do === 'scoop' && k === 0;
+          const add = b.do === 'pick' && k === 0;
           if (add) await page.waitForFunction(() => ![...document.querySelectorAll('.g-kitchen .kt-contents .kt-piece')].some((n) => n.getAnimations().length), null, { timeout: 3000 });
           await tapJob(page, s, 1, 0);
           const now = (await boards(page))[s];
           assert.strictEqual(now.k, k + 1, `${b.do}: one tap, one step (${k + 1}/${b.n})`);
           if (add) {
-            // a spoonful of rice drops in: only it plays the drop-in, nothing already in the dish jumps again
-            await page.waitForFunction(() => [...document.querySelectorAll('.g-kitchen .kt-contents .kt-piece')].some((n) => n.textContent === '🍚'), null, { timeout: 3000 });
+            // what she chose drops in: only it plays the drop-in, nothing already in the dish jumps again
+            await page.waitForFunction(() => [...document.querySelectorAll('.g-kitchen .kt-contents .kt-piece')].some((n) => n.textContent === '🍞'), null, { timeout: 3000 });
             const moving = await animating();
             assert.ok(moving <= 1, `after an add tap only the new piece drops in (${moving} pieces moving)`);
           }
@@ -398,16 +500,18 @@ h.run(ID, async (t) => {
     }
     await stateIs(page, 'finale', 3000);
     let sv = await saved(page);
-    assert.deepStrictEqual([sv.done, sv.cooked.ceplok], [1, 1], 'saved the moment the dish is finished');
+    assert.deepStrictEqual([sv.v, sv.legacy, sv.done, sv.cooked.ceplok, sv.made.ceplok], [2, 0, 1, 1, 2], 'saved the moment the dish is finished, with the bread she chose');
     assert.ok(sv.seen.includes('crack') && sv.seen.includes('fry') && sv.seen.includes('taste'), 'her new jobs are remembered');
     assert.strictEqual(await api(page, 'locked'), false, 'never locked');
     await page.waitForSelector('.g-kitchen .kt-gift.is-open', { timeout: 4000 });
     assert.ok(await page.locator('.g-kitchen .kt-gift .kt-minicard').count(), 'the present is a new recipe card');
     await t.waitForWin(page, 8000);
     await openKitchen(page, { keep: true });
-    const cards = await page.evaluate(() => [...document.querySelectorAll('.g-kitchen .kt-card')].map((c) => c.dataset.id + ':' + c.dataset.stars + (c.classList.contains('is-new') ? '+new' : '')));
-    assert.deepStrictEqual(cards, ['ceplok:1', 'pisang:0+new', 'goreng:0+new'], 'the menu: a star for the fried egg, new nasi goreng');
-    assert.strictEqual(await page.evaluate(() => document.querySelector('.g-kitchen .kt-next .kt-next__dish').textContent), '🍢', 'sate is the next present');
+    const cards = await page.evaluate(() => [...document.querySelectorAll('.g-kitchen .kt-card')].map((c) => c.dataset.id + ':' + c.dataset.made + (c.classList.contains('is-new') ? '+new' : '')));
+    assert.deepStrictEqual(cards, ['ceplok:2', 'goreng:0+new', 'pisang:0+new'], 'the menu, in group order: the bread is marked on the fried egg, new nasi goreng');
+    assert.deepStrictEqual(await page.evaluate(() => [...document.querySelectorAll('.g-kitchen .kt-card[data-id="ceplok"] .kt-card__v.is-made')].map((n) => n.dataset.i)), ['1'], 'one mark lit: the bread');
+    assert.ok(await page.evaluate(() => { const r = document.querySelector('.g-kitchen .kt-rail'); return !r.offsetParent || !r.getBoundingClientRect().width; }), 'three dishes: one page, no tabs');
+    assert.deepStrictEqual(await page.evaluate(() => [document.querySelector('.g-kitchen .kt-next .kt-next__dish').textContent, document.querySelectorAll('.g-kitchen .kt-next__dots i').length]), ['🍕', 2], 'pizza is the next present but one (the cat comes first)');
   }
 
   // --- 2b. the ghost hand comes back by itself: nothing here calls hintNext(), only the game's own quiet-time clock
@@ -458,13 +562,15 @@ h.run(ID, async (t) => {
   // --- 3. following only the ghost hand finishes a round of every recipe (Full, fast clock)
   if (part(3)) {
     await openKitchen(page, { scale: 8 });
-    const keep = await keptOf(page);
-    assert.deepStrictEqual([keep.ceplok, keep.pisang, keep.sate, keep.martabak], [['🍳'], ['🍌', '🍌'], ['🍢', '🍢'], ['🥞', '🥞']], 'what is fried, cracked or skewered (and stays)');
+    const { keep, picks } = await keptOf(page);
+    assert.deepStrictEqual([keep.ceplok, keep.pisang, keep.sate, keep.martabak, keep.gado, keep.donat, keep.puding, keep.eskrim], [['🍳'], ['🍌', '🍌'], ['🍢', '🍢'], ['🥞', '🥞'], ['yolk'], ['🍩', '🍩'], ['jelly', 'jelly'], []], 'what is fried, cracked, skewered or chilled (and stays)');
+    assert.deepStrictEqual([picks.ceplok, picks.goreng, picks.jus, picks.puding, picks.eskrim], [3, 3, 0, 0, 0], 'what she chose stays, unless it is served or blended after');
     const done = [];
-    for (let round = 0; round < 8; round++) {
+    for (let round = 0; round < 16; round++) {
       if (round) await openKitchen(page, { keep: true, scale: 8 });
-      if (round === 1) assert.ok(await A(page, (a) => a.setKitchen({ done: 13, cooked: { ceplok: 1 } })), 'every dish open');
-      let r = await followHand(page, 400, ['sop', 'campur', 'ceplok']);
+      // (the fried egg of round one stays made: the hand cooks every dish once, choosing what was never made)
+      if (round === 1) assert.ok(await A(page, (a) => a.setKitchen({ v: 2, done: 21, legacy: 0, cooked: { ceplok: 1 }, made: { ceplok: 1 } })), 'every dish open');
+      let r = await followHand(page, 400, ['sop', 'campur', 'ceplok'], { noTabs: true });
       if (r.paused && r.recipe === 'ceplok') {
         // the kecap and the sambal both show on the full plate (in front, beside the egg; not under the slices)
         await page.waitForTimeout(400);
@@ -488,34 +594,56 @@ h.run(ID, async (t) => {
         await page.waitForTimeout(300);
       }
       if (r.paused) {
-        const rest = await followHand(page);
-        r = { ...rest, steps: r.steps + rest.steps, bad: r.bad.concat(rest.bad), herOk: r.herOk && rest.herOk, last: r.last };
+        const rest = await followHand(page, 400, [], { noTabs: true });
+        r = { ...rest, steps: r.steps + rest.steps, bad: r.bad.concat(rest.bad), herOk: r.herOk && rest.herOk, last: r.last, pickAt: r.pickAt !== null ? r.pickAt : rest.pickAt };
       }
       assert.ok(r.over, `round ${round + 1} (${r.recipe}) is won by following the hand alone (${r.steps} steps)`);
       assert.deepStrictEqual(r.bad, [], 'the hand only ever points at something that moves the round on');
       assert.ok(r.herOk, 'while her board is unfinished, the hand is on her board');
       // the main thing they cooked is still in the dish when it is tasted (the full dish gives way to extra slices instead)
       assert.ok(r.last && within(keep[r.recipe], r.last.contents), `${r.recipe}: at the last step the dish still holds ${keep[r.recipe].join('')} (${r.last && r.last.contents})`);
+      assert.strictEqual(r.pickAt, '0', `${r.recipe}: nothing made yet, so the hand shows the first bowl`);
+      assert.strictEqual(r.last.picks.length, picks[r.recipe], `${r.recipe}: what she chose is in the dish at the end (${r.last.picks})`);
+      if (r.recipe === 'eskrim') assert.strictEqual(r.last.scoops.length, 2, 'two scoops on the cone');
+      if (r.recipe === 'pizza') assert.ok(r.last.base && r.last.baked, 'the pizza has its base and is baked');
       // and the present opening (a new helper, decoration or kitchen) never shrinks the job objects
       assert.strictEqual(r.objEnd, r.last.obj, `${r.recipe}: the job objects keep their size when the present opens`);
       done.push(r.recipe);
       await t.waitForWin(page, 5000);
     }
-    assert.deepStrictEqual(done.slice().sort(), ['cake', 'campur', 'ceplok', 'goreng', 'martabak', 'pisang', 'sate', 'sop'], 'the hand chose each dish once: ' + done);
+    assert.deepStrictEqual(done.slice().sort(), (await api(page, 'MENU')).slice().sort(), 'the hand chose each dish once: ' + done);
+    const mk = (await api(page, 'kitchen')).made;
+    assert.ok((await api(page, 'MENU')).every((id) => mk[id] & 1), 'and made the first choice of every dish: ' + JSON.stringify(mk));
   }
 
   // --- 4. mashing: four fingers everywhere never break anything
   if (part(4)) {
-    await openKitchen(page, { kitchen: { done: 13 }, scale: 1 });
+    const full = { v: 2, done: 21, legacy: 0 };
+    // a finger on a card of a closed tab and one on each tab, in one frame: no dish starts, one tab opens (the rest
+    // of the tab taps come within 150ms and only squash)
+    await openKitchen(page, { kitchen: full, scale: 1 });
+    assert.strictEqual(await api(page, 'tab'), 'sweet', 'the newest dish never cooked (the cake) opens the sweets tab');
+    const tabs = await page.evaluate(() => {
+      let id = 7100;
+      const down = (n) => { const r = n.getBoundingClientRect(); n.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: ++id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 })); };
+      const card = document.querySelector('.g-kitchen .kt-card[data-id="ceplok"]');
+      card.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: ++id, pointerType: 'touch', clientX: 0, clientY: 0 }));
+      document.querySelectorAll('.g-kitchen .kt-tab').forEach(down);
+      return [MG.current.api.state, document.querySelectorAll('.g-kitchen .kt-tab.is-on').length, MG.current.api.tab];
+    });
+    assert.deepStrictEqual(tabs, ['menu', 1, 'meal'], 'a hidden card and three tabs in one frame: no dish, the first tab opens, the rest squash');
+    await openKitchen(page, { kitchen: full, scale: 1 });
     const one = await page.evaluate(() => {
-      const ids = ['sop', 'cake', 'sate', 'goreng'];
+      const ids = ['martabak', 'cake', 'donat', 'pisang'];
       ids.forEach((id, k) => {
         const n = document.querySelector(`.g-kitchen .kt-card[data-id="${id}"]`), r = n.getBoundingClientRect();
         n.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7000 + k, pointerType: 'touch', clientX: r.left + 10, clientY: r.top + 10 }));
       });
       return [MG.current.api.state, MG.current.api.recipe, document.querySelectorAll('.g-kitchen .kt-card[aria-disabled="true"]').length];
     });
-    assert.deepStrictEqual(one, ['deal', 'sop', 8], 'four fingers on the menu at once: exactly one dish starts');
+    assert.deepStrictEqual(one, ['deal', 'martabak', 16], 'four fingers on the menu at once: exactly one dish starts (and every card, hidden or not, is off)');
+    await page.evaluate(() => { const t = document.querySelector('.g-kitchen .kt-tab[data-group="meal"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7190, pointerType: 'touch', clientX: r.left + 5, clientY: r.top + 5 })); });
+    assert.deepStrictEqual([await api(page, 'tab'), await api(page, 'state')], ['sweet', 'deal'], 'a tab tap once a dish is chosen does nothing');
     await page.evaluate(() => { const c = MG.current.ctx, w = c.win; window.__wins = 0; c.win = function () { window.__wins++; return w.apply(this, arguments); }; });
     /** Four random fingers every 15ms for ms of real time. o.hand: a fifth finger taps where the hand shows (so the
      *  round moves on under the mashing); o.afterFinale: stop once that many game seconds have passed since the finale began. */
@@ -662,10 +790,16 @@ h.run(ID, async (t) => {
     assert.ok(!b.done && (await page.locator('.g-kitchen .kt-jar').count()) === 3, 'and the jars are bottomless');
   }
 
-  // --- 7. picking: every choice is right, three taps, and the dish shows it
+  // --- 7. picking: every choice is right, three taps, the dish shows it; the kitchen remembers each one, and the hand
+  //     and the sparkles lead her to the ones she has not made yet
   if (part(7)) for (const choice of [0, 1, 2]) {
-    await openKitchen(page, { scale: 4 });
+    await openKitchen(page, { scale: 4, keep: choice > 0 });
+    await page.evaluate(() => { const f = MG.current.ctx.fx, burst = f.__kt || (f.__kt = f.burst); window.__stars = 0;   // (fx is the shell's: wrap it once)
+       f.burst = function (x, y, o) { if (o && o.emoji === '⭐' && o.count === 6) window.__stars++; return burst.apply(this, arguments); }; });   // (the party's own confetti has stars too)
     await startAt(page, 'pisang', 3);
+    const pre = await A(page, (a) => { a.hintNext(); return [a.hinted && a.hinted.dataset.i, [...document.querySelectorAll('.g-kitchen .kt-bowl')].filter((n) => n.querySelector('.kt-bowl__new')).map((n) => n.dataset.i)]; });
+    assert.strictEqual(pre[0], String(choice), `before she chooses, the hand shows the first choice not made yet (${pre[0]})`);
+    assert.deepStrictEqual(pre[1], ['0', '1', '2'].slice(choice ? choice : 3), 'a sparkle on exactly the bowls never made (none the first time)');
     await tap(page, board(0) + ' .kt-chef', 0); await gameWait(page, 0.3);
     let b = (await boards(page))[0];
     assert.deepStrictEqual([b.do, b.k, b.chosen], ['pick', 0, null], 'a tap away from the bowls changes nothing');
@@ -676,9 +810,8 @@ h.run(ID, async (t) => {
     await tap(page, board(0) + ' .kt-bowl.is-chosen', 0); await gameWait(page, 0.3);
     b = (await boards(page))[0];
     assert.deepStrictEqual([b.k, b.done], [3, true], 'three taps');
-    await tapJob(page, 1);
-    await stateIs(page, 'beat');
-    await page.waitForFunction(() => MG.current.api.beat === 4);   // the meses and the condensed milk
+    for (let k = 0, n = (await boards(page))[1].n; k < n; k++) { await tapJob(page, 1, 1, 0); await gameWait(page, 0.2); }   // (his condensed milk)
+    await page.waitForFunction(() => MG.current.api.beat === 4);   // the meses and the honey
     await gameWait(page, 0.35);
     for (const s of [0, 1]) { const n = (await boards(page))[s].n; for (let k = 0; k < n; k++) { await tapJob(page, s, 1, 0); await gameWait(page, 0.2); } }
     await page.waitForFunction(() => MG.current.api.beat === 5);
@@ -688,6 +821,13 @@ h.run(ID, async (t) => {
     const e = await page.evaluate(() => document.querySelector('.g-kitchen .kt-dish').dataset.choice);
     assert.strictEqual(e, ['🧀', '🍫', '🍓'][choice], 'the finished dish shows what she chose');
     await t.waitForWin(page, 6000);
+    assert.strictEqual((await api(page, 'kitchen')).made.pisang, [1, 3, 7][choice], 'the kitchen remembers each choice made');
+    assert.strictEqual(await page.evaluate(() => window.__stars), choice === 2 ? 1 : 0, 'stars the first time all three are made');
+  }
+  if (part(7)) {
+    await openKitchen(page, { keep: true });
+    const card = await page.evaluate(() => { const c = document.querySelector('.g-kitchen .kt-card[data-id="pisang"]'); return [c.dataset.made, c.querySelectorAll('.kt-card__v.is-made').length, !!c.querySelector('.kt-card__star')]; });
+    assert.deepStrictEqual(card, ['7', 3, true], 'the menu card: all three marks lit, and a star');
   }
 
   // --- 8. frying and the surprises
@@ -746,10 +886,32 @@ h.run(ID, async (t) => {
   if (part(9)) for (const vp of ['small', 'phone', 'phoneWide', 'tabletTall', 'tablet']) {
     const dark = vp === 'phoneWide' || vp === 'tablet', rm = vp === 'tabletTall';
     const p = await newPage(t, { viewport: vp, dark, reducedMotion: rm });
+    // the full menu: three tabs, each page fits (the meals page holds eight)
+    await openKitchen(p, { kitchen: FULL });
+    assert.deepStrictEqual([await p.locator('.g-kitchen .kt-tab').count(), await api(p, 'tab')], [3, 'sweet'], `@${vp} three tabs; the cake's (sweets) is open`);
+    for (const g of ['meal', 'sweet', 'cold']) {
+      await openTab(p, g);
+      const shown = await p.evaluate(() => [...document.querySelectorAll('.g-kitchen .kt-card')].filter((n) => n.offsetParent).length);
+      if (g === 'meal') assert.strictEqual(shown, 8, `@${vp} the meals page shows eight dishes`);
+      await layoutChecks(t, p, `@${vp} menu ${g}`);
+      const tabMin = (await t.minTargetSize(p, '.g-kitchen .kt-tab')).min;
+      assert.ok(tabMin >= 64, `@${vp} tabs at least 64px (${tabMin})`);
+      await t.shot(p, `${ID}-${vp}-menu-${g}.png`);
+    }
+    // a full v1 kitchen: nine cells, so tabs at once; it opens on the cake's tab
     await openKitchen(p, { kitchen: { done: 13 } });
-    assert.strictEqual(await p.locator('.g-kitchen .kt-card').count(), 8);
-    await layoutChecks(t, p, `@${vp} menu`);
+    assert.deepStrictEqual([await p.locator('.g-kitchen .kt-tab').count(), await api(p, 'tab')], [3, 'sweet'], `@${vp} a v1 kitchen: tabs, sweets open`);
+    await openTab(p, 'meal');
+    const meals = await p.evaluate(() => [[...document.querySelectorAll('.g-kitchen .kt-card')].filter((n) => n.offsetParent).length, document.querySelector('.g-kitchen .kt-next').offsetParent ? document.querySelector('.g-kitchen .kt-next__dish').textContent : null, document.querySelectorAll('.g-kitchen .kt-next__dots i').length]);
+    assert.deepStrictEqual(meals, [4, '🍕', 1], `@${vp} its meals: four dishes and the pizza next (one dot)`);
+    await layoutChecks(t, p, `@${vp} v1 menu meals`);
+    // eight cells: one page, no tabs
+    await openKitchen(p, { kitchen: { v: 2, done: 8, legacy: 0 } });
+    const flat = await p.evaluate(() => [document.querySelector('.g-kitchen .kt-rail').offsetParent === null, [...document.querySelectorAll('.g-kitchen .kt-card, .g-kitchen .kt-next')].filter((n) => n.offsetParent).length]);
+    assert.deepStrictEqual(flat, [true, 8], `@${vp} eight cells: one page`);
+    await layoutChecks(t, p, `@${vp} menu of eight`);
     await t.shot(p, `${ID}-${vp}-menu.png`);
+    await openKitchen(p, { kitchen: { done: 13 } });
     await startAt(p, 'campur', 0);
     await layoutChecks(t, p, `@${vp} work beat`);
     await signShows(t, p, `@${vp} (a six-step dish)`);
@@ -770,14 +932,17 @@ h.run(ID, async (t) => {
     await tapJob(p, 0); await tapJob(p, 1);
     await p.waitForSelector('.g-kitchen .kt-gift.is-open', { timeout: 4000 });
     await p.waitForTimeout(600);
+    assert.strictEqual(await p.evaluate(() => { const c = document.querySelector('.g-kitchen .kt-gift .kt-minicard'); return c && c.textContent; }), '🍕✨', `@${vp} an old kitchen past the end of v1: the present is the pizza`);
     await layoutChecks(t, p, `@${vp} present`, { shelf: 13 });
     await t.shot(p, `${ID}-${vp}-gift.png`);
     if (vp === 'small' || vp === 'phoneWide') {
       // one beat of every job and prop, jumping straight there: everything fits and every job stays inside its board
-      const sweep = [['ceplok', [1, 5]], ['sate', [1, 2, 3, 4]], ['cake', [2, 5]], ['goreng', [2, 3, 4]], ['sop', [0]]];
+      // (sate's pound and pick are met again in the pizza and the donuts)
+      const sweep = [['ceplok', [1, 5]], ['sate', [1, 2]], ['cake', [2, 5]], ['goreng', [2, 3, 4]], ['sop', [0]],
+        ['donat', [2, 3, 4]], ['pizza', [0, 1, 2]], ['jus', [0, 1, 3, 4]], ['puding', [2]], ['eskrim', [3, 4]]];
       const seen = new Set();
       for (const [id, list] of sweep) {
-        await openKitchen(p, { kitchen: { done: 13 } });
+        await openKitchen(p, { kitchen: FULL, scale: 4 });
         await A(p, (a, id) => a.start(id), id);
         await stateIs(p, 'beat');
         for (const i of list) {
@@ -787,15 +952,31 @@ h.run(ID, async (t) => {
           await gameWait(p, 0.35);                     // (a new job can be used once it has been seen for 0.3 game seconds)
           const bs = await boards(p);
           const label = `@${vp} ${id} beat ${i} (${bs.map((b) => b.do).join(' + ')})`;
-          bs.forEach((b) => seen.add(b.do === 'fry' ? (b.e === '🍢' ? 'grill' : b.e === '🍰' ? 'oven' : 'pan') : b.do));
+          bs.forEach((b) => seen.add(b.do === 'fry' ? b.prop : b.do));
           await layoutChecks(t, p, label);
           await jobsInside(t, p, label);
+          if (bs[0].prop === 'fridge') {
+            // the fridge door swings open: still inside the board (at real speed, so the next step waits while we look)
+            await p.evaluate(() => { MG.timeScale = 1; });
+            await A(p, (a) => { a.cook(0); a.cook(1); });
+            await gameWait(p, 0.5);
+            await tapJob(p, 0, 1, 0); await tapJob(p, 1, 1, 400);
+            assert.ok(await p.evaluate(() => document.querySelectorAll('.g-kitchen .kt-obj.is-out').length >= 1), 'the fridge opens ' + label);
+            await jobsInside(t, p, `${label}, door open`);
+            await p.evaluate(() => { MG.timeScale = 4; });
+          }
+          if (bs[0].do === 'roll') {
+            // rolled flat and cut: the pin and its handles stay on the board
+            for (let k = 0; k < bs[0].n; k++) { await tapJob(p, 0, 1, 0); await gameWait(p, 0.2); }
+            await p.waitForTimeout(350);
+            await jobsInside(t, p, `${label}, rolled`);
+          }
           if (bs[0].do === 'stir') {
             // the spoon stays inside through a whole set of turns
             for (let k = 0; k < bs[0].n; k++) {
               await tapJob(p, 0, 1, 0);
               await gameWait(p, 0.2);
-              await p.waitForTimeout(100);              // (the spoon turns over 0.25s)
+              await p.waitForTimeout(300);              // (the spoon turns over 0.25s of real time: measure it at rest)
               assert.strictEqual((await boards(p))[0].k, k + 1, 'stir: one tap, one turn');
               await jobsInside(t, p, `${label}, turn ${k + 1}`);
             }
@@ -810,10 +991,37 @@ h.run(ID, async (t) => {
           }
         }
       }
-      assert.deepStrictEqual([...seen].sort(), ['blow', 'chop', 'crack', 'fetch', 'garnish', 'grill', 'oven', 'pan', 'peel', 'pound', 'scoop', 'shake', 'skewer', 'stir', 'taste', 'wash'], 'the sweep met every job and prop');
+      assert.deepStrictEqual([...seen].sort(), ['blend', 'blow', 'chop', 'crack', 'fetch', 'fridge', 'garnish', 'grill', 'oven', 'pan', 'peel', 'pick', 'pound', 'pour', 'roll', 'scoop', 'shake', 'skewer', 'stir', 'taste', 'wash'], 'the sweep met every job and prop');
+      // the pizza goes into the oven in the middle: the door covers the dish and stays in view
+      await openKitchen(p, { kitchen: FULL, scale: 4 });
+      await A(p, (a) => a.start('pizza'));
+      await stateIs(p, 'beat');
+      await A(p, (a) => a.jump(3));
+      const baking = await p.evaluate(async () => {
+        const a = MG.current.api, t0 = performance.now();
+        let id = 47000;
+        while (performance.now() - t0 < 8000 && !document.querySelector('.g-kitchen .kt-vessel.is-baking')) {
+          if (a.state === 'beat') { a.hintNext(); const n = a.hinted; if (n) { const r = n.getBoundingClientRect(), o = { bubbles: true, pointerId: ++id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; n.dispatchEvent(new PointerEvent('pointerdown', o)); n.dispatchEvent(new PointerEvent('pointerup', o)); } }
+          await new Promise((r) => setTimeout(r, 30));
+        }
+        return !!document.querySelector('.g-kitchen .kt-vessel.is-baking');
+      });
+      assert.ok(baking, `@${vp} following the hand puts the pizza in the oven`);
+      await p.waitForTimeout(120);
+      const door = await p.evaluate(() => { const v = document.querySelector('.g-kitchen .kt-vessel').getBoundingClientRect(), d = document.querySelector('.g-kitchen .kt-ovendoor').getBoundingClientRect(); return Math.max(v.left - d.left, d.right - v.right, v.top - d.top, d.bottom - v.bottom); });
+      assert.ok(door <= 4, `@${vp} the oven door sits on the dish (${door.toFixed(1)}px out)`);
+      assert.deepStrictEqual(await t.outsidePlayArea(p, '.g-kitchen .kt-ovendoor, .g-kitchen .kt-vessel'), [], `@${vp} the oven stays in view`);
+      await t.shot(p, `${ID}-${vp}-bake.png`);
+      await p.waitForFunction(() => MG.current.api.vessel.baked, null, { timeout: 5000 });
     }
     if (vp === 'small') {
-      // the small phone turned on its side (568x320) with a six-step dish: the step stickers stay on the wall, the jobs fit
+      // the small phone turned on its side (568x320): every page of the full menu still has big cards
+      await p.setViewportSize({ width: 568, height: 320 });
+      await openKitchen(p, { kitchen: FULL });
+      for (const g of ['meal', 'sweet', 'cold']) { await openTab(p, g); await layoutChecks(t, p, `@568x320 menu ${g}`); }
+      await t.shot(p, `${ID}-568x320-menu.png`);
+      await p.setViewportSize(h.VIEWPORTS.small);
+      // ... and with a six-step dish: the step stickers stay on the wall, the jobs fit
       await openKitchen(p, { kitchen: { done: 13 } });
       await startAt(p, 'goreng', 0);
       await p.setViewportSize({ width: 568, height: 320 });
@@ -882,7 +1090,26 @@ h.run(ID, async (t) => {
       await openKitchen(page, { kitchen: bad });
       assert.strictEqual(await page.locator('.g-kitchen .kt-card').count(), cards, `a damaged save opens the menu (${bad})`);
     }
-    assert.strictEqual(await page.evaluate(() => document.querySelector('.g-kitchen .kt-card[data-id="ceplok"]').dataset.stars), '3', 'stars stop at three');
+    assert.strictEqual(await page.evaluate(() => document.querySelector('.g-kitchen .kt-card[data-id="ceplok"]').dataset.made), '7', 'old stars become as many marks (three at most)');
+    // saves made before the bigger menu (v1): every one opens with everything it had, its medals, and a new dish next
+    for (const [done, cards, medals, next, shelf] of [[0, 2, 0, '🍛', 0], [5, 5, 0, '🍕', 1], [13, 8, 0, '🍕', 4], [30, 8, 11, '🍕', 10], [40, 8, 16, '🍕', 10]]) {
+      await openKitchen(page, { kitchen: { v: 1, done, cooked: { ceplok: 1 } } });
+      const m = await page.evaluate(() => [document.querySelectorAll('.g-kitchen .kt-card').length, document.querySelectorAll('.g-kitchen .kt-card__medals .mg-sticker').length, document.querySelector('.g-kitchen .kt-next__dish').textContent, document.querySelectorAll('.g-kitchen .kt-item').length, MG.current.api.kitchen.legacy]);
+      assert.deepStrictEqual(m, [cards, medals, next, shelf, done], `a v1 save with ${done} dishes keeps its ${cards} dishes, ${medals} medals and ${shelf} shelf things`);
+    }
+    // a v1 save with everything v1 had: saved again as v2 at once, nothing lost; the next present is the pizza
+    await openKitchen(page, { kitchen: { done: 13, cooked: { ceplok: 2 } } });
+    const sv = await saved(page);
+    assert.deepStrictEqual([sv.v, sv.done, sv.legacy, sv.made, sv.cooked], [2, 13, 13, { ceplok: 3 }, { ceplok: 2 }], 'a v1 save is kept as v2: its count, its marks');
+    await openKitchen(page, { keep: true });
+    const menu = await page.evaluate(() => [document.querySelectorAll('.g-kitchen .kt-tab').length, document.querySelectorAll('.g-kitchen .kt-card').length, document.querySelector('.g-kitchen .kt-next .kt-next__dish').textContent]);
+    assert.deepStrictEqual(menu, [3, 8, '🍕'], 'reopened: the same menu, with tabs, the pizza next');
+    await startAt(page, 'ceplok', 5);
+    await tapJob(page, 0); await tapJob(page, 1);
+    await page.waitForSelector('.g-kitchen .kt-gift.is-open', { timeout: 4000 });
+    const gift = await page.evaluate(() => [document.querySelector('.g-kitchen .kt-gift .kt-minicard .mg-sticker').textContent, MG.current.api.unlocks(14, 13).recipes.length, MG.current.api.kitchen.legacy]);
+    assert.deepStrictEqual(gift, ['🍕', 9, 13], 'the next dish brings the pizza: nine dishes');
+    await t.waitForWin(page, 6000);
   }
 
   // --- 12. help and options: help Lots makes her jobs short (never the grown-up's); Short drops the extra beats; Few/Lots
@@ -910,7 +1137,7 @@ h.run(ID, async (t) => {
     await A(page, (a) => a.jump(3));
     await page.waitForTimeout(150);
     b = await boards(page);
-    assert.deepStrictEqual([b[0].n, b[1].n], [2, 1], 'fixed jobs never change');
+    assert.deepStrictEqual([b[0].n, b[1].n], [3, 1], 'fixed jobs never change (her pick, his jar)');
     await openKitchen(page, { taps: 'few' });
     await startAt(page, 'ceplok', 0);
     b = await boards(page);
@@ -919,6 +1146,165 @@ h.run(ID, async (t) => {
     await t.pause(page);
     const menu = await page.evaluate(() => document.querySelector('.mg-overlay--pause').innerText);
     assert.ok(/Recipe/.test(menu) && /Taps per step/.test(menu) && /Cook real home dishes together/.test(menu), 'the pause menu explains it and offers the options');
+    await page.evaluate(() => MG.home());
+  }
+  // --- 13. variants: what she picks lands in the dish, themes the later steps and shows on the finished dish
+  if (part(13)) {
+    /** Follow the hand until beat `to` starts (or the round is won). */
+    const playTo = (p, to) => p.evaluate(async (to) => {
+      let id = 52000;
+      for (let k = 0; k < 400; k++) {
+        const a = MG.current.api;
+        if (MG.current.ctx.over || (a.state === 'beat' && a.beat >= to)) return a.beat;
+        if (a.state === 'beat') { a.hintNext(); const n = a.hinted; if (n) { const r = n.getBoundingClientRect(), o = { bubbles: true, pointerId: ++id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; n.dispatchEvent(new PointerEvent('pointerdown', o)); n.dispatchEvent(new PointerEvent('pointerup', o)); } }
+        await new Promise((r) => setTimeout(r, 30));
+      }
+      return MG.current.api.beat;
+    }, to);
+    const aSel = async (p) => board(await api(p, 'aSide'));
+    /** She chooses bowl i with three taps. */
+    const choose = async (p, i) => {
+      const her = await aSel(p);
+      await tap(p, `${her} .kt-bowl[data-i="${i}"]`, 0); await gameWait(p, 0.3);
+      await tap(p, `${her} .kt-bowl.is-chosen`, 0); await gameWait(p, 0.3);
+      await tap(p, `${her} .kt-bowl.is-chosen`, 0); await gameWait(p, 0.3);
+    };
+    const fresh = () => openKitchen(page, { kitchen: FULL, scale: 4 });
+    // jus: she picks the fruit first, then washes and chops that fruit; the blender turns its colour
+    await fresh();
+    await startAt(page, 'jus', 0);
+    const aS = await api(page, 'aSide');
+    assert.strictEqual(await A(page, (a) => { a.hintNext(); return a.hinted && a.hinted.dataset.i; }), '0', 'jus: nothing made yet, the hand shows the first bowl');
+    await choose(page, 1);
+    await tap(page, board(1 - aS) + ' .kt-jar[data-e="🥛"]', 0);
+    await page.waitForFunction(() => MG.current.api.beat === 1 && MG.current.api.state === 'beat');
+    const b1 = await page.evaluate((aS) => [MG.current.api.boards[aS].variant, document.querySelector('.g-kitchen .kt-pip[data-i="1"] > .mg-sticker').textContent], aS);
+    assert.deepStrictEqual(b1, ['🥭', '🥭'], 'jus: she washes the mango she chose, and its step shows it');
+    await playTo(page, 4);
+    const vj = await api(page, 'vessel');
+    assert.deepStrictEqual([vj.liq, vj.contents, await page.evaluate(() => document.querySelector('.g-kitchen .kt-vessel').dataset.kind)], ['#F7B23A', [], 'blender'], 'jus: blended smooth, in her colour');
+    await followHand(page);
+    const dj = await page.evaluate(() => { const d = document.querySelector('.g-kitchen .kt-dish'), c = d.querySelector('.kt-dish__disc'); return [d.dataset.choice, c && c.style.getPropertyValue('--c'), d.querySelectorAll('.kt-dish__top').length]; });
+    assert.deepStrictEqual(dj, ['🥭', '#F7B23A', 1], 'jus: the finished drink shows her mango: its colour and one mango');
+    assert.strictEqual((await api(page, 'kitchen')).made.jus, 2, 'jus: the mango is remembered');
+    await t.waitForWin(page, 6000);
+    // donat: the glaze rings both donuts in her colour; rainbow sprinkles
+    await fresh();
+    await startAt(page, 'donat', 2);
+    // (the roll: each tap flattens the dough a step; the last cuts the ring, which stays on her board)
+    const her = await aSel(page);
+    const rolled = [];
+    for (let k = 0; k < 3; k++) {
+      rolled.push(await page.evaluate((sel) => +getComputedStyle(document.querySelector(sel + ' .kt-obj')).getPropertyValue('--f'), her));
+      await tapJob(page, aS, 1, 0); await gameWait(page, 0.2);
+    }
+    const ro = await page.evaluate((aS) => [MG.current.api.boards[aS].k, MG.current.api.boards[aS].done, !!document.querySelector(`.g-kitchen .kt-board[data-side="${aS}"] .kt-obj.is-cut .kt-cut`)], aS);
+    assert.deepStrictEqual([rolled, ro], [[0, 0.5, 1], [3, true, true]], 'the roll: flatter each tap, then the cutter pops out a ring');
+    await playTo(page, 3);
+    assert.strictEqual((await boards(page))[aS].e, '🍩', 'the cut ring goes on into her pan');
+    await playTo(page, 4);
+    await gameWait(page, 0.35);                      // (a new job can be used once it has been seen for 0.3 game seconds)
+    await choose(page, 1);
+    for (let k = 0, n = (await boards(page))[1 - aS].n; k < n; k++) { await tapJob(page, 1 - aS, 1, 0); await gameWait(page, 0.2); }
+    await page.waitForTimeout(150);
+    const glaze = await page.evaluate(() => [...document.querySelectorAll('.g-kitchen .kt-contents .kt-piece')].filter((n) => n.dataset.e === '🍩').map((n) => { const g = n.querySelector('.kt-glaze'); return g && g.style.getPropertyValue('--c'); }));
+    assert.deepStrictEqual(glaze, ['#f49ac1', '#f49ac1'], 'donat: both donuts wear her strawberry glaze');
+    const dots = (await api(page, 'vessel')).dotColors, RAINBOW = ['#E8455A', '#F7D35C', '#7BC96F', '#4FA3E0', '#B07CD8'];
+    assert.ok(dots.length && dots.every((c) => RAINBOW.includes(c)) && new Set(dots).size >= 2, 'donat: rainbow sprinkles ' + dots);
+    // goreng: her topping stays on top of the fried rice after the stir
+    await fresh();
+    await startAt(page, 'goreng', 2);
+    await choose(page, 2);
+    await playTo(page, 3);
+    await A(page, (a) => a.jump(4));
+    await playTo(page, 5);
+    const vg = await api(page, 'vessel');
+    assert.deepStrictEqual([vg.mix, vg.picks], ['#B8742E', ['🦐', '🦐', '🦐']], 'goreng: fried rice, her prawns still on top');
+    // puding: the pot turns her colour, two fridges, two jellies in her colour
+    await fresh();
+    await startAt(page, 'puding', 1);
+    await playTo(page, 2);
+    assert.strictEqual((await api(page, 'vessel')).liq, '#F49AC1', 'puding: the pot is her strawberry pink');
+    await gameWait(page, 0.35);
+    assert.deepStrictEqual(await A(page, (a) => [a.cook(0), a.cook(1)]), ['gold', 'gold'], 'puding: both fridges chill by themselves');
+    await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
+    assert.deepStrictEqual((await boards(page)).map((b) => [b.phase, b.done]), [['gold', false], ['gold', false]], 'puding: a tap the moment it is cold does nothing');
+    await gameWait(page, 0.5);
+    await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
+    const out = await page.evaluate(() => [MG.current.api.boards.map((b) => b.done), document.querySelectorAll('.g-kitchen .kt-obj.is-out').length]);
+    assert.deepStrictEqual(out, [[true, true], 2], 'puding: then the doors open and out come the jellies');
+    await page.waitForFunction(() => MG.current.api.beat === 3 && MG.current.api.state === 'beat', null, { timeout: 5000 });
+    const jel = await page.evaluate(() => [MG.current.api.vessel.contents, [...document.querySelectorAll('.g-kitchen .kt-contents .kt-jelly')].map((n) => n.style.getPropertyValue('--c'))]);
+    assert.deepStrictEqual(jel, [['jelly', 'jelly'], ['#F49AC1', '#F49AC1']], 'puding: two pink jellies on the plate');
+    assert.strictEqual(await api(page, 'locked'), false, 'never locked');
+    // eskrim: two scoops stack on the cone
+    await fresh();
+    await startAt(page, 'eskrim', 3);
+    await A(page, (a) => { a.cook(0); a.cook(1); });
+    await gameWait(page, 0.5);
+    await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
+    await page.waitForFunction(() => MG.current.api.beat === 4 && MG.current.api.state === 'beat', null, { timeout: 5000 });
+    const ve = await api(page, 'vessel');
+    assert.deepStrictEqual([ve.kind, ve.scoops.length], ['cone', 2], 'eskrim: two scoops on the cone');
+    // pizza: the rolled base lands on the empty peel; the tomato sauce spreads on it
+    await fresh();
+    await startAt(page, 'pizza', 0);
+    const bS = 1 - aS;
+    for (let k = 0, n = (await boards(page))[bS].n; k < n; k++) { await tapJob(page, bS, 1, 0); await gameWait(page, 0.2); }
+    assert.ok(await page.evaluate((s) => !!document.querySelector(`.g-kitchen .kt-board[data-side="${s}"] .kt-obj.is-base`), bS), 'pizza: his dough is rolled into a base');
+    await playTo(page, 1);
+    assert.ok((await api(page, 'vessel')).base && await page.evaluate(() => !!document.querySelector('.g-kitchen .kt-pbase')), 'pizza: the base is on the peel');
+    await playTo(page, 2);
+    assert.strictEqual((await api(page, 'vessel')).sauce, '#D9452B', 'pizza: tomato sauce on the base');
+  }
+
+  // --- 14. the menu's tabs: one page up to eight cells, then three wordless group tabs
+  if (part(14)) {
+    await openKitchen(page);
+    const tones = await page.evaluate(() => [document.querySelector('.g-kitchen .kt-menu').classList.contains('has-tabs'),
+      ...['ceplok', 'pisang'].map((id) => document.querySelector(`.g-kitchen .kt-card[data-id="${id}"]`).style.getPropertyValue('--tone')),
+      document.querySelector('.g-kitchen .kt-next').style.getPropertyValue('--tone')]);
+    assert.deepStrictEqual(tones, [false, 'var(--leaf-soft)', 'var(--berry-soft)', 'var(--leaf-soft)'], 'a new kitchen: one page; colour means group (green meals, pink sweets)');
+    await openKitchen(page, { kitchen: { v: 2, done: 9, legacy: 0 } });
+    const nine = await page.evaluate(() => {
+      const a = MG.current.api, cells = {};
+      document.querySelectorAll('.g-kitchen .kt-card, .g-kitchen .kt-next').forEach((n) => { (cells[n.dataset.group] = cells[n.dataset.group] || []).push(n.dataset.id || 'next:' + n.querySelector('.kt-next__dish').textContent); });
+      a.hintNext();
+      return { tabs: document.querySelectorAll('.g-kitchen .kt-tab').length, cells, tab: a.tab, shown: [...document.querySelectorAll('.g-kitchen .kt-card')].filter((n) => n.offsetParent).map((n) => n.dataset.id), hand: a.hinted && a.hinted.dataset.id };
+    });
+    assert.deepStrictEqual(nine, { tabs: 3, cells: { meal: ['ceplok', 'goreng', 'sate', 'sop', 'pizza', 'next:🍜'], sweet: ['pisang', 'donat'], cold: ['eskrim'] }, tab: 'cold', shown: ['eskrim'], hand: 'eskrim' }, 'nine cells: tabs; the newest dish (es krim) opens its tab, and the hand shows it');
+    await openTab(page, 'meal');
+    const meal = await page.evaluate(() => {
+      const a = MG.current.api;
+      a.hintNext();
+      const cards = [...document.querySelectorAll('.g-kitchen .kt-card, .g-kitchen .kt-next')];
+      return { on: [...document.querySelectorAll('.g-kitchen .kt-tab.is-on')].map((n) => n.dataset.group), shown: cards.filter((n) => n.offsetParent).length,
+        off: cards.filter((n) => n.dataset.group !== 'meal').every((n) => n.hidden && (n.classList.contains('kt-next') || n.getAttribute('aria-disabled') === 'true')),
+        hand: a.hinted && a.hinted.dataset.id, sparkles: document.querySelectorAll('.g-kitchen .kt-tab .kt-tab__new').length, dots: document.querySelectorAll('.g-kitchen .kt-next__dots i').length };
+    });
+    assert.deepStrictEqual(meal, { on: ['meal'], shown: 6, off: true, hand: 'sop', sparkles: 3, dots: 2 }, 'the meals tab: its five dishes and the next; the rest hidden and off; the hand on the newest meal');
+    await page.evaluate(() => { const c = document.querySelector('.g-kitchen .kt-card[data-id="pisang"]'); c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7301, pointerType: 'touch', clientX: 1, clientY: 1 })); });
+    assert.strictEqual(await api(page, 'state'), 'menu', 'a card on a closed tab cannot be picked');
+    await gameWait(page, 0.2);
+    await openTab(page, 'meal');
+    assert.strictEqual(await api(page, 'tab'), 'meal', 'the open tab only wiggles');
+    // turned on its side with the meals open: the tabs become a column on the left, nothing changes
+    await page.setViewportSize(h.VIEWPORTS.phoneWide);
+    await page.waitForTimeout(300);
+    const wide = await page.evaluate(() => {
+      const g = document.querySelector('#mg-game').getBoundingClientRect(), page = document.querySelector('.g-kitchen .kt-page').getBoundingClientRect();
+      const tabs = [...document.querySelectorAll('.g-kitchen .kt-tab')].map((n) => n.getBoundingClientRect());
+      return { column: tabs.every((r) => Math.abs(r.left - tabs[0].left) < 1 && r.right <= page.left), inside: tabs.every((r) => r.left - g.left >= 11.5 && r.top - g.top >= 11.5 && g.bottom - r.bottom >= 11.5),
+        card: parseFloat(getComputedStyle(document.querySelector('.g-kitchen')).getPropertyValue('--card')), tab: MG.current.api.tab };
+    });
+    assert.ok(wide.column && wide.inside && wide.card >= 80 && wide.tab === 'meal', 'turned: a column of tabs left of the page, 12px inside, cards still big, the same tab open ' + JSON.stringify(wide));
+    await layoutChecks(t, page, 'menu turned with tabs');
+    await page.setViewportSize(h.VIEWPORTS.phone);
+    await page.waitForTimeout(200);
+    await tap(page, '.g-kitchen .kt-card[data-id="sop"]', 0);
+    assert.strictEqual(await api(page, 'state'), 'deal', 'a card starts its dish');
+    await page.evaluate(() => { const t = document.querySelector('.g-kitchen .kt-tab[data-group="cold"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7302, pointerType: 'touch', clientX: r.left + 5, clientY: r.top + 5 })); });
+    assert.deepStrictEqual([await api(page, 'tab'), await api(page, 'state')], ['meal', 'deal'], 'and a tab tap after that does nothing');
     await page.evaluate(() => MG.home());
   }
 });

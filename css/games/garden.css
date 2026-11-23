@@ -1,8 +1,11 @@
 /* Happy Garden — styles. Every selector is scoped under .g-garden.
-   Sizes come from js (fit): --tool (a tool button), --gate (the visitor's band),
-   --cell (one bed), --strip/--strip-len/--deco (the helpers' and decorations'
-   strip beside the beds). Layout: portrait = gate / beds / two rows of tools;
-   landscape = tools | beds | gate | tools. */
+   Sizes come from js (fit): --sack (a food sack), --gate (the visitor's band),
+   --yard (the yard's thickness, and our tree's size), --yd/--yper (the yard's
+   stickers), --cell/--cols (one bed, the beds' columns), --bedsw/--bedsh (the
+   beds grid), --cameo (the rain cloud and spray bottle), --pv/--pa/--pgb/--pgy
+   (the giant pull: the vegetable, the animals, the mound's foot, the ground).
+   Layout: portrait = gate / beds / yard / sacks;
+   landscape = yard | beds | gate | sacks. */
 
 .g-garden {
   --gd-grass: #BDEB9B;
@@ -13,14 +16,18 @@
   --gd-furrow: rgba(42, 35, 86, 0.18);
   --gd-paper: #FFF8E7;
   --gd-water: #4FB0E8;
-  --tool: 72px;
+  --gd-wood: #C99A5B;
+  --sack: 72px;
   --gate: 110px;
+  --yard: 72px;
+  --yd: 30px;
   --cell: 110px;
+  --cameo: 36px;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .g-garden { --gd-grass: #24513A; --gd-grass-2: #1E4531; --gd-soil: #7A5434; --gd-soil-wet: #4A2E1A; --gd-soil-dry: #9C7C58; --gd-paper: #3C3A6E; }
+  :root:not([data-theme="light"]) .g-garden { --gd-grass: #24513A; --gd-grass-2: #1E4531; --gd-soil: #7A5434; --gd-soil-wet: #4A2E1A; --gd-soil-dry: #9C7C58; --gd-paper: #3C3A6E; --gd-wood: #8A6A42; }
 }
-:root[data-theme="dark"] .g-garden { --gd-grass: #24513A; --gd-grass-2: #1E4531; --gd-soil: #7A5434; --gd-soil-wet: #4A2E1A; --gd-soil-dry: #9C7C58; --gd-paper: #3C3A6E; }
+:root[data-theme="dark"] .g-garden { --gd-grass: #24513A; --gd-grass-2: #1E4531; --gd-soil: #7A5434; --gd-soil-wet: #4A2E1A; --gd-soil-dry: #9C7C58; --gd-paper: #3C3A6E; --gd-wood: #8A6A42; }
 
 .g-garden .gd-scene {
   position: absolute;
@@ -32,27 +39,25 @@
     radial-gradient(circle at 12% 20%, var(--gd-grass-2) 0 7%, transparent 7.5%),
     radial-gradient(circle at 85% 70%, var(--gd-grass-2) 0 9%, transparent 9.5%),
     var(--gd-grass);
-  grid-template-areas: "gate" "garden" "toolsa" "toolsb";
-  grid-template-rows: var(--gate) minmax(0, 1fr) var(--tool) var(--tool);
+  grid-template-areas: "gate" "garden" "yard" "sacks";
+  grid-template-rows: var(--gate) minmax(0, 1fr) var(--yard) var(--sack);
   grid-template-columns: minmax(0, 1fr);
 }
 .g-garden[data-orient="landscape"] .gd-scene {
-  grid-template-areas: "toolsa garden gate toolsb";
-  grid-template-columns: var(--tool) minmax(0, 1fr) var(--gate) var(--tool);
+  grid-template-areas: "yard garden gate sacks";
+  grid-template-columns: var(--yard) minmax(0, 1fr) var(--gate) var(--sack);
   grid-template-rows: minmax(0, 1fr);
 }
 
-/* ---------------------------------------------------------------- tools */
+/* ---------------------------------------------------------------- the food sacks */
 
-.g-garden .gd-tools { display: flex; justify-content: center; align-items: center; gap: 10px; }
-.g-garden .gd-tools--a { grid-area: toolsa; }
-.g-garden .gd-tools--b { grid-area: toolsb; }
-.g-garden[data-orient="landscape"] .gd-tools { flex-direction: column; }
+.g-garden .gd-sacks { grid-area: sacks; display: flex; justify-content: center; align-items: center; gap: 10px; }
+.g-garden[data-orient="landscape"] .gd-sacks { flex-direction: column; }
 .g-garden .gd-tool {
   appearance: none;
   position: relative;
-  width: var(--tool);
-  height: var(--tool);
+  width: var(--sack);
+  height: var(--sack);
   flex: none;
   padding: 0;
   display: grid;
@@ -61,32 +66,18 @@
   border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: 0 5px 0 var(--line);
-  font-size: calc(var(--tool) * 0.5);
+  font-size: calc(var(--sack) * 0.5);
   line-height: 1;
   transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
   touch-action: manipulation;
 }
-.g-garden .gd-tool--water { background: var(--sea-soft); }
-.g-garden .gd-tool--spray { background: var(--berry-soft); }
-.g-garden .gd-tool--seed { background: var(--sun-soft); }
 .g-garden .gd-tool--leaf { background: var(--tangerine-soft); }
 .g-garden .gd-tool--bone { background: var(--surface); }
 .g-garden .gd-tool--fish { background: var(--sea-soft); }
-/* the tool in hand: lifted, bigger, with a bright ring (in landscape the ring alone: the columns reach the safe margin) */
-.g-garden .gd-tool.is-on {
-  transform: translateY(-4px) scale(1.06);
-  box-shadow: 0 9px 0 var(--line), 0 0 0 5px var(--sun);
-  z-index: 1;
-}
-.g-garden[data-orient="landscape"] .gd-tool.is-on { transform: none; box-shadow: 0 5px 0 var(--line), 0 0 0 5px var(--sun); }
 /* a sack some plant is asking for: a bright ring, and the sack wobbles */
 .g-garden .gd-tool.is-asked { box-shadow: 0 5px 0 var(--line), 0 0 0 5px var(--sun); }
 .g-garden .gd-tool.is-asked .gd-sack { animation: gd-ask 0.55s ease-in-out infinite alternate; }
 @keyframes gd-ask { from { transform: rotate(-9deg); } to { transform: rotate(9deg) translateY(-6%); } }
-/* seeds: the packet in hand, with a second one peeking out when there is more than one kind */
-.g-garden .gd-tool--seed > * { grid-area: 1 / 1; }
-.g-garden .gd-packet--back { width: 70%; height: 76%; transform: translate(-16%, -4%) rotate(-14deg); visibility: hidden; }
-.g-garden .gd-tool--seed.has-more .gd-packet--back { visibility: visible; }
 /* foods come in sacks, so they read as "food" before the picture */
 .g-garden .gd-sack {
   position: relative;
@@ -97,7 +88,7 @@
   border: 3px solid var(--line);
   border-radius: 22% 22% 34% 34% / 18% 18% 40% 40%;
   background: #E8C890;
-  font-size: calc(var(--tool) * 0.34);
+  font-size: calc(var(--sack) * 0.34);
 }
 .g-garden .gd-sack::before {
   content: "";
@@ -126,7 +117,6 @@
     var(--gd-paper);
   line-height: 1;
 }
-.g-garden .gd-packet--tool { width: 76%; height: 82%; font-size: calc(var(--tool) * 0.36); }
 .g-garden .gd-packet__veg { transform: translateY(8%); }
 .g-garden .gd-packet__medals {
   position: absolute;
@@ -149,46 +139,6 @@
   background: var(--surface);
   font-size: 0.55em;
 }
-
-/* ---------------------------------------------------------------- the seed shelf */
-
-.g-garden .gd-shelf {
-  position: absolute;
-  z-index: 5;
-  left: 12px;
-  right: 12px;
-  bottom: calc(12px + 2 * var(--tool) + 20px);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  padding: 12px;
-  border: var(--stroke, 3px) solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: 0 var(--lift, 6px) 0 var(--line);
-  animation: gd-pop-in 0.18s ease-out;
-}
-.g-garden[data-orient="landscape"] .gd-shelf {
-  left: calc(12px + var(--tool) + 14px);
-  right: auto;
-  top: 12px;
-  bottom: auto;
-  max-height: calc(100% - 24px);
-  width: calc(3 * var(--tool) + 2 * 12px + 24px + 6px);
-  align-content: flex-start;
-}
-.g-garden .gd-shelf[hidden] { display: none; }
-.g-garden .gd-packet--pick {
-  appearance: none;
-  flex: none;
-  width: var(--tool);
-  height: calc(var(--tool) * 1.1);
-  padding: 0;
-  font-size: calc(var(--tool) * 0.42);
-  box-shadow: 0 4px 0 var(--line);
-}
-.g-garden .gd-packet--pick.is-on { box-shadow: 0 4px 0 var(--line), 0 0 0 5px var(--sun); }
 @keyframes gd-pop-in { from { transform: scale(0.9); opacity: 0; } }
 
 /* ---------------------------------------------------------------- the gate: visitor and basket */
@@ -215,6 +165,13 @@
 .g-garden[data-orient="landscape"] .gd-visitor { flex-direction: column; justify-content: center; }
 .g-garden .gd-who { flex: none; font-size: calc(var(--gate) * 0.42); line-height: 1; }
 .g-garden[data-orient="landscape"] .gd-who { font-size: calc(var(--gate) * 0.36); }
+/* knock knock: the visitor hops in */
+.g-garden .gd-gate .gd-visitor .gd-who.is-arriving { animation: gd-arrive 0.45s ease-out both; }   /* (wins over the wave) */
+@keyframes gd-arrive {
+  0% { transform: translateX(-40%); opacity: 0; }
+  50% { transform: translateX(-12%) translateY(-14%); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
 .g-garden .gd-visitor.is-ready { box-shadow: 0 5px 0 var(--line), 0 0 0 4px var(--sun); }
 .g-garden .gd-visitor.is-ready .gd-who { animation: gd-wave 0.6s ease-in-out infinite alternate; }
 @keyframes gd-wave { to { transform: translateY(-10%) rotate(8deg); } }
@@ -237,7 +194,11 @@
 }
 .g-garden[data-orient="landscape"] .gd-wish { flex: none; width: 100%; font-size: calc(var(--gate) * 0.17); }
 .g-garden .gd-wish__item { position: relative; display: inline-block; }
-.g-garden .gd-wish__item.is-got .mg-sticker { opacity: 0.45; }
+/* their favourite: on a round pink disc (and a little heart, where there is room for one) */
+.g-garden .gd-wish__item.is-fav { padding: 0.08em; border-radius: 50%; background: var(--berry-soft); margin: -0.08em 0; }
+.g-garden .gd-wish__heart { position: absolute; right: -0.2em; top: -0.22em; font-size: 0.5em; line-height: 1; }
+.g-garden[data-fav-badge="off"] .gd-wish__heart { display: none; }
+.g-garden .gd-wish__item.is-got > .mg-sticker { opacity: 0.45; }
 .g-garden .gd-wish__item.is-got::after {
   content: "";
   position: absolute;
@@ -278,7 +239,7 @@
 
 /* ---------------------------------------------------------------- the beds */
 
-.g-garden .gd-garden { grid-area: garden; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 0; min-width: 0; }
+.g-garden .gd-garden { grid-area: garden; position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; min-width: 0; }
 .g-garden .gd-beds {
   position: relative;
   z-index: 1;
@@ -298,7 +259,9 @@
   box-shadow: 0 5px 0 var(--line);
   overflow: visible;
   touch-action: manipulation;
+  transition: transform 0.09s ease-out;
 }
+.g-garden .gd-plot.is-press { transform: scale(0.94); }
 .g-garden .gd-plot > * { pointer-events: none; }
 .g-garden .gd-soil {
   position: absolute;
@@ -320,7 +283,8 @@
   position: absolute;
   left: 50%;
   bottom: 18%;
-  display: block;
+  display: flex;
+  align-items: flex-end;
   font-size: calc(var(--cell) * 0.5);
   line-height: 1;
   transform-origin: 50% 100%;
@@ -332,9 +296,30 @@
 .g-garden .gd-plot[data-stage="2"] .gd-plant { --s: 0.95; }
 .g-garden .gd-plot[data-stage="3"] .gd-plant { --s: 1.05; }
 .g-garden .gd-plot[data-stage="4"] .gd-plant { --s: 1.1; }
-.g-garden .gd-plot.is-root[data-stage="4"] .gd-plant { --s: 0.8; bottom: 34%; }
+.g-garden .gd-plot.is-root[data-stage="4"] .gd-plant { bottom: 34%; }
 .g-garden .gd-plot.is-dry .gd-plant { transform: translateX(-50%) rotate(-14deg) scale(calc(var(--s, 1) * 0.9)); filter: saturate(0.55); }
 .g-garden .gd-plot.is-bugged .gd-plant { filter: saturate(0.75); }
+/* each crop grows its own way (from the leafy stage on) */
+.g-garden .gd-plot.is-grown[data-form="tall"] .gd-plant > .mg-sticker { transform: scaleY(1.15); transform-origin: 50% 100%; }
+.g-garden .gd-plot.is-grown[data-form="low"] .gd-plant { bottom: 16%; font-size: calc(var(--cell) * 0.3); }
+.g-garden .gd-plot.is-grown[data-form="sprawl"] .gd-plant { bottom: 14%; font-size: calc(var(--cell) * 0.3); gap: 0.25em; }
+.g-garden .gd-plot.is-grown[data-form="sprawl"] .gd-plant > .mg-sticker:nth-child(1) { transform: rotate(-30deg); }
+.g-garden .gd-plot.is-grown[data-form="sprawl"] .gd-plant > .mg-sticker:nth-child(2) { transform: rotate(30deg) scaleX(-1); }
+.g-garden .gd-plot.is-grown[data-form="root"] .gd-plant { font-size: calc(var(--cell) * 0.4); }
+/* a giant: bigger leaves */
+.g-garden .gd-plot.is-giant .gd-plant { --s: 1.3; bottom: 30%; }
+/* tomatoes, chillies, eggplants and cucumbers climb a stake */
+.g-garden .gd-stake {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  width: 5%;
+  height: 62%;
+  border: 2px solid var(--line);
+  border-radius: 4px;
+  background: var(--gd-wood);
+  transform: translateX(-50%);
+}
 /* a seed in its little mound */
 .g-garden .gd-seed {
   display: block;
@@ -378,9 +363,36 @@
   margin-left: -0.14em;
   border: 2px solid var(--line);
   border-top: 0;
-  background: #C99A5B;
+  background: var(--gd-wood);
 }
 .g-garden .gd-marker .gd-packet__likes { width: 50%; font-size: 0.5em; }
+/* an empty bed: the seed it will grow, see-through and dashed, floating (no mound, no stick) */
+.g-garden .gd-marker.is-ghost {
+  bottom: 26%;
+  width: calc(var(--cell) * 0.34);
+  height: calc(var(--cell) * 0.37);
+  font-size: calc(var(--cell) * 0.16);
+  opacity: 0.6;
+  border-style: dashed;
+  box-shadow: none;
+  animation: gd-ghost 2.4s ease-in-out infinite alternate;
+}
+.g-garden .gd-marker.is-ghost::after { display: none; }
+@keyframes gd-ghost {
+  from { transform: translateX(-50%) rotate(-6deg) translateY(4%); }
+  to { transform: translateX(-50%) rotate(-6deg) translateY(-4%); }
+}
+/* a little label in the corner: what is growing here */
+.g-garden .gd-label {
+  position: absolute;
+  left: 5%;
+  bottom: 9%;
+  width: calc(var(--cell) * 0.2);
+  height: calc(var(--cell) * 0.22);
+  border-width: 2px;
+  font-size: calc(var(--cell) * 0.11);
+  z-index: 1;
+}
 .g-garden .gd-flowers {
   position: absolute;
   left: 50%;
@@ -390,6 +402,47 @@
   font-size: 0.4em;
   transform: translateX(-50%);
 }
+.g-garden .gd-plot[data-form="low"] .gd-flowers, .g-garden .gd-plot[data-form="sprawl"] .gd-flowers { font-size: 0.6em; top: -30%; }
+/* the second half of flowering: small green fruit on the plant (or the top of a root peeking out) */
+.g-garden .gd-unripe {
+  position: absolute;
+  left: 50%;
+  bottom: 30%;
+  display: flex;
+  gap: 0.2em;
+  font-size: calc(var(--cell) * 0.16);
+  line-height: 1;
+  transform: translateX(-50%);
+}
+.g-garden .gd-unripe[data-f="green"] { filter: hue-rotate(80deg) saturate(0.75) brightness(1.05); }
+.g-garden .gd-unripe[data-f="pale"] { filter: saturate(0.35) brightness(1.12); }
+.g-garden .gd-peek {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  width: 1.5em;
+  height: 0.4em;
+  overflow: hidden;
+  line-height: 1;
+  text-align: center;
+  transform: translateX(-50%);
+}
+.g-garden .gd-peek > .mg-sticker { display: inline-block; margin-top: 0; }
+.g-garden .gd-peek--small { font-size: calc(var(--cell) * 0.26); }
+.g-garden .gd-peek--giant { font-size: calc(var(--cell) * 0.62); width: 1.35em; height: 0.45em; bottom: 12%; }
+/* a carrot stands up (its leaves are its top): a little more of it shows, so its orange shoulders do */
+.g-garden .gd-plot[data-crop="carrot"] .gd-peek--small { font-size: calc(var(--cell) * 0.3); height: 0.6em; width: 1.3em; }
+.g-garden .gd-plot[data-crop="carrot"] .gd-peek--giant { font-size: calc(var(--cell) * 0.75); height: 0.8em; width: 1.1em; }
+.g-garden .gd-plot[data-crop="carrot"] .gd-peek > .mg-sticker { margin-top: 0.05em; }
+.g-garden .gd-sparkle {
+  position: absolute;
+  left: 5%;
+  top: 4%;
+  font-size: calc(var(--cell) * 0.2);
+  line-height: 1;
+  animation: gd-twinkle 1.1s ease-in-out infinite alternate;
+}
+@keyframes gd-twinkle { from { transform: scale(0.8) rotate(-12deg); } to { transform: scale(1.15) rotate(12deg); } }
 .g-garden .gd-fruits {
   position: absolute;
   left: 50%;
@@ -409,7 +462,13 @@
 .g-garden .gd-plot[data-crop="carrot"] .gd-fruits .mg-sticker { transform: rotate(-45deg); }
 .g-garden .gd-plot[data-crop="carrot"] .gd-fruits .mg-sticker:nth-child(2) { transform: translateY(-14%) rotate(-45deg); }
 @keyframes gd-ripe { to { transform: translateX(-50%) translateY(-6%) scale(1.06); } }
+/* the third fruit, the one good care brought, pops in on its own */
+.g-garden .gd-fruits .mg-sticker.is-bonus { animation: gd-bonus 0.35s ease-out 0.35s backwards; }
+.g-garden .gd-plot[data-crop="carrot"] .gd-fruits .mg-sticker.is-bonus { animation-name: gd-bonus-carrot; }
+@keyframes gd-bonus { 0% { transform: scale(0); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes gd-bonus-carrot { 0% { transform: rotate(-45deg) scale(0); } 60% { transform: rotate(-45deg) scale(1.25); } 100% { transform: rotate(-45deg) scale(1); } }
 .g-garden .gd-plot.is-ripe { box-shadow: 0 5px 0 var(--line), 0 0 0 4px var(--sun); }
+.g-garden .gd-plot.is-giant { box-shadow: 0 5px 0 var(--line), 0 0 0 4px var(--sun), 0 0 0 7px var(--tangerine); }
 
 .g-garden .gd-bug {
   position: absolute;
@@ -465,29 +524,114 @@
 }
 .g-garden .gd-drops i.is-full { background: var(--gd-water); }
 
-/* helpers and decorations: a flower border of their own beside the beds (fit() makes room for it) */
-.g-garden .gd-garden[data-strip="side"] { flex-direction: row; }
-.g-garden .gd-strip {
+/* what a tap did: a little rain cloud waters the bed; a spray bottle puffs the bug away */
+.g-garden .gd-cameo {
+  position: absolute;
+  z-index: 4;
+  font-size: var(--cameo);
+  line-height: 1;
+  animation: gd-cameo 0.95s ease-out both;
+}
+.g-garden .gd-cameo--rain { left: 50%; top: 1%; margin-left: calc(var(--cameo) * -0.6); }
+.g-garden .gd-cameo--spray { left: 2%; top: 1%; }
+.g-garden .gd-cameo--spray > .mg-sticker:first-child { transform: rotate(-18deg); }
+@keyframes gd-cameo {
+  0% { opacity: 0; transform: scale(0.4); }
+  14% { opacity: 1; transform: scale(1.18); }
+  26% { transform: scale(1); }
+  74% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+.g-garden .gd-cameo__bits { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.g-garden .gd-cameo__bits > .mg-sticker { position: absolute; font-size: 0.42em; opacity: 0; }
+.g-garden .gd-cameo--rain .gd-cameo__bits > .mg-sticker { top: 70%; animation: gd-drip 0.5s ease-in 0.12s 2 both; }
+.g-garden .gd-cameo--rain .gd-cameo__bits > .mg-sticker:nth-child(1) { left: 5%; }
+.g-garden .gd-cameo--rain .gd-cameo__bits > .mg-sticker:nth-child(2) { left: 42%; animation-delay: 0.22s; }
+.g-garden .gd-cameo--rain .gd-cameo__bits > .mg-sticker:nth-child(3) { left: 78%; animation-delay: 0.17s; }
+@keyframes gd-drip { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0.2; transform: translateY(1.9em); } }
+.g-garden .gd-cameo--spray .gd-cameo__bits > .mg-sticker { left: 70%; top: 10%; animation: gd-puff 0.55s ease-out 0.1s both; }
+.g-garden .gd-cameo--spray .gd-cameo__bits > .mg-sticker:nth-child(2) { animation-delay: 0.22s; top: 30%; }
+.g-garden .gd-cameo--spray .gd-cameo__bits > .mg-sticker:nth-child(3) { animation-delay: 0.34s; top: -6%; }
+@keyframes gd-puff { 0% { opacity: 1; transform: scaleX(-1) translateX(0) scale(0.6); } 100% { opacity: 0; transform: scaleX(-1) translateX(-1.7em) translateY(2em) scale(1.3); } }
+
+/* ---------------------------------------------------------------- the yard: our tree, helpers, decorations */
+
+.g-garden .gd-yard {
+  grid-area: yard;
   position: relative;
   z-index: 2;
-  flex: none;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-evenly;
   align-items: center;
-  align-content: space-evenly;
-  width: var(--strip-len);
-  height: var(--strip);
-  border-radius: calc(var(--deco) * 0.8);
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--r-lg);
   background: var(--gd-grass-2);
   box-shadow: inset 0 -3px 0 rgba(42, 35, 86, 0.14);
-  font-size: var(--deco);
-  line-height: 1;
-  pointer-events: none;
 }
-.g-garden .gd-garden[data-strip="side"] .gd-strip { flex-direction: column; width: var(--strip); height: var(--strip-len); }
-.g-garden .gd-garden[data-strip="none"] .gd-strip { display: none; }
-.g-garden .gd-helper, .g-garden .gd-deco { display: grid; place-items: center; flex: 0 0 calc(100% / var(--per, 13)); }
+.g-garden[data-orient="landscape"] .gd-yard { flex-direction: column; }
+.g-garden .gd-yard[data-poke="off"] { pointer-events: none; }
+.g-garden .gd-tree {
+  position: relative;
+  flex: none;
+  width: var(--yard);
+  height: var(--yard);
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.g-garden .gd-tree > * { pointer-events: none; }
+.g-garden .gd-tree__plant { position: relative; z-index: 1; font-size: calc(var(--yard) * 0.8); line-height: 1; }
+.g-garden .gd-tree[data-stage="0"] .gd-tree__plant { font-size: calc(var(--yard) * 0.45); transform: translateY(-14%); }
+.g-garden .gd-tree[data-stage="1"] .gd-tree__plant { font-size: calc(var(--yard) * 0.5); }
+.g-garden .gd-tree[data-stage="2"] .gd-tree__plant { font-size: calc(var(--yard) * 0.65); }
+.g-garden .gd-tree__mound {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 22%;
+  height: 16%;
+  border: 3px solid var(--line);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: var(--gd-soil);
+}
+.g-garden .gd-tree__extra { position: absolute; inset: 0; z-index: 2; font-size: calc(var(--yard) * 0.2); }
+.g-garden .gd-tree[data-stage="5"] .gd-tree__extra { font-size: calc(var(--yard) * 0.22); }
+.g-garden .gd-tree__extra > .mg-sticker { position: absolute; }
+.g-garden .gd-tree__extra > .mg-sticker:nth-child(1) { left: 22%; top: 20%; }
+.g-garden .gd-tree__extra > .mg-sticker:nth-child(2) { left: 56%; top: 14%; }
+.g-garden .gd-tree__extra > .mg-sticker:nth-child(3) { left: 40%; top: 40%; }
+.g-garden .gd-mango { position: absolute; z-index: 3; left: 52%; top: 34%; font-size: calc(var(--yard) * 0.22); animation: gd-mango 1.2s ease-in both; }
+@keyframes gd-mango {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(150%); }
+  55% { transform: translateY(95%) rotate(20deg); }
+  70% { transform: translateY(150%) rotate(30deg); }
+  85% { opacity: 1; }
+  100% { transform: translateY(150%) rotate(30deg); opacity: 0; }
+}
+.g-garden .gd-yard__items {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--yper, 1), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  font-size: var(--yd);
+  line-height: 1;
+}
+.g-garden[data-orient="landscape"] .gd-yard__items {
+  grid-template-columns: none;
+  grid-template-rows: repeat(var(--yper, 1), minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+.g-garden .gd-yard__item { display: grid; place-items: center; min-width: 0; min-height: 0; }
+.g-garden .gd-yard__items > .gd-yard__item > .mg-sticker { position: relative; }
+.g-garden .gd-helper--pup > .mg-sticker { z-index: 3; }
 .g-garden .gd-helper--bees > .mg-sticker { animation: gd-buzz 1.4s ease-in-out infinite alternate; }   /* the bee moves, its place does not */
 @keyframes gd-buzz { to { transform: translate(-8%, -6%) rotate(-8deg); } }
 
@@ -505,7 +649,36 @@
 .g-garden .gd-rain.is-on { opacity: 1; animation: gd-rain 0.5s linear infinite; }
 @keyframes gd-rain { to { background-position: -20px 76px; } }
 
-/* the present */
+/* after the rain, a rainbow over the beds */
+.g-garden .gd-rainbow {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: calc(50% - var(--bedsh, 200px) / 2);
+  width: calc(var(--bedsw, 200px) * 0.9);
+  height: calc(var(--bedsw, 200px) * 0.45);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) scale(0.8);
+  transform-origin: 50% 100%;
+  transition: opacity 0.6s ease-in, transform 0.6s ease-in;
+}
+.g-garden .gd-rainbow.is-on { opacity: 1; transform: translateX(-50%) scale(1); transition: opacity 0.3s ease-out, transform 0.3s ease-out; }
+.g-garden .gd-rainbow__ring {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border: var(--rb, 6px) solid var(--berry);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+.g-garden .gd-rainbow__ring[data-k="1"] { border-color: var(--tangerine); }
+.g-garden .gd-rainbow__ring[data-k="2"] { border-color: var(--sun); }
+.g-garden .gd-rainbow__ring[data-k="3"] { border-color: var(--leaf); }
+.g-garden .gd-rainbow__ring[data-k="4"] { border-color: var(--sea); }
+
+/* ---------------------------------------------------------------- the present */
+
 .g-garden .gd-gift {
   position: absolute;
   inset: 0;
@@ -516,7 +689,10 @@
 }
 .g-garden .gd-gift[hidden] { display: none; }
 .g-garden .gd-gift > * { grid-area: 1 / 1; }
-.g-garden .gd-gift__box { font-size: calc(var(--gmin) * 0.3); line-height: 1; animation: gd-gift-in 0.5s cubic-bezier(.3, 1.6, .5, 1); }
+.g-garden .gd-gift__box { font-size: calc(var(--gmin) * 0.3); line-height: 1; }
+/* it comes out of the visitor's hands */
+.g-garden .gd-gift__box.is-coming { animation: gd-gift-from 0.45s cubic-bezier(.3, 1.3, .5, 1) backwards; }
+@keyframes gd-gift-from { from { transform: translate(var(--from-x, 0), var(--from-y, 0)) scale(0.3); } to { transform: translate(0, 0) scale(1); } }
 .g-garden .gd-gift__inside { font-size: calc(var(--gmin) * 0.28); line-height: 1; transform: scale(0); }
 .g-garden .gd-gift.is-open .gd-gift__box { transform: scale(0); transition: transform 0.2s ease-in; }
 .g-garden .gd-gift.is-open .gd-gift__inside { transform: scale(1); transition: transform 0.45s cubic-bezier(.3, 1.7, .5, 1) 0.1s; }
@@ -547,7 +723,6 @@
 /* a prize: the vegetable with a medal */
 .g-garden .gd-prize { position: relative; display: inline-block; }
 .g-garden .gd-prize__medal { position: absolute; right: -0.15em; bottom: -0.1em; font-size: 0.45em; }
-@keyframes gd-gift-in { from { transform: scale(0.2) rotate(-30deg); } }
 
 /* things flying to the basket and to the visitor */
 .g-garden .gd-flyer {
@@ -559,7 +734,125 @@
   transform: translate(-50%, -50%);
 }
 
+/* ---------------------------------------------------------------- heave-ho: the giant pull */
+
+.g-garden .gd-pull {
+  position: absolute;
+  inset: 12px;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-radius: var(--r-lg);
+  background: var(--gd-grass);
+  box-shadow: 0 0 0 12px var(--gd-grass);   /* the garden steps back behind the pull */
+  animation: gd-pop-in 0.18s ease-out;
+}
+.g-garden .gd-pull[hidden] { display: none; }
+/* each half of the screen is one player's button, in their colour */
+.g-garden .gd-pull__half {
+  appearance: none;
+  min-width: 0;
+  padding: 0;
+  border: var(--stroke, 3px) solid var(--p0);
+  border-radius: var(--r-lg);
+  background: var(--p0-soft);
+  box-shadow: 0 5px 0 var(--line);
+  touch-action: manipulation;
+  transition: transform 0.09s ease-out;
+}
+.g-garden .gd-pull__half[data-side="1"] { border-color: var(--p1); background: var(--p1-soft); }
+.g-garden .gd-pull__half.is-press { transform: scale(0.98); }
+.g-garden .gd-pull__lift {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: var(--pgb);
+  overflow: hidden;
+  pointer-events: none;
+}
+.g-garden .gd-pull__group {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--pgy) - var(--pgb));
+  width: var(--pv);
+  height: var(--pv);
+  margin-left: calc(var(--pv) * -0.5);
+  transform: translateY(calc((1 - var(--rise, 0)) * var(--sink, 0.55) * var(--pv)));
+  transition: transform 0.25s ease-out;
+}
+.g-garden .gd-pull__veg { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--pv); line-height: 1; }
+.g-garden .gd-pull[data-crop="carrot"] { --sink: 0.42; }   /* (its leaves are tall: a little more shows, so its orange does) */
+.g-garden .gd-pull[data-crop="carrot"] .gd-pull__veg { font-size: calc(var(--pv) * 0.82); }
+.g-garden .gd-pull__top { position: absolute; left: 50%; bottom: 80%; font-size: calc(var(--pv) * 0.4); line-height: 1; transform: translateX(-50%); }
+.g-garden .gd-pull__mound {
+  position: absolute;
+  left: 50%;
+  bottom: var(--pgb);
+  width: calc(var(--pv) * 1.6);
+  height: calc(var(--pv) * 0.42);
+  margin-left: calc(var(--pv) * -0.8);
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 50% 50% 14px 14px / 100% 100% 14px 14px;
+  background: var(--gd-soil);
+  pointer-events: none;
+}
+.g-garden .gd-pull__rope {
+  position: absolute;
+  height: 14px;
+  margin-bottom: -7px;
+  border: var(--stroke, 3px) solid var(--line);
+  border-radius: 7px;
+  background: var(--gd-wood);
+  transform-origin: 0 50%;
+  pointer-events: none;
+  transition: transform 0.25s ease-out, width 0.25s ease-out, opacity 0.2s;
+}
+.g-garden .gd-pull__team { position: absolute; inset: 0; pointer-events: none; }
+.g-garden .gd-pull__animal, .g-garden .gd-pull__helper { position: absolute; line-height: 1; transform-origin: 50% 100%; transition: transform 0.3s ease-out; }
+.g-garden .gd-pull__animal {
+  left: 18%;
+  bottom: calc(var(--pgy) + var(--pv) * 0.35 - var(--pa) * 0.5);
+  font-size: var(--pa);
+  transform: translateX(-50%) rotate(-10deg);
+}
+.g-garden .gd-pull__helper {
+  left: calc(18% - var(--pa) * 0.45);
+  bottom: calc(var(--pgy) + var(--pv) * 0.1 - var(--pa) * 0.35);
+  font-size: calc(var(--pa) * 0.7);
+  transform: translateX(-50%) rotate(-6deg);
+}
+.g-garden .gd-pull__team[data-side="1"] .gd-pull__animal { left: 82%; transform: translateX(-50%) rotate(10deg); }
+.g-garden .gd-pull__team[data-side="1"] .gd-pull__helper { left: calc(82% + var(--pa) * 0.45); transform: translateX(-50%) rotate(6deg); }
+/* a heave: the team leans back for a moment */
+.g-garden .gd-pull__team.is-heave .gd-pull__animal { animation: gd-heave0 0.2s ease-out; }
+.g-garden .gd-pull__team[data-side="1"].is-heave .gd-pull__animal { animation-name: gd-heave1; }
+@keyframes gd-heave0 { 50% { transform: translateX(-62%) rotate(-24deg); } }
+@keyframes gd-heave1 { 50% { transform: translateX(-38%) rotate(24deg); } }
+/* out it comes: everybody falls over backwards (pivoting on the heel nearest the middle, so they land where they stood) */
+.g-garden .gd-pull.is-out .gd-pull__team[data-side="0"] > * { transform-origin: 100% 100%; transform: translateX(-50%) rotate(-75deg); }
+.g-garden .gd-pull.is-out .gd-pull__team[data-side="1"] > * { transform-origin: 0 100%; transform: translateX(-50%) rotate(75deg); }
+.g-garden .gd-pull.is-out .gd-pull__rope { opacity: 0; }
+.g-garden .gd-pull.is-out .gd-pull__group { transition: transform 0.35s cubic-bezier(.3, 1.6, .5, 1), opacity 0.15s; }
+.g-garden .gd-pull.is-gone .gd-pull__group { opacity: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   .g-garden .gd-fruits, .g-garden .gd-bug, .g-garden .gd-need, .g-garden .gd-helper--bees > .mg-sticker,
-  .g-garden .gd-visitor.is-ready .gd-who, .g-garden .gd-rain.is-on, .g-garden .gd-tool.is-asked .gd-sack { animation: none; }
+  .g-garden .gd-visitor.is-ready .gd-who, .g-garden .gd-rain.is-on, .g-garden .gd-tool.is-asked .gd-sack,
+  .g-garden .gd-marker.is-ghost, .g-garden .gd-sparkle, .g-garden .gd-fruits .mg-sticker.is-bonus,
+  .g-garden .gd-gift__box.is-coming, .g-garden .gd-pull__team.is-heave .gd-pull__animal,
+  .g-garden .gd-cameo__bits > .mg-sticker, .g-garden .gd-mango { animation: none; }
+  .g-garden .gd-marker.is-ghost { transform: translateX(-50%) rotate(-6deg); }
+  .g-garden .gd-gate .gd-visitor .gd-who.is-arriving { animation: gd-fade-in 0.45s ease-out both; }
+  .g-garden .gd-cameo { animation: gd-fade-out 0.95s linear both; }
+  .g-garden .gd-cameo__bits > .mg-sticker { opacity: 1; }
+  .g-garden .gd-cameo--rain .gd-cameo__bits > .mg-sticker { top: 95%; }
+  .g-garden .gd-cameo--spray .gd-cameo__bits > .mg-sticker { transform: scaleX(-1) translateX(-1.2em) translateY(1.2em); }
+  .g-garden .gd-mango { transform: translateY(150%); }
+  .g-garden .gd-rainbow, .g-garden .gd-rainbow.is-on { transform: translateX(-50%); }
+  .g-garden .gd-pull__group, .g-garden .gd-pull__animal, .g-garden .gd-pull__helper, .g-garden .gd-pull__rope,
+  .g-garden .gd-pull.is-out .gd-pull__group { transition: none; }
 }
+@keyframes gd-fade-in { from { opacity: 0; } }
+@keyframes gd-fade-out { 0% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }

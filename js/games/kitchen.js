@@ -26,41 +26,71 @@
   // `n` is the base number of taps at Normal with no help. `to` says where the result goes
   // at the merge: into the dish ('mid'), kept on the same board for its next job ('stay'),
   // or handed to the other board's next job ('across').
+  // '$' = the variant she picked (its emoji), '$c' = its paint colour: see resolveJob().
   var RECIPES = {
-    ceplok: { e: '🍳', vessel: 'plate', beats: [   // Telur Ceplok: fried egg on rice (start)
+    /* ---- meals ---- */
+    ceplok: { e: '🍳', vessel: 'plate', beats: [   // Telur Ceplok: fried egg (start)
       { a: { do: 'crack', e: '🥚', n: 2, to: 'stay' },                     b: { do: 'wash', e: '🥒', n: 3, to: 'stay' } },
       { a: { do: 'fry', e: '🍳', prop: 'pan', end: 'flip', to: 'mid' },     b: { do: 'chop', e: '🥒', n: 4, to: 'mid' } },
-      { a: { do: 'chop', e: '🍅', n: 3, to: 'mid' },                        b: { do: 'chop', e: '🍅', n: 4, to: 'mid' } },
-      { extra: true, a: { do: 'scoop', e: '🍚' },                           b: { do: 'fetch', e: '🍶', jars: ['🍶', '🍫', '🍓'], to: 'mid' } },
+      { extra: true, a: { do: 'chop', e: '🍅', n: 3, to: 'mid' },           b: { do: 'chop', e: '🍅', n: 4, to: 'mid' } },
+      { a: { do: 'pick', choices: ['🍚', '🍞', '🍜'] },                      b: { do: 'fetch', e: '🍶', jars: ['🍶', '🍫', '🍓'], to: 'mid' } },   // nasi / roti / mie with the egg
       { extra: true, a: { do: 'shake', e: '🧂', dots: '#FFFFFF', n: 3 },    b: { do: 'fetch', e: '🌶️', jars: ['🌶️', '🍫', '🍓'], to: 'mid' } },   // a pinch of salt; the sambal
-      { a: { do: 'taste' }, b: { do: 'taste' } }] },
-    pisang: { e: '🍌', vessel: 'plate', beats: [   // Pisang Goreng: fried bananas (start)
-      { a: { do: 'peel', e: '🍌', n: 3, to: 'stay' },                      b: { do: 'peel', e: '🍌', n: 3, to: 'stay' } },
-      { a: { do: 'chop', e: '🍌', n: 3, to: 'stay' },                      b: { do: 'chop', e: '🍌', n: 4, to: 'stay' } },   // fan cut (kipas)
-      { a: { do: 'fry', e: '🍌', prop: 'pan', end: 'flip', to: 'mid' },     b: { do: 'fry', e: '🍌', prop: 'pan', end: 'flip', to: 'mid' } },
-      { extra: true, a: { do: 'pick', choices: ['🧀', '🍫', '🍓'] },         b: { do: 'fetch', e: '🍯', jars: ['🍯', '🧂', '🌶️'], to: 'mid' } },
-      { extra: true, a: { do: 'shake', e: '🍫', dots: '#5A3A22', n: 3 },   b: { do: 'pour', e: '🥛', liquid: '#FFF4DC', n: 2, drizzle: true } },   // meses and condensed milk
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
     goreng: { e: '🍛', vessel: 'wok', mix: '#B8742E', stir: 'sizzle', afterStir: 'toss', beats: [   // Nasi Goreng
       { a: { do: 'wash', e: '🥬', n: 3, to: 'across' },                    b: { do: 'wash', e: '🥕', n: 3, to: 'across' } },
       { a: { do: 'chop', e: '🥕', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🥬', n: 4, to: 'mid' } },
-      { a: { do: 'scoop', e: '🍚' },                                        b: { do: 'fetch', e: '🍶', jars: ['🍶', '🍫', '🍯'], to: 'mid' } },
-      { extra: true, a: { do: 'crack', e: '🥚', n: 2, to: 'mid' },          b: { do: 'shake', e: '🧂', dots: '#FFFFFF', n: 3 } },
+      { a: { do: 'pick', choices: ['🍳', '🍗', '🦐'] },                      b: { do: 'scoop', e: '🍚' } },                        // telur / ayam / udang on top; he scoops the rice
+      { extra: true, a: { do: 'crack', e: '🥚', n: 2, to: 'mid' },          b: { do: 'fetch', e: '🍶', jars: ['🍶', '🍫', '🍯'], to: 'mid' } },
       { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
     sate: { e: '🍢', vessel: 'plate', beats: [   // Sate Ayam with peanut sauce
       { a: { do: 'chop', e: '🍗', n: 3, to: 'stay' },                      b: { do: 'chop', e: '🍗', n: 4, to: 'stay' } },
       { a: { do: 'skewer', e: '🍗', to: 'stay' },                          b: { do: 'skewer', e: '🍗', to: 'stay' } },
       { a: { do: 'fry', e: '🍢', prop: 'grill', end: 'flip', to: 'mid' },   b: { do: 'fry', e: '🍢', prop: 'grill', end: 'flip', to: 'mid' } },
-      { a: { do: 'pound', e: '🥜', n: 3, to: 'mid' },                      b: { do: 'pound', e: '🥜', n: 4, to: 'mid' } },
-      { extra: true, a: { do: 'garnish', e: '🍙' },                          b: { do: 'fetch', e: '🍋', jars: ['🍋', '🍫', '🍓'], to: 'mid' } },
+      { extra: true, a: { do: 'pound', e: '🥜', n: 3, to: 'mid' },          b: { do: 'pound', e: '🥜', n: 4, to: 'mid' } },
+      { a: { do: 'pick', choices: ['🍙', '🍚', '🥒'] },                      b: { do: 'fetch', e: '🍋', jars: ['🍋', '🍫', '🍓'], to: 'mid' } },   // lontong / nasi / timun
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
     sop: { e: '🍲', vessel: 'pot', mix: '#F2C14E', stir: 'swish', afterStir: 'lid', taste: 'hot', beats: [   // Sayur Sop
       { a: { do: 'wash', e: '🥕', n: 3, to: 'stay' },                      b: { do: 'peel', e: '🥔', n: 3, to: 'stay' } },
       { a: { do: 'chop', e: '🥕', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🥔', n: 4, to: 'mid' } },
-      { a: { do: 'pour', e: '💧', liquid: '#8FD3F4', n: 3 },               b: { do: 'fetch', e: '🍗', jars: ['🍗', '🍫', '🍓'], to: 'mid' } },
-      { extra: true, a: { do: 'shake', e: '🧂', dots: '#FFFFFF', n: 3 },    b: { do: 'fetch', e: '🥦', jars: ['🥦', '🍯', '🍌'], to: 'mid' } },
+      { extra: true, a: { do: 'pour', e: '💧', liquid: '#8FD3F4', n: 3 },   b: { do: 'fetch', e: '🍗', jars: ['🍗', '🍫', '🍓'], to: 'mid' } },
+      { a: { do: 'pick', choices: ['🌽', '🥦', '🍅'] },                      b: { do: 'shake', e: '🧂', dots: '#FFFFFF', n: 3 } },  // jagung / brokoli / tomat; he salts
       { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    mie: { e: '🍜', vessel: 'wok', mix: '#D9A441', look: 'noodle', stir: 'sizzle', afterStir: 'toss', beats: [   // Mie Goreng
+      { a: { do: 'wash', e: '🥬', n: 3, to: 'stay' },                      b: { do: 'wash', e: '🥕', n: 3, to: 'stay' } },
+      { a: { do: 'chop', e: '🥬', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🥕', n: 4, to: 'mid' } },
+      { extra: true, a: { do: 'crack', e: '🥚', n: 2, to: 'mid' },          b: { do: 'fetch', e: '🍶', jars: ['🍶', '🍓', '🍫'], to: 'mid' } },
+      { a: { do: 'pick', choices: ['🥟', '🍤', '🍗'] },                      b: { do: 'scoop', e: '🍜' } },                        // pangsit / udang goreng / ayam; he scoops the noodles
+      { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    bubur: { e: '🥣', vessel: 'bowl', mix: '#F6EEDC', stir: 'swish', taste: 'hot', beats: [   // Bubur Ayam
+      { a: { do: 'pour', e: '💧', liquid: '#8FD3F4', n: 3 },                b: { do: 'scoop', e: '🍚' } },
+      { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },                           // rice + water -> porridge
+      { a: { do: 'chop', e: '🍗', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🍗', n: 4, to: 'mid' } },       // ayam suwir
+      { a: { do: 'pick', choices: ['🍘', '🥜', '🥚'] },                      b: { do: 'pour', e: '🍶', liquid: '#4A2A17', n: 2, drizzle: true } },   // kerupuk / kacang / telur; kecap
+      { extra: true, a: { do: 'garnish', e: '🌿' },                          b: { do: 'fetch', e: '🌶️', jars: ['🌶️', '🍫', '🍓'], to: 'mid' } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    gado: { e: '🥗', vessel: 'plate', beats: [   // Gado-Gado
+      { a: { do: 'wash', e: '🥬', n: 3, to: 'stay' },                      b: { do: 'peel', e: '🥔', n: 3, to: 'stay' } },
+      { a: { do: 'chop', e: '🥬', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🥔', n: 4, to: 'mid' } },
+      { extra: true, a: { do: 'crack', e: '🥚', n: 2, to: 'mid' },          b: { do: 'fetch', e: '🥒', jars: ['🥒', '🍫', '🍓'], to: 'mid' } },   // telur rebus; acar
+      { a: { do: 'pound', e: '🥜', n: 3, to: 'mid' },                      b: { do: 'pound', e: '🥜', n: 4, to: 'mid' } },       // bumbu kacang, two cobeks
+      { a: { do: 'pick', choices: ['🍘', '🍙', '🌶️'] },                      b: { do: 'chop', e: '🍅', n: 4, to: 'mid' } },        // kerupuk / lontong / pedas
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    pizza: { e: '🍕', vessel: 'pizza', bake: true, beats: [   // Pizza: baked in the middle after the last topping
+      { a: { do: 'wash', e: '🍅', n: 3, to: 'stay' },                      b: { do: 'roll', e: '🍕', base: true, n: 4, to: 'mid' } },   // the base lands on the peel
+      { a: { do: 'pound', e: '🍅', n: 3, to: 'mid' },                      b: { do: 'shake', e: '🧀', dots: '#FFE27A', n: 3 } },  // tomato sauce; grated cheese
+      { a: { do: 'pick', choices: ['🌭', '🍗', '🍍'] },                      b: { do: 'fetch', e: '🌽', jars: ['🌽', '🍫', '🍓'], to: 'mid' } },   // sosis / ayam / nanas
+      { extra: true, a: { do: 'garnish', e: '🌿' },                          b: { do: 'chop', e: '🍅', n: 4, to: 'mid' } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    /* ---- sweets ---- */
+    pisang: { e: '🍌', vessel: 'plate', beats: [   // Pisang Goreng: fried bananas (start)
+      { a: { do: 'peel', e: '🍌', n: 3, to: 'stay' },                      b: { do: 'peel', e: '🍌', n: 3, to: 'stay' } },
+      { a: { do: 'chop', e: '🍌', n: 3, to: 'stay' },                      b: { do: 'chop', e: '🍌', n: 4, to: 'stay' } },   // fan cut (kipas)
+      { a: { do: 'fry', e: '🍌', prop: 'pan', end: 'flip', to: 'mid' },     b: { do: 'fry', e: '🍌', prop: 'pan', end: 'flip', to: 'mid' } },
+      { a: { do: 'pick', choices: ['🧀', '🍫', '🍓'] },                      b: { do: 'pour', e: '🥛', liquid: '#FFF4DC', n: 2, drizzle: true } },   // condensed milk
+      { extra: true, a: { do: 'shake', e: '🍫', dots: '#5A3A22', n: 3 },   b: { do: 'fetch', e: '🍯', jars: ['🍯', '🧂', '🌶️'], to: 'mid' } },     // meses; honey
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
     martabak: { e: '🥞', vessel: 'bowl', mix: '#F5DFA8', beats: [   // Martabak Manis
       { a: { do: 'crack', e: '🥚', n: 2, to: 'mid' },                      b: { do: 'fetch', e: '🥛', jars: ['🥛', '🍋', '🌶️'], to: 'mid' } },
@@ -69,13 +99,6 @@
       { a: { do: 'pick', choices: ['🍫', '🧀', '🍓'] },                     b: { do: 'pour', e: '🥛', liquid: '#FFF4DC', n: 2, drizzle: true } },
       { extra: true, a: { do: 'chop', e: '🍌', n: 3, to: 'mid' },           b: { do: 'chop', e: '🍌', n: 4, to: 'mid' } },
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
-    campur: { e: '🍧', vessel: 'glass', stir: 'clink', taste: 'cold', beats: [   // Es Campur
-      { a: { do: 'wash', e: '🍓', n: 3, to: 'stay' },                      b: { do: 'chop', e: '🍉', n: 4, to: 'mid' } },
-      { a: { do: 'chop', e: '🍓', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🥭', n: 4, to: 'mid' } },
-      { a: { do: 'garnish', e: '❄️' },                                      b: { do: 'fetch', e: '🥥', jars: ['🥥', '🧂', '🌶️'], to: 'mid' } },
-      { a: { do: 'pick', choices: ['🍓', '🍈', '🍊'], paint: ['#E8455A', '#7BC96F', '#F59A3A'] }, b: { do: 'pour', e: '🥛', liquid: '#FFF4DC', n: 2, drizzle: true } },
-      { extra: true, a: { do: 'stir', n: 3 },                               b: { do: 'stir', n: 3 } },
-      { a: { do: 'taste' }, b: { do: 'taste' } }] },
     cake: { e: '🎂', vessel: 'bowl', mix: '#F5DFA8', beats: [   // Kue Ulang Tahun (capstone)
       { a: { do: 'crack', e: '🥚', n: 2, to: 'mid' },                      b: { do: 'fetch', e: '🥛', jars: ['🥛', '🧂', '🌶️'], to: 'mid' } },
       { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },
@@ -83,11 +106,58 @@
       { a: { do: 'pick', choices: ['🍓', '🍫', '🍋'], paint: ['#F49AC1', '#8B5A3C', '#F7D35C'] }, b: { do: 'garnish', e: '🍓' } },
       { extra: true, a: { do: 'shake', e: '🍫', dots: '#5A3A22', n: 3 },   b: { do: 'shake', e: '🍫', dots: '#5A3A22', n: 3 } },
       { a: { do: 'blow' }, b: { do: 'blow' } }] },
+    donat: { e: '🍩', vessel: 'bowl', mix: '#F3D9A4', beats: [   // Donat kentang: potato doughnuts
+      { a: { do: 'crack', e: '🥚', n: 2, to: 'mid' },                      b: { do: 'fetch', e: '🥛', jars: ['🥛', '🌶️', '🍋'], to: 'mid' } },
+      { extra: true, a: { do: 'pound', e: '🥔', n: 3, to: 'mid' },          b: { do: 'stir', n: 4 } },                           // mash the potato; the dough
+      { a: { do: 'roll', e: '🍩', n: 3, to: 'stay' },                      b: { do: 'roll', e: '🍩', n: 4, to: 'stay' } },       // roll and cut a ring
+      { serve: 'plate', a: { do: 'fry', e: '🍩', prop: 'pan', end: 'flip', to: 'mid' }, b: { do: 'fry', e: '🍩', prop: 'pan', end: 'flip', to: 'mid' } },
+      { a: { do: 'pick', choices: ['🍫', '🍓', '🍋'], paint: ['#6B4226', '#F49AC1', '#F7E36A'] }, b: { do: 'shake', e: '🍬', dots: 'rainbow', n: 3 } },   // the glaze; rainbow sprinkles
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    /* ---- cold treats ---- */
+    campur: { e: '🍧', vessel: 'glass', stir: 'clink', taste: 'cold', beats: [   // Es Campur
+      { a: { do: 'wash', e: '🍓', n: 3, to: 'stay' },                      b: { do: 'chop', e: '🍉', n: 4, to: 'mid' } },
+      { a: { do: 'chop', e: '🍓', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🥭', n: 4, to: 'mid' } },
+      { a: { do: 'garnish', e: '❄️' },                                      b: { do: 'fetch', e: '🥥', jars: ['🥥', '🧂', '🌶️'], to: 'mid' } },
+      { a: { do: 'pick', choices: ['🍓', '🍈', '🍊'], paint: ['#E8455A', '#7BC96F', '#F59A3A'] }, b: { do: 'pour', e: '🥛', liquid: '#FFF4DC', n: 2, drizzle: true } },
+      { extra: true, a: { do: 'stir', n: 3 },                               b: { do: 'stir', n: 3 } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    jus: { e: '🥤', vessel: 'blender', mix: '$c', taste: 'cold', beats: [   // Jus Buah: alpukat / mangga / stroberi
+      { a: { do: 'pick', choices: ['🥑', '🥭', '🍓'], paint: ['#9BC25A', '#F7B23A', '#E8455A'] }, b: { do: 'fetch', e: '🥛', jars: ['🥛', '🧂', '🌶️'], to: 'mid' } },
+      { a: { do: 'wash', e: '$', n: 3, to: 'stay' },                       b: { do: 'peel', e: '🍌', n: 3, to: 'stay' } },
+      { a: { do: 'chop', e: '$', n: 3, to: 'mid' },                        b: { do: 'chop', e: '🍌', n: 4, to: 'mid' } },
+      { a: { do: 'blend', n: 3 },                                           b: { do: 'blend', n: 3 } },
+      { extra: true, a: { do: 'garnish', e: '🍒' },                          b: { do: 'pour', e: '🍫', liquid: '#5A3A22', n: 2, drizzle: true } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    puding: { e: '🍮', vessel: 'pot', mix: '$c', stir: 'swish', taste: 'cold', beats: [   // Puding
+      { a: { do: 'pour', e: '🥛', liquid: '#FFFFFF', n: 3 },                b: { do: 'fetch', e: '🥥', jars: ['🥥', '🧂', '🌶️'], to: 'mid' } },
+      { a: { do: 'pick', choices: ['🍓', '🍫', '🍈'], paint: ['#F49AC1', '#8B5A3C', '#9BCB5A'] }, b: { do: 'stir', n: 4 } },
+      { serve: 'plate', a: { do: 'fry', e: 'jelly', prop: 'fridge', end: 'out', to: 'mid' }, b: { do: 'fry', e: 'jelly', prop: 'fridge', end: 'out', to: 'mid' } },
+      { a: { do: 'chop', e: '$', n: 3, to: 'mid' },                        b: { do: 'pour', e: '🥛', liquid: '#FFF4DC', n: 2, drizzle: true } },   // her fruit on top; fla
+      { extra: true, a: { do: 'garnish', e: '🍒' },                          b: { do: 'shake', e: '🍬', dots: 'rainbow', n: 3 } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
+    eskrim: { e: '🍦', vessel: 'bowl', mix: '$c', stir: 'swish', taste: 'cold', beats: [   // Es Krim
+      { a: { do: 'pick', choices: ['🍓', '🍫', '🥭'], paint: ['#F49AC1', '#8B5A3C', '#F7B23A'] }, b: { do: 'fetch', e: '🥛', jars: ['🥛', '🧂', '🌶️'], to: 'mid' } },
+      { a: { do: 'chop', e: '$', n: 3, to: 'mid' },                        b: { do: 'chop', e: '$', n: 4, to: 'mid' } },
+      { a: { do: 'stir', n: 4 },                                            b: { do: 'stir', n: 4 } },
+      { serve: 'cone', a: { do: 'fry', e: '🍨', prop: 'fridge', end: 'out', to: 'mid' }, b: { do: 'fry', e: '🍨', prop: 'fridge', end: 'out', to: 'mid' } },   // two scoops on the cone
+      { extra: true, a: { do: 'shake', e: '🍬', dots: 'rainbow', n: 3 },   b: { do: 'pour', e: '🍫', liquid: '#5A3A22', n: 2, drizzle: true } },
+      { a: { do: 'taste' }, b: { do: 'taste' } }] },
   };
-  var MENU = ['ceplok', 'pisang', 'goreng', 'sate', 'sop', 'martabak', 'campur', 'cake'];
+  // The menu's three groups (no words on screen: an icon and a colour). Display order = this order.
+  var GROUPS = [
+    { id: 'meal', e: '🍚', tone: 'leaf', name: 'Meals', ids: ['ceplok', 'goreng', 'sate', 'sop', 'mie', 'bubur', 'gado', 'pizza'] },
+    { id: 'sweet', e: '🍭', tone: 'berry', name: 'Sweets', ids: ['pisang', 'martabak', 'cake', 'donat'] },
+    { id: 'cold', e: '❄️', tone: 'sea', name: 'Cold treats', ids: ['campur', 'jus', 'puding', 'eskrim'] },
+  ];
+  var MENU = [].concat.apply([], GROUPS.map(function (g) { return g.ids; }));   // 16 ids: display order, and the v2 medal order
+  var MENU_V1 = ['ceplok', 'pisang', 'goreng', 'sate', 'sop', 'martabak', 'campur', 'cake'];   // the v1 medal order: NEVER edit
+  var GROUP_OF = {};
+  GROUPS.forEach(function (g) { g.ids.forEach(function (id) { GROUP_OF[id] = g; }); });
   var START = ['ceplok', 'pisang'];
   // the dish names live only here and in aria-labels (nothing on screen is words)
-  var NAMES = { ceplok: 'Telur Ceplok', pisang: 'Pisang Goreng', goreng: 'Nasi Goreng', sate: 'Sate Ayam', sop: 'Sayur Sop', martabak: 'Martabak Manis', campur: 'Es Campur', cake: 'Birthday cake' };
+  var NAMES = { ceplok: 'Telur Ceplok', pisang: 'Pisang Goreng', goreng: 'Nasi Goreng', sate: 'Sate Ayam', sop: 'Sayur Sop',
+    martabak: 'Martabak Manis', campur: 'Es Campur', cake: 'Birthday cake', mie: 'Mie Goreng', bubur: 'Bubur Ayam',
+    gado: 'Gado-Gado', pizza: 'Pizza', donat: 'Donat', jus: 'Jus Buah', puding: 'Puding', eskrim: 'Es Krim' };
 
   /* ---------------------------------------------------------- the jobs */
 
@@ -98,8 +168,9 @@
 
   // kind: work/fetch/cook results fly into the dish at the merge; add/pick deliver piece by piece.
   var VERBS = {
-    wash: { kind: 'work' }, peel: { kind: 'work' }, chop: { kind: 'work' }, pound: { kind: 'work' },
+    wash: { kind: 'work', icon: '💦' }, peel: { kind: 'work' }, chop: { kind: 'work', icon: '🔪' }, pound: { kind: 'work' },
     crack: { kind: 'work', gap: CRACK_GAP }, skewer: { kind: 'work', fixed: 3 }, stir: { kind: 'work', icon: '🥄' },
+    roll: { kind: 'work', icon: '🍩' }, blend: { kind: 'work', icon: '🌀' },
     pour: { kind: 'add' }, shake: { kind: 'add' }, garnish: { kind: 'add', fixed: 3 }, scoop: { kind: 'add', fixed: 2 },
     fry: { kind: 'cook', fixed: 1 },
     fetch: { kind: 'fetch', fixed: 1, gap: JAR_GAP },
@@ -108,7 +179,8 @@
   };
 
   var LIQUID = { '🍶': '#4A2A17', '🍯': '#E8A33A', '🥛': '#FFFFFF', '🥥': '#FFF8EE', '🍋': '#F7E36A' };   // a fetched item that lands as liquid
-  var SAUCE = { '🥜': '#A0642D', '🌶️': '#D9452B' };
+  var SAUCE = { '🥜': '#A0642D', '🌶️': '#D9452B', '🍅': '#D9452B', '🥔': '#EAD7A0' };   // (tomato sauce; the mashed potato)
+  var RAINBOW = ['#E8455A', '#F7D35C', '#7BC96F', '#4FA3E0', '#B07CD8'];
   var PEEL = { '🍌': '#F7D35C', '🥔': '#B07A4A' };
   var FACES = ['😋', '🤤', '😍', '🥰'];
   var HELPERS = { cat: '🐈', hen: '🐔', radio: '📻', herbs: '🌿' };
@@ -116,8 +188,8 @@
 
   /* ---------------------------------------------------------- presents */
 
-  // one present per finished dish, in this order; then shelf decorations; then medals; then thanks
-  var GIFTS = [
+  // The first gift list, exactly as v1 shipped it: a save made before the bigger menu keeps what it gave. NEVER edit.
+  var GIFTS_V1 = [
     { kind: 'recipe', id: 'goreng' },
     { kind: 'helper', id: 'cat', e: '🐈' },
     { kind: 'recipe', id: 'sate' },
@@ -132,45 +204,97 @@
     { kind: 'tier', n: 3, e: '🏮' },
     { kind: 'helper', id: 'herbs', e: '🌿' },
   ];
-  var DECOR = ['🌻', '🧺', '🍵', '🏺', '🎐', '🍍'];
+  // v2: one present per finished dish for new kitchens, in this order. Frozen once shipped (a later content drop
+  // adds a v3 list and a second legacy count; it never edits this one).
+  var GIFTS = [
+    { kind: 'recipe', id: 'goreng' },            //  0
+    { kind: 'helper', id: 'cat', e: '🐈' },      //  1
+    { kind: 'recipe', id: 'pizza' },             //  2  a kid favourite early
+    { kind: 'tier', n: 1, e: '🌷' },             //  3
+    { kind: 'recipe', id: 'sate' },              //  4
+    { kind: 'recipe', id: 'donat' },             //  5
+    { kind: 'helper', id: 'hen', e: '🐔' },      //  6
+    { kind: 'recipe', id: 'sop' },               //  7
+    { kind: 'recipe', id: 'eskrim' },            //  8
+    { kind: 'tier', n: 2, e: '💡' },             //  9
+    { kind: 'recipe', id: 'mie' },               // 10
+    { kind: 'recipe', id: 'martabak' },          // 11
+    { kind: 'helper', id: 'radio', e: '📻' },    // 12
+    { kind: 'recipe', id: 'jus' },               // 13
+    { kind: 'recipe', id: 'gado' },              // 14
+    { kind: 'tier', n: 3, e: '🏮' },             // 15
+    { kind: 'recipe', id: 'campur' },            // 16
+    { kind: 'recipe', id: 'puding' },            // 17
+    { kind: 'recipe', id: 'bubur' },             // 18
+    { kind: 'recipe', id: 'cake' },              // 19  still the capstone recipe
+    { kind: 'helper', id: 'herbs', e: '🌿' },    // 20
+  ];
+  var DECOR = ['🌻', '🧺', '🍵', '🏺', '🎐', '🍍'];   // NEVER edit
   var MEDALS = 2;                 // gold medals per recipe
 
   /* ---------------------------------------------------------- pure rules */
 
   var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
 
-  /** The present for finishing dish number `i` (0 = the first). */
-  function giftFor(i) {
-    if (i < GIFTS.length) {
-      var g = GIFTS[i];
-      return g.kind === 'recipe' ? { kind: 'recipe', id: g.id, e: RECIPES[g.id].e } : g;
-    }
-    var k = i - GIFTS.length;
+  function dress(g) { return g.kind === 'recipe' ? { kind: 'recipe', id: g.id, e: RECIPES[g.id].e } : g; }
+  function giftKey(g) { return g.kind + ':' + (g.kind === 'tier' ? g.n : g.kind === 'decor' ? g.e : g.kind === 'medal' ? g.id + ':' + g.k : (g.id || '')); }
+  /** Gift i of the first (v1) list, exactly as v1 gave it. */
+  function giftV1(i) {
+    if (i < GIFTS_V1.length) return dress(GIFTS_V1[i]);
+    var k = i - GIFTS_V1.length;
     if (k < DECOR.length) return { kind: 'decor', e: DECOR[k] };
     k -= DECOR.length;
-    if (k < MENU.length * MEDALS) { var id = MENU[k % MENU.length]; return { kind: 'medal', id: id, e: RECIPES[id].e }; }
+    if (k < MENU_V1.length * MEDALS) { var id = MENU_V1[k % MENU_V1.length]; return { kind: 'medal', id: id, k: Math.floor(k / MENU_V1.length) + 1, e: RECIPES[id].e }; }
     return { kind: 'thanks', e: '⭐' };
   }
+  var V1_LEN = GIFTS_V1.length + DECOR.length + MENU_V1.length * MEDALS;   // 35
+  // the v2 sequence: the gift list, then the shelf decorations, then two rounds of medals (59 in all); then thanks
+  var LIST = GIFTS.map(dress)
+    .concat(DECOR.map(function (e) { return { kind: 'decor', e: e }; }))
+    .concat([1, 2].reduce(function (out, r) { return out.concat(MENU.map(function (id) { return { kind: 'medal', id: id, k: r, e: RECIPES[id].e }; })); }, []));
+  var rests = {};
+  /** What a save with `legacy` v1 presents gets next: the v2 list minus what v1 already gave (memoised). */
+  function restAfter(legacy) {
+    var L = clamp(Math.floor(Number(legacy)) || 0, 0, V1_LEN);
+    if (!rests[L]) {
+      var had = {};
+      for (var i = 0; i < L; i++) had[giftKey(giftV1(i))] = true;
+      rests[L] = LIST.filter(function (g) { return !had[giftKey(g)]; });
+    }
+    return rests[L];
+  }
+  /** The present for finishing dish number i (0 = the first): v1's for the first `legacy`, then the rest of v2. */
+  function giftFor(i, legacy) {
+    legacy = legacy || 0;
+    if (i < legacy) return giftV1(i);
+    return restAfter(legacy)[i - legacy] || { kind: 'thanks', e: '⭐' };
+  }
 
-  /** What `done` finished dishes have unlocked. Worked out from the count, never stored. */
-  function unlocks(done) {
+  /** What `done` finished dishes have unlocked. Worked out from the counts, never stored. */
+  function unlocks(done, legacy) {
     done = Math.max(0, Math.floor(Number(done)) || 0);
-    var have = {}, u = { recipes: [], helpers: {}, tier: 0, decor: [], medals: {}, next: null };
-    START.forEach(function (id) { have[id] = true; });
+    legacy = Math.max(0, Math.min(done, Math.floor(Number(legacy)) || 0));
+    var have = {}, rank = {}, u = { recipes: [], helpers: {}, tier: 0, decor: [], medals: {}, next: null, nextIn: 0, rank: rank };
+    START.forEach(function (id) { have[id] = true; rank[id] = -1; });
     for (var i = 0; i < done; i++) {
-      var g = giftFor(i);
-      if (g.kind === 'recipe') have[g.id] = true;
+      var g = giftFor(i, legacy);
+      if (g.kind === 'recipe') { have[g.id] = true; rank[g.id] = i; }
       else if (g.kind === 'helper') u.helpers[g.id] = true;
       else if (g.kind === 'tier') u.tier = Math.max(u.tier, g.n);
-      else if (g.kind === 'decor') u.decor.push(g.e);
+      else if (g.kind === 'decor' && u.decor.indexOf(g.e) < 0) u.decor.push(g.e);
       else if (g.kind === 'medal') u.medals[g.id] = (u.medals[g.id] || 0) + 1;
     }
     u.recipes = MENU.filter(function (id) { return have[id]; });
-    for (var j = done; j < GIFTS.length; j++) if (GIFTS[j].kind === 'recipe') { u.next = GIFTS[j].id; break; }
+    for (var j = done; j < done + LIST.length; j++) {
+      var n = giftFor(j, legacy);
+      if (n.kind === 'thanks') break;
+      if (n.kind === 'recipe') { u.next = n.id; u.nextIn = Math.min(3, j - done + 1); break; }
+    }
     return u;
   }
 
-  /** A saved kitchen, checked and repaired: anything odd becomes something sensible. */
+  /** A saved kitchen, checked and repaired: anything odd becomes something sensible. A v1 save keeps everything it
+   *  had (`legacy` = its count) and gets the new dishes as its next presents. */
   function cleanKitchen(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) raw = {};
     var num = function (v, lo, hi, d) {
@@ -178,18 +302,18 @@
       v = Number(v);
       return isFinite(v) ? Math.max(lo, Math.min(hi, Math.floor(v))) : d;
     };
+    var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
+    var plain = function (o) { return !!o && typeof o === 'object' && !Array.isArray(o); };
     var done = num(raw.done, 0, 9999, 0);
-    var u = unlocks(done), cooked = {};
-    if (raw.cooked && typeof raw.cooked === 'object' && !Array.isArray(raw.cooked)) {
-      u.recipes.forEach(function (id) {
-        if (!Object.prototype.hasOwnProperty.call(raw.cooked, id)) return;
-        var n = num(raw.cooked[id], 0, 999, 0);
-        if (n) cooked[id] = n;
-      });
-    }
+    var v2 = raw.v === 2 || own(raw, 'legacy');
+    var legacy = v2 ? num(raw.legacy, 0, done, 0) : done;
+    var u = unlocks(done, legacy), cooked = {}, made = {};
+    if (plain(raw.cooked)) u.recipes.forEach(function (id) { if (own(raw.cooked, id)) { var n = num(raw.cooked[id], 0, 999, 0); if (n) cooked[id] = n; } });
+    if (v2) { if (plain(raw.made)) u.recipes.forEach(function (id) { if (own(raw.made, id)) { var m = num(raw.made[id], 0, 7, 0); if (m) made[id] = m; } }); }
+    else Object.keys(cooked).forEach(function (id) { made[id] = [0, 1, 3, 7][Math.min(3, cooked[id])]; });   // v1 stars -> as many variant marks
     var seen = [];
-    if (Array.isArray(raw.seen)) raw.seen.forEach(function (v) { if (typeof v === 'string' && Object.prototype.hasOwnProperty.call(VERBS, v) && seen.indexOf(v) < 0) seen.push(v); });
-    return { v: 1, done: done, cooked: cooked, chicks: num(raw.chicks, 0, 3, 0), seen: seen };
+    if (Array.isArray(raw.seen)) raw.seen.forEach(function (v) { if (typeof v === 'string' && (own(VERBS, v) || v === 'fridge') && seen.indexOf(v) < 0) seen.push(v); });
+    return { v: 2, done: done, legacy: legacy, cooked: cooked, made: made, chicks: num(raw.chicks, 0, 3, 0), seen: seen };
   }
 
   /** Taps a job takes: fixed jobs never change; others follow the Taps option and the little player's help. */
@@ -199,13 +323,32 @@
     return clamp((job.n || 3) + (TAPS[taps] || 0) - (help || 0), 1, 8);
   }
 
-  /** The beats of a recipe: Short leaves out its extra beats (one, or two for the two starter dishes). */
+  /** The beats of a recipe: Short leaves out its extra beats (one, or two for Telur Ceplok). */
   function beatsFor(recipe, length) {
     return recipe.beats.filter(function (b) { return length !== 'short' || !b.extra; });
   }
 
   /** What a job makes. */
-  function resultOf(job) { return job.do === 'crack' ? '🍳' : job.do === 'skewer' ? '🍢' : job.e; }
+  function resultOf(job) { return job.do === 'crack' ? '🍳' : job.do === 'skewer' ? '🍢' : job.do === 'roll' && job.base ? 'base' : job.e; }
+
+  /** A recipe's one choice: her pick (its choices are the dish's three variants). */
+  function pickOf(recipe) {
+    var pk = null;
+    if (recipe) recipe.beats.forEach(function (bt) { if (bt.a.do === 'pick') pk = bt.a; });
+    return pk;
+  }
+  /** A job with the variant tokens filled in: '$' = choices[V], '$c' = paint[V] (a shallow copy; the data stays as written). */
+  function resolveJob(job, pk, V) {
+    if (!job || !pk) return job;
+    var out = {}, c = pk.paint ? pk.paint[V] : '#FFF4E0';
+    Object.keys(job).forEach(function (k) {
+      var v = job[k];
+      if (v === '$') v = pk.choices[V];
+      else if (v === '$c') v = c;
+      out[k] = v;
+    });
+    return out;
+  }
 
   /** Blend two #RRGGBB colours (t = 0..1). */
   function mixColor(a, b, t) {
@@ -232,7 +375,7 @@
     name: 'Little Kitchen',
     emoji: '🍳',
     color: 'tangerine',
-    howTo: 'Cook real home dishes together. Pick a dish; then each of you does the job on your own side (crack, wash, chop, stir, fry, or find the right jar) and it all goes into the dish in the middle. The next step comes when you are both done. Taste it together at the end. Every dish brings a present: new recipes, kitchen helpers, a nicer kitchen. Your kitchen is kept for next time.',
+    howTo: 'Cook real home dishes together. Pick a dish (the coloured tabs sort them: meals, sweets, cold treats). Then each of you does the job on your own side (crack, wash, chop, roll, stir, fry, or find the right jar) and it all goes into the dish in the middle. The next step comes when you are both done. Once in every dish she chooses a topping or flavour; every choice is right, and the menu shows which ones you have made. Taste it together at the end. Every dish brings a present: new recipes, kitchen helpers, a nicer kitchen. Your kitchen is kept for next time.',
     options: [
       { key: 'length', label: 'Recipe', default: 'full', choices: [
         { value: 'short', label: 'Short', emoji: '🐇' }, { value: 'full', label: 'Full', emoji: '🍲' }] },
@@ -250,7 +393,7 @@
       var bSide = 1 - aSide;
 
       var kit = cleanKitchen(ctx.load('kitchen', null));
-      var u = unlocks(kit.done);
+      var u = unlocks(kit.done, kit.legacy);
       var state = 'menu', token = 0;
       var recipeId = null, recipe = null, beats = [], beatI = -1;
       var vessel = newVessel('plate');
@@ -260,7 +403,8 @@
       var events = [];                       // the last 200 counted taps (tests)
       var lastTap = [0, 0], menuTap = 0, lastHinted = null;
       var wallAt = -1, wallC = 0, fill = 0;
-      var pickedChoice = null;               // the bowl she chose this round (the finished dish shows it)
+      var pickedChoice = null;               // the bowl she chose this round: the dish's variant (the finished dish shows it)
+      var activeTab = null, tabAt = -1;      // the menu's open group tab (only when there are tabs), the last tab tap
 
       /* ---- sounds: the kitchen's own, built from tones and noise (soft) ---- */
 
@@ -284,12 +428,22 @@
         brr: function () { sfx.tone({ freq: 180, to: 170, dur: 0.3, type: 'triangle', gain: 0.1 }); },
         birthday: function () { sfx.seq([67, 67, 69, 67, 72, 71], { step: 0.2, type: 'triangle', gain: 0.2 }); },
         tune: function () { sfx.seq([72, 76, 79], { step: 0.16, type: 'sine', gain: 0.14 }); },
+        fwump: function () { sfx.noise({ freq: 500, to: 180, dur: 0.12, gain: 0.12, q: 0.7 }); sfx.tone({ freq: 170, to: 120, dur: 0.1, type: 'triangle', gain: 0.1 }); },
+        chk: function () { sfx.tone({ freq: 1200, to: 700, dur: 0.05, type: 'triangle', gain: 0.12 }); },
+        whirr: function (k) { sfx.noise({ freq: 600 + 80 * k, to: 1500 + 80 * k, dur: 0.35, gain: 0.08, q: 1.5 }); sfx.tone({ freq: 110, to: 150, dur: 0.3, type: 'triangle', gain: 0.06 }); },
       };
 
       /* ---- timers: game logic only through later(), which an old beat can never reach ---- */
 
       function setState(s) { state = s; token++; }
       function later(ms, fn) { var tk = token; return ctx.after(ms, function () { if (tk === token) fn(); }); }
+
+      /* ---- the variant: what she picked this round ('$' and '$c' in the data) ---- */
+
+      /** Her choice so far (0 until she has chosen: only a test jumping past the pick sees that). */
+      function variant() { return pickedChoice != null ? pickedChoice : 0; }
+      function variantColour() { var pk = pickOf(recipe); return pk && pk.paint ? pk.paint[variant()] : '#FFF4E0'; }
+      function mixOf() { return recipe.mix === '$c' ? variantColour() : recipe.mix; }
 
       /* ---- build ---- */
 
@@ -304,15 +458,19 @@
       var contentsEl = el('div', { class: 'kt-contents' });
       var swirlEl = el('span', { class: 'kt-swirl' }, el('i', { 'data-side': '0' }), el('i', { 'data-side': '1' }));
       var lidEl = el('span', { class: 'kt-lid-big' });
+      var ovenWin = el('i');
+      var ovenEl = el('span', { class: 'kt-ovendoor' }, ovenWin);   // the pizza's oven: drops over the dish, glows, lifts
       var ghostEl = el('span', { class: 'kt-ghost' });
       var windowEl = el('span', { class: 'kt-window', hidden: true, 'aria-hidden': 'true' },
         el('span', { class: 'kt-curtain kt-curtain--l' }), el('span', { class: 'kt-curtain kt-curtain--r' }), el('span', { class: 'kt-sill' }, ctx.sticker('🌷')));
       var dishEl = el('span', { class: 'kt-dish', hidden: true });
       var giftEl = el('span', { class: 'kt-gift', hidden: true });
-      var vesselEl = el('div', { class: 'kt-vessel', 'data-kind': 'plate', 'aria-label': 'Dish' }, windowEl, backEl, contentsEl, swirlEl, frontEl, lidEl, ghostEl, dishEl, giftEl);
+      var vesselEl = el('div', { class: 'kt-vessel', 'data-kind': 'plate', 'aria-label': 'Dish' }, windowEl, backEl, contentsEl, swirlEl, frontEl, lidEl, ovenEl, ghostEl, dishEl, giftEl);
       var wallEl = el('div', { class: 'kt-wall' }, tierEl, stripEl, shelfL, vesselEl, shelfR);
       scene.appendChild(wallEl);
-      var menuEl = el('div', { class: 'kt-menu' });
+      var railEl = el('div', { class: 'kt-rail' });     // the group tabs (only when there are more than 8 cells)
+      var pageEl = el('div', { class: 'kt-page' });     // the cards
+      var menuEl = el('div', { class: 'kt-menu' }, railEl, pageEl);
       root.appendChild(scene);
       root.appendChild(menuEl);
 
@@ -354,7 +512,7 @@
           if (o.dx) to.x += o.dx * toNode.getBoundingClientRect().width;
           if (o.dy) to.y += o.dy * toNode.getBoundingClientRect().height;
           var f = el('span', { class: 'kt-flyer', style: { left: (from.x - r.left) + 'px', top: (from.y - r.top) + 'px', fontSize: (o.size || 0) ? o.size + 'px' : null } },
-            typeof content === 'string' ? ctx.sticker(content) : content);
+            typeof content === 'string' ? flyThing(content) : content);
           root.appendChild(f);
           var ms = o.ms || 520, dx = to.x - from.x, dy = to.y - from.y;
           if (f.animate) {
@@ -367,6 +525,13 @@
           }
           ctx.after(RM ? 180 : ms + 30, function () { f.remove(); if (o.pop !== false) fx.pop(toNode); });
         });
+      }
+
+      /** What flies: a sticker, or the rolled pizza base, or a jelly in her colour. */
+      function flyThing(e) {
+        if (e === 'base') return el('span', { class: 'kt-flybase' });
+        if (e === 'jelly') return jellyEl(variantColour());
+        return ctx.sticker(e);
       }
 
       function burstAt(node, o) { if (!node || !node.isConnected) return; var c = fx.centerOf(node); fx.burst(c.x, c.y, o); }
@@ -411,34 +576,111 @@
         }
       }
 
-      var CARD_TONES = ['tangerine', 'sun', 'leaf', 'sea', 'berry', 'grape'];
-      function menuCount() { return u.recipes.length + (u.next ? 1 : 0); }
+      /** The menu's cells by group: the unlocked dishes, then the next present last in its own group. */
+      function cellsByGroup() {
+        var out = {};
+        GROUPS.forEach(function (g) {
+          out[g.id] = g.ids.filter(function (id) { return u.recipes.indexOf(id) >= 0; });
+          if (u.next && GROUP_OF[u.next] === g) out[g.id].push('next');
+        });
+        return out;
+      }
+      function menuCells() { var c = cellsByGroup(), n = 0; GROUPS.forEach(function (g) { n += c[g.id].length; }); return n; }
+      function hasTabs() { return menuCells() > 8; }
+      function made(id) { return kit.made[id] || 0; }
 
+      /** The menu: one page of cards (up to 8), or three wordless group tabs, each with its own page. */
       function buildMenu() {
-        menuEl.textContent = '';
-        u.recipes.forEach(function (id, i) {
-          var n = kit.cooked[id] || 0, m = u.medals[id] || 0;
-          var stars = el('span', { class: 'kt-card__stars' });
-          for (var s = 0; s < Math.min(3, n); s++) stars.appendChild(ctx.sticker('⭐'));
-          var medals = el('span', { class: 'kt-card__medals' });
-          for (var k = 0; k < m; k++) medals.appendChild(ctx.sticker('🏅'));
-          menuEl.appendChild(el('button', { type: 'button', class: 'kt-card' + (n ? '' : ' is-new'), 'data-id': id, 'data-stars': String(Math.min(3, n)), 'aria-label': NAMES[id], style: { '--tone': 'var(--' + CARD_TONES[i % 6] + '-soft)' } },
-            el('span', { class: 'kt-card__dish' }, ctx.sticker(RECIPES[id].e)), stars, medals,
-            n ? null : el('span', { class: 'kt-card__new' }, ctx.sticker('✨'))));
+        railEl.textContent = '';
+        pageEl.textContent = '';
+        var cells = cellsByGroup(), tabs = hasTabs();
+        menuEl.classList.toggle('has-tabs', tabs);
+        GROUPS.forEach(function (g) {
+          var tone = 'var(--' + g.tone + '-soft)';
+          if (tabs && cells[g.id].length) {
+            var fresh = cells[g.id].some(function (id) { return id !== 'next' && !kit.cooked[id]; });
+            railEl.appendChild(el('button', { type: 'button', class: 'kt-tab', 'data-group': g.id, 'aria-label': g.name, 'aria-pressed': 'false',
+              style: { '--tone': 'var(--' + g.tone + ')', '--tone-soft': tone } },
+              ctx.sticker(g.e), fresh ? el('span', { class: 'kt-tab__new' }, ctx.sticker('✨')) : null));
+          }
+          cells[g.id].forEach(function (id) {
+            if (id === 'next') return;
+            var R = RECIPES[id], n = kit.cooked[id] || 0, m = u.medals[id] || 0, mk = made(id), pk = pickOf(R);
+            var vs = el('span', { class: 'kt-card__vs' });
+            pk.choices.forEach(function (e, i) {
+              var on = !!(mk & (1 << i));
+              vs.appendChild(el('span', { class: 'kt-card__v' + (on ? ' is-made' : '') + (on && pk.paint ? ' has-paint' : ''), 'data-i': String(i), style: on && pk.paint ? { '--c': pk.paint[i] } : {} }, ctx.sticker(e)));
+            });
+            var medals = el('span', { class: 'kt-card__medals' });
+            for (var k = 0; k < m; k++) medals.appendChild(ctx.sticker('🏅'));
+            pageEl.appendChild(el('button', { type: 'button', class: 'kt-card' + (n ? '' : ' is-new'), 'data-id': id, 'data-group': g.id, 'data-made': String(mk), 'aria-label': NAMES[id], style: { '--tone': tone } },
+              el('span', { class: 'kt-card__dish' }, ctx.sticker(R.e)), vs, medals,
+              !n ? el('span', { class: 'kt-card__new' }, ctx.sticker('✨')) : mk === 7 ? el('span', { class: 'kt-card__star' }, ctx.sticker('⭐')) : null));
+          });
         });
         if (u.next) {
-          var next = el('div', { class: 'kt-next', 'aria-label': 'Next present' },
-            el('span', { class: 'kt-next__dish' }, ctx.sticker(RECIPES[u.next].e)), el('span', { class: 'kt-next__tag' }, ctx.sticker('🎁')));
-          menuEl.appendChild(next);
+          var dots = el('span', { class: 'kt-next__dots' });
+          for (var d = 0; d < u.nextIn; d++) dots.appendChild(el('i'));
+          var next = el('div', { class: 'kt-next', 'data-group': GROUP_OF[u.next].id, 'aria-label': 'Next present', style: { '--tone': 'var(--' + GROUP_OF[u.next].tone + '-soft)' } },
+            el('span', { class: 'kt-next__dish' }, ctx.sticker(RECIPES[u.next].e)), el('span', { class: 'kt-next__tag' }, ctx.sticker('🎁')), dots);
+          pageEl.appendChild(next);   // (last overall on one page; last of its group on a tab: the groups come in order)
           // the next dish is not a button: a tap only wiggles its present
           ctx.tap(next, function () { lastHinted = null; fx.wiggle(next.querySelector('.kt-next__tag')); sfx.play('flip'); });
         }
+        // the open tab: the group of the dish the hand would show (set on every build; after that only taps change it)
+        var tgt = menuBest(null);
+        activeTab = tabs ? (tgt ? GROUP_OF[tgt].id : GROUPS[0].id) : null;
+        showTab();
+      }
+
+      /** Show the open tab's cells (all of them with no tabs); hide and disable the rest. Then they pop in. */
+      function showTab() {
+        railEl.querySelectorAll('.kt-tab').forEach(function (t) {
+          var on = t.dataset.group === activeTab;
+          t.classList.toggle('is-on', on);
+          t.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        var shown = [];
+        pageEl.querySelectorAll('.kt-card, .kt-next').forEach(function (c) {
+          var on = !activeTab || c.dataset.group === activeTab;
+          c.hidden = !on;
+          c.classList.remove('is-pop');
+          if (c.classList.contains('kt-card')) {
+            if (on && state === 'menu') c.removeAttribute('aria-disabled'); else c.setAttribute('aria-disabled', 'true');
+          }
+          if (on) shown.push(c);
+        });
+        fit();
+        if (RM) return;
+        void pageEl.offsetWidth;
+        shown.forEach(function (c, k) {
+          c.style.setProperty('--k', String(k));
+          c.classList.add('is-pop');
+          ctx.after(k * 40, function () { sfx.scale(k); });   // (decoration: a rising run as they pop in)
+        });
+      }
+
+      /** A tap on a group tab (menu only): open it; the open one only wiggles; taps closer than 150ms only squash. */
+      function onTab(ev, tab) {
+        lastHinted = null;
+        menuTap = ctx.time;
+        if (state !== 'menu') return;
+        hint(null);
+        if (ctx.time - tabAt < 0.15) { squash(tab); return; }
+        tabAt = ctx.time;
+        var g = tab.dataset.group;
+        if (g === activeTab) { fx.wiggle(tab); sfx.play('tick'); return; }
+        activeTab = g;
+        fx.bounce(tab);
+        sfx.play('flip');
+        showTab();
       }
 
       /* ---- the dish in the middle ---- */
 
       function newVessel(kind) {
-        return { kind: kind, pieces: [], rim: [], level: 0, liq: null, dots: [], blobs: [], drizzles: [], mix: null, layers: 0, layerAt: [], frost: null, candles: null, added: 0 };
+        return { kind: kind, pieces: [], rim: [], level: 0, liq: null, dots: [], blobs: [], drizzles: [], mix: null, layers: 0, layerAt: [], frost: null, candles: null, added: 0,
+          base: false, baseAt: null, sauce: null, baked: false, scoops: [], scoopAt: [], glaze: null };
       }
 
       /** The drop-in for a thing in the dish: it plays once, from when the thing was first drawn. A redraw while it
@@ -450,15 +692,30 @@
       }
       function landed(item) { if (item.at == null) item.at = performance.now(); return landing(item.at); }
 
+      var CONE_SVG = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="6,2 94,2 50,98" fill="var(--kt-cone)" stroke="var(--line)" stroke-width="3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><line x1="24" y1="12" x2="62" y2="60" stroke="var(--kt-cone-dark)" stroke-width="3" vector-effect="non-scaling-stroke"/><line x1="76" y1="12" x2="38" y2="60" stroke="var(--kt-cone-dark)" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>';
+      function jellyEl(c) { return el('span', { class: 'kt-jelly', style: { '--c': c || '#F49AC1' } }); }
+
       /** Draw the dish. Only what has just landed gets `is-new` (the drop-in animation). */
       function renderVessel() {
         var v = vessel;
         vesselEl.dataset.kind = v.kind;
+        if (frontEl.dataset.kind !== v.kind) { frontEl.dataset.kind = v.kind; frontEl.innerHTML = v.kind === 'cone' ? CONE_SVG : ''; }
         vesselEl.style.setProperty('--level', String(Math.min(0.6, v.level) / 0.6));
         vesselEl.style.setProperty('--liq', v.liq || 'transparent');
         vesselEl.classList.toggle('has-liq', v.level > 0);
         contentsEl.textContent = '';
-        if (v.mix) contentsEl.appendChild(el('span', { class: 'kt-mix', style: { '--mix': v.mix } }));
+        if (v.kind === 'pizza' && v.base) {
+          if (v.baseAt == null) v.baseAt = performance.now();
+          var bl = landing(v.baseAt);
+          contentsEl.appendChild(el('span', { class: 'kt-pbase' + (v.baked ? ' is-baked' : '') + bl.cls, style: { animationDelay: bl.delay } }));
+        }
+        if (v.kind === 'pizza' && v.sauce) contentsEl.appendChild(el('span', { class: 'kt-psauce' + (v.baked ? ' is-baked' : ''), style: { '--c': v.sauce } }));
+        if (v.mix) contentsEl.appendChild(el('span', { class: 'kt-mix', 'data-look': (recipe && recipe.look) || '', style: { '--mix': v.mix } }));
+        v.scoops.forEach(function (c, i) {
+          if (v.scoopAt[i] == null) v.scoopAt[i] = performance.now();
+          var sk = landing(v.scoopAt[i]);
+          contentsEl.appendChild(el('span', { class: 'kt-scoop' + sk.cls, 'data-i': String(i), style: { '--c': c, animationDelay: sk.delay } }));
+        });
         v.blobs.forEach(function (b, i) { contentsEl.appendChild(el('span', { class: 'kt-blob', style: { '--c': b, left: BSLOTS[i][0] + '%', top: BSLOTS[i][1] + '%' } })); });
         if (v.kind === 'cake' && v.layers) {
           var cake = el('span', { class: 'kt-cake', 'data-layers': String(v.layers) });
@@ -482,10 +739,13 @@
         });
         v.pieces.forEach(function (p) {
           var s = CSLOTS[p.slot], lk = landed(p);
-          contentsEl.appendChild(el('span', { class: 'kt-piece' + (p.keep ? ' is-keep' : '') + lk.cls, 'data-e': p.e, style: { left: s[0] + '%', top: s[1] + '%', '--r': p.r + 'deg', animationDelay: lk.delay } },
-            p.e === 'yolk' ? el('span', { class: 'kt-yolk' }) : ctx.sticker(p.e)));
+          // what she cooked sits above the chopped bits (is-keep); what she chose sits at the normal height, under the sauces
+          var n = el('span', { class: 'kt-piece' + (p.keep && !p.pick ? ' is-keep' : '') + lk.cls, 'data-e': p.e, style: { left: s[0] + '%', top: s[1] + '%', '--r': p.r + 'deg', animationDelay: lk.delay } },
+            p.e === 'yolk' ? el('span', { class: 'kt-yolk' }) : p.e === 'jelly' ? jellyEl(p.c) : ctx.sticker(p.e));
+          if (v.glaze && recipe && p.e === recipe.e) n.appendChild(el('span', { class: 'kt-glaze', style: { '--c': v.glaze } }));
+          contentsEl.appendChild(n);
         });
-        v.dots.forEach(function (d) { contentsEl.appendChild(el('i', { class: 'kt-dot', style: { left: d.x + '%', top: d.y + '%', '--c': d.c } })); });
+        v.dots.forEach(function (d) { contentsEl.appendChild(el('i', { class: 'kt-dot' + (v.baked ? ' is-melted' : ''), style: { left: d.x + '%', top: d.y + '%', '--c': d.c } })); });
         v.rim.forEach(function (r, i) {
           var s = RSLOTS[i], lk = landed(r);
           contentsEl.appendChild(el('span', { class: 'kt-piece kt-piece--rim' + lk.cls, 'data-e': r.e, style: { left: s[0] + '%', top: s[1] + '%', animationDelay: lk.delay } }, ctx.sticker(r.e)));
@@ -502,23 +762,25 @@
         for (var j = 0; j < pieces.length; j++) if (!pieces[j].keep) return j;
         return 0;
       }
-      /** A sticker lands in the dish. `keep`: the thing she cooked (fried, cracked, skewered) or the dish itself. */
-      function addPiece(e, keep) {
+      /** A sticker lands in the dish. `keep`: the thing she cooked (fried, cracked, skewered, rolled), what she chose,
+       *  or the dish itself. x: {pick: true} (what she chose) or {c} (a jelly's colour). */
+      function addPiece(e, keep, x) {
         var v = vessel, used = v.pieces.map(function (p) { return p.slot; }), slot = -1;
+        x = x || {};
         for (var i = 0; i < CSLOTS.length; i++) if (used.indexOf(i) < 0) { slot = i; break; }
         if (slot < 0) slot = v.pieces.splice(evictIndex(v.pieces), 1)[0].slot;
-        v.pieces.push({ e: e, slot: slot, r: Math.round(util.randf(-18, 18)), keep: !!keep || (!!recipe && e === recipe.e), at: null });
+        v.pieces.push({ e: e, slot: slot, r: Math.round(util.randf(-18, 18)), keep: !!keep || (!!recipe && e === recipe.e), pick: !!x.pick, c: x.c || null, at: null });
         v.added++;
       }
       function addRim(e) { if (vessel.rim.length >= RSLOTS.length) vessel.rim.shift(); vessel.rim.push({ e: e, at: null }); vessel.added++; }
       function addDots(c, n) {
-        for (var i = 0; i < n; i++) vessel.dots.push({ c: c, x: Math.round(util.randf(14, 86)), y: Math.round(util.randf(30, 78)) });
+        for (var i = 0; i < n; i++) vessel.dots.push({ c: c === 'rainbow' ? RAINBOW[(vessel.dots.length) % RAINBOW.length] : c, x: Math.round(util.randf(14, 86)), y: Math.round(util.randf(30, 78)) });
         while (vessel.dots.length > 24) vessel.dots.shift();
         vessel.added++;
       }
       function addBlob(c) { if (vessel.blobs.length >= 2) vessel.blobs.shift(); vessel.blobs.push(c); vessel.added++; }
       function addLiquid(c, d) {
-        if (vessel.kind === 'plate' || vessel.kind === 'wok') { addBlob(c); return; }   // on a plate or in a wok it is a sauce
+        if (vessel.kind === 'plate' || vessel.kind === 'wok' || vessel.kind === 'pizza') { addBlob(c); return; }   // on a plate or in a wok it is a sauce
         vessel.liq = vessel.level > 0 && vessel.liq ? mixColor(vessel.liq, c, 0.5) : c;
         vessel.level = Math.min(0.6, vessel.level + (d || 0.1));
         vessel.added++;
@@ -527,7 +789,11 @@
       /** What a finished job puts in the dish at the merge. */
       function addResult(job) {
         var v = job.do, e = resultOf(job);
-        if (v === 'chop') { addPiece(e); addPiece(e); addPiece(e); }
+        if (v === 'roll') { if (job.base) { vessel.base = true; vessel.added++; } else addPiece(job.e, true); }
+        else if (v === 'fry' && vessel.kind === 'cone') { if (vessel.scoops.length < 3) { vessel.scoops.push(variantColour()); vessel.added++; } }
+        else if (v === 'fry' && job.e === 'jelly') addPiece('jelly', true, { c: variantColour() });
+        else if (v === 'pound' && vessel.kind === 'pizza') { vessel.sauce = SAUCE[job.e] || '#D9452B'; vessel.added++; }
+        else if (v === 'chop') { addPiece(e); addPiece(e); addPiece(e); }
         else if (v === 'pound') addBlob(SAUCE[e] || '#A0642D');
         else if (v === 'crack') addPiece('yolk', true);
         else if (v === 'fry' && vessel.kind === 'cake') { vessel.layers = Math.min(2, vessel.layers + 1); vessel.added++; }
@@ -545,9 +811,19 @@
 
       /* ---- the pips: one sticker per beat, an overview only ---- */
 
+      /** A step's sticker: her job's thing ('$' once she has chosen, else the job's own icon), her bowl, or his thing. */
       function pipIcon(beat) {
-        var j = beat.a;
-        return j.e || (j.choices && j.choices[0]) || VERBS[j.do].icon || beat.b.e || '✨';
+        var j = beat.a, pk = pickOf(recipe);
+        var tok = function (e) { return e === '$' ? (pickedChoice != null && pk ? pk.choices[pickedChoice] : null) : e === 'jelly' ? recipe.e : e; };
+        if (j.do === 'pick') return j.choices[pickedChoice != null ? pickedChoice : 0];
+        return tok(j.e) || VERBS[j.do].icon || tok(beat.b.e) || '✨';
+      }
+      /** She has chosen: every step sticker that showed a stand-in now shows what she chose. */
+      function refreshPips() {
+        stripEl.querySelectorAll('.kt-pip').forEach(function (p, i) {
+          var st = p.querySelector(':scope > .mg-sticker'), e = beats[i] ? pipIcon(beats[i]) : null;
+          if (st && e && st.textContent !== e) { st.textContent = e; fx.pop(p); }
+        });
       }
       function buildPips() {
         stripEl.textContent = '';
@@ -601,8 +877,20 @@
         var pip = Math.max(20, Math.min(Sz, Math.floor((stripW - 16 - (nb - 1) * 4) / nb)));
         // still too wide (never smaller than 20px): the stickers overlap a little instead
         var pipOv = Math.min(0, Math.floor((stripW - 16 - nb * pip) / Math.max(1, nb - 1)) - 4);
-        // menu: the biggest square cards that fit, in however many columns suit
-        var n = menuCount(), W = w - 2 * P, H = h - 2 * P, card = 0, cols = 1;
+        // menu: the biggest square cards that fit, in however many columns suit. With tabs, the rail of tabs takes a
+        // row on top (portrait) or a column on the left (landscape), and every tab's page uses the size of the fullest
+        // one, so nothing jumps when the tab changes.
+        var cells = cellsByGroup(), shownG = GROUPS.filter(function (g) { return cells[g.id].length; });
+        var total = 0, nMax = 0;
+        shownG.forEach(function (g) { total += cells[g.id].length; nMax = Math.max(nMax, cells[g.id].length); });
+        var tabs = total > 8, nt = shownG.length, MG_ = 10, TB = 0, tabW = 0, tabH = 0;
+        var n = tabs ? nMax : total, W = w - 2 * P, H = h - 2 * P, card = 0, cols = 1;
+        if (tabs) {
+          TB = U.clamp(Math.round(Math.min(w, h) * 0.2), 64, 96);
+          // (the rail has 3px on top for the open tab, which stands 3px proud)
+          if (port) { tabH = TB; tabW = Math.min(Math.floor((W - (nt - 1) * MG_) / nt), Math.round(TB * 1.6)); H -= TB + 3 + MG_; }
+          else { tabW = TB; tabH = Math.min(Math.floor((H - 3 - (nt - 1) * MG_) / nt), Math.round(TB * 1.6)); W -= TB + MG_; }
+        }
         for (var c = 1; c <= 5; c++) {
           var r = Math.ceil(n / c);
           var z = Math.floor(Math.min((W - (c - 1) * 10) / c, (H - (r - 1) * 10) / r));
@@ -613,6 +901,12 @@
         set('--wall', wallH + 'px'); set('--pip', pip + 'px'); set('--pip-ov', pipOv + 'px'); set('--vessel', V + 'px');
         set('--board-w', Wb + 'px'); set('--board-h', B + 'px'); set('--chef', C + 'px'); set('--want', Wn + 'px');
         set('--top', top + 'px'); set('--obj', T + 'px'); set('--jar', J + 'px'); set('--card', card + 'px'); set('--cols', String(cols));
+        set('--tab-w', tabW + 'px'); set('--tab-h', tabH + 'px');
+        // (the page keeps the fullest tab's size, so the tabs never move when the page changes)
+        var rowsN = Math.max(1, Math.ceil(n / cols));
+        set('--page-w', (cols * card + (cols - 1) * 10) + 'px'); set('--page-h', (rowsN * card + (rowsN - 1) * 10) + 'px');
+        // (a page with fewer cells than the fullest keeps the card size, in fewer columns, so it stays centred)
+        set('--pcols', String(Math.max(1, Math.min(cols, tabs && activeTab && cells[activeTab] ? cells[activeTab].length : total))));
         set('--gift', Math.min(Math.round(V * 0.58), 150) + 'px'); set('--shelf-row', row + 'px');
         // the shelf: the biggest items that fit half of them on each side (an item is a little wider than its emoji)
         var per = Math.ceil(nShelf / 2), deco = 14;
@@ -634,35 +928,50 @@
 
       function hint(node, o) { lastHinted = node || null; ctx.hint(node || null, o); }
       function seen(v) { return kit.seen.indexOf(v) >= 0; }
+      /** The name a job is remembered by: a fridge is new to her even after she has fried. */
+      function seenKey(b) { return b.verb === 'fry' && b.job && b.job.prop === 'fridge' ? 'fridge' : b.verb; }
 
       /** Quiet seconds before the hand shows the next thing on side s's board. */
       function idleFor(s) {
         if (s !== aSide) return 10;
         var b = boards[s];
-        if (b.verb && !seen(b.verb)) return 1.5;
+        if (b.verb && !seen(seenKey(b))) return 1.5;
         return [8, 5, 3][ctx.helpFor(aSide)] || 8;
       }
 
-      /** The menu: the newest dish not yet cooked (the first of the starting two on a new kitchen); else the least cooked. */
-      function menuTarget() {
-        var best = null, bestRank = -2;
-        u.recipes.forEach(function (id) {
-          if (kit.cooked[id]) return;
-          var rank = -1;
-          GIFTS.forEach(function (g, i) { if (g.kind === 'recipe' && g.id === id) rank = i; });
-          if (rank > bestRank) { best = id; bestRank = rank; }
-        });
+      /** The dish the hand would show on the menu (only group g's, when given): the newest dish never cooked (the
+       *  highest gift rank; the first of the starting two on a new kitchen), else the least cooked. Ties: menu order. */
+      function menuBest(g) {
+        var ids = u.recipes.filter(function (id) { return !g || GROUP_OF[id].id === g; }), best = null, bestRank = -Infinity;
+        ids.forEach(function (id) { if (!kit.cooked[id] && u.rank[id] > bestRank) { best = id; bestRank = u.rank[id]; } });
         if (!best) {
           var low = Infinity;
-          u.recipes.forEach(function (id) { var n = kit.cooked[id] || 0; if (n < low) { low = n; best = id; } });
+          ids.forEach(function (id) { var n = kit.cooked[id] || 0; if (n < low) { low = n; best = id; } });
         }
-        return best ? menuEl.querySelector('.kt-card[data-id="' + best + '"]') : null;
+        return best;
+      }
+      /** The menu's hand: that dish when its tab is open (or there are no tabs); else the best dish on the open tab;
+       *  else (a tab with only the next present) the tab that holds it. Never the next card, never a hidden card. */
+      function menuTarget() {
+        var id = menuBest(null);
+        if (!id) return null;
+        var card = function (k) { return pageEl.querySelector('.kt-card[data-id="' + k + '"]'); };
+        if (!activeTab || GROUP_OF[id].id === activeTab) return card(id);
+        var local = menuBest(activeTab);
+        return local ? card(local) : railEl.querySelector('.kt-tab[data-group="' + GROUP_OF[id].id + '"]');
       }
 
       /** Where the hand points on a board: always something that moves its job on. */
       function targetOf(b) {
         if (b.verb === 'fetch') return b.parts.right || null;
-        if (b.verb === 'pick') return b.chosen != null ? b.parts.bowls[b.chosen] : b.parts.bowls[1];
+        if (b.verb === 'pick') {
+          // before she chooses: the first variant of this dish not yet made (the middle bowl once all three are), so
+          // following the hand alone cooks every variant over three cooks
+          if (b.chosen != null) return b.parts.bowls[b.chosen];
+          var mk = made(recipeId), i = 0;
+          while (i < 3 && (mk & (1 << i))) i++;
+          return b.parts.bowls[i < 3 ? i : 1];
+        }
         return b.obj;
       }
 
@@ -690,6 +999,7 @@
         ctx.setTurn(null);
         hint(null);
         recipeId = id; recipe = RECIPES[id]; beats = beatsFor(recipe, LEN); beatI = -1;
+        vesselEl.classList.remove('is-baking', 'has-lid');
         catSnacks = 0; chickThisRound = false; highDone = false; fill = 0; pickedChoice = null;
         vesselEl.style.setProperty('--spin0', '0deg'); vesselEl.style.setProperty('--spin1', '0deg');
         vessel = newVessel(recipe.vessel);
@@ -712,13 +1022,15 @@
       }
 
       function jobFor(s, i) { var bt = beats[i]; return bt ? (s === aSide ? bt.a : bt.b) : null; }
+      /** A beat that stirs the dish smooth: a stir, or the blender's big buttons. */
+      function isStir(bt) { return ['stir', 'blend'].indexOf(bt.a.do) >= 0 || ['stir', 'blend'].indexOf(bt.b.do) >= 0; }
 
       function startBeat(i) {
         setState('beat');
         beatI = i;
         var beat = beats[i];
         if (beat.a.do === 'blow' && vessel.kind === 'cake') { vessel.candles = [true, true, true, true, true, true]; renderVessel(); }
-        vesselEl.classList.toggle('is-stirring', beat.a.do === 'stir' || beat.b.do === 'stir');
+        vesselEl.classList.toggle('is-stirring', isStir(beat));
         boards.forEach(function (b) {
           var s = b.side, mine = jobFor(s, i - 1), theirs = jobFor(1 - s, i - 1);
           var entry = mine && mine.to === 'stay' ? 'stay' : theirs && theirs.to === 'across' ? 'across' : 'new';
@@ -729,12 +1041,13 @@
         // the hand: soon on her board when the job is new to her (or it is time to taste), else when someone waits
         var a = boards[aSide];
         if (a.verb === 'taste' || a.verb === 'blow') lastTap[aSide] = ctx.time - idleFor(aSide) + 0.6;
-        else if (!seen(a.verb)) lastTap[aSide] = ctx.time - idleFor(aSide) + 0.5;
+        else if (!seen(seenKey(a))) lastTap[aSide] = ctx.time - idleFor(aSide) + 0.5;
         else lastTap[aSide] = ctx.time;
         lastTap[bSide] = ctx.time;
       }
 
       function setupBoard(b, job, entry) {
+        job = resolveJob(job, pickOf(recipe), variant());    // ('$' -> what she chose: every later use sees the real thing)
         b.job = job; b.verb = job.do; b.n = nFor(job, ctx.helpFor(b.side), TAPOPT); b.k = 0; b.done = false;
         b.nextAt = 0; b.busyUntil = ctx.time + 0.3;           // a moment to see the new job before it can be used up
         b.phase = job.do === 'fry' ? 'heat1' : null; b.heat = 0; b.heat2 = 0;
@@ -827,7 +1140,7 @@
         if (b.obj) b.obj.dataset.k = String(b.k);
         fx.pop(b.check);
         if (b.verb === 'fetch') hideWant(b);
-        if (b.side === aSide && !seen(b.verb)) { kit.seen.push(b.verb); save(); }
+        if (b.side === aSide && !seen(seenKey(b))) { kit.seen.push(seenKey(b)); save(); }
         if (boards[0].done && boards[1].done) {
           if (beatI >= beats.length - 1) finale();
           else merge();
@@ -866,7 +1179,8 @@
               renderVessel();
               renderPips();
               var extra = 0;
-              if (beat.a.do === 'stir' || beat.b.do === 'stir') extra = stirMorph();
+              if (isStir(beat)) extra = stirMorph();
+              if (recipe.bake && i === beats.length - 2) extra += bake(extra);   // (the last topping is on: into the oven)
               later(extra + 250, function () { startBeat(i + 1); });
             });
           });
@@ -890,40 +1204,67 @@
         });
       }
 
-      /** After stirring: everything in the dish swirls into one smooth mix (then a toss of the wok, or the lid). */
+      /** After stirring (or blending): everything in the dish swirls into one smooth mix; what she chose stays on top.
+       *  Then a toss of the wok, the lid, or the blender's whirr. */
       function stirMorph() {
         vesselEl.classList.remove('is-stirring');
         if (!recipe.mix) { burstAt(vesselEl, { emoji: '✨', count: 8, distance: 70, size: 18 }); sfx.play('good'); return 300; }
-        var pot = vessel.kind === 'pot';
+        var kind = vessel.kind, pot = kind === 'pot', blender = kind === 'blender';
         if (!pot) contentsEl.classList.add('is-morph');
+        if (blender) {
+          sfx.play('whoosh');
+          if (!RM) [0, 160, 320].forEach(function (d) { ctx.after(d, function () { anim(vesselEl, [{ transform: 'translateX(-2%)' }, { transform: 'translateX(2%)' }, { transform: 'translateX(0)' }], 140); }); });
+        }
         later(300, function () {
           contentsEl.classList.remove('is-morph');
+          var mix = mixOf();
           vessel.blobs = []; vessel.dots = [];
-          if (pot) { vessel.liq = recipe.mix; vessel.level = 0.6; }                        // soup: the vegetables stay in it
-          else if (vessel.kind === 'bowl') { vessel.pieces = []; vessel.liq = recipe.mix; vessel.level = 0.6; }   // a smooth batter
-          else { vessel.pieces = []; vessel.mix = recipe.mix; }                              // fried rice
+          if (pot) { vessel.liq = mix; vessel.level = 0.6; }                                  // soup: the vegetables stay in it
+          else if (blender) { vessel.pieces = []; vessel.liq = mix; vessel.level = 0.6; }     // everything is blended
+          else if (kind === 'bowl') { vessel.pieces = vessel.pieces.filter(function (p) { return p.pick; }); vessel.liq = mix; vessel.level = 0.6; }   // a smooth batter
+          else { vessel.pieces = vessel.pieces.filter(function (p) { return p.pick; }); vessel.mix = mix; }   // fried rice or noodles, her topping on top
           renderVessel();
           burstAt(vesselEl, { emoji: '✨', count: 8, distance: 70, size: 18 });
           sfx.play('good');
           if (recipe.afterStir === 'toss') {
-            var mix = contentsEl.querySelector('.kt-mix');
-            [0, 280].forEach(function (d) { ctx.after(d + 100, function () { anim(mix, [{ transform: 'translateY(0)' }, { transform: 'translateY(-40%) rotate(-6deg)' }, { transform: 'translateY(0)' }], 260); sfx.play('whoosh'); }); });
+            var mixEl = contentsEl.querySelector('.kt-mix');
+            [0, 280].forEach(function (d) { ctx.after(d + 100, function () { anim(mixEl, [{ transform: 'translateY(0)' }, { transform: 'translateY(-40%) rotate(-6deg)' }, { transform: 'translateY(0)' }], 260); sfx.play('whoosh'); }); });
           } else if (recipe.afterStir === 'lid') {
             vesselEl.classList.add('has-lid');
             [250, 450, 650].forEach(function (d) { ctx.after(d, function () { sfx.play('pop', { pitch: 420 + d * 0.3 }); anim(lidEl, [{ transform: 'translateY(0)' }, { transform: 'translateY(-10%) rotate(3deg)' }, { transform: 'translateY(0)' }], 150); }); });
             ctx.after(850, function () { sfx.play('ding'); vesselEl.classList.remove('has-lid'); burstAt(lidEl, { emoji: '♨️', count: 4, distance: 50, size: 20 }); });
           }
         });
-        return 300 + (recipe.afterStir === 'toss' ? 600 : recipe.afterStir === 'lid' ? 1200 : 0);
+        return 300 + (blender ? 500 : recipe.afterStir === 'toss' ? 600 : recipe.afterStir === 'lid' ? 1200 : 0);
+      }
+
+      /** The pizza goes in the oven (from `at` ms): the door drops over it, glows, dings and lifts: golden, the cheese melted. */
+      function bake(at) {
+        later(at, function () { vesselEl.classList.add('is-baking'); sfx.play('slide'); });
+        later(at + 300, function () {
+          anim(ovenWin, [{ opacity: 0.45 }, { opacity: 0.9 }, { opacity: 0.45 }], 600, { replace: true });
+          [0, 200, 400].forEach(function (d) { ctx.after(d, function () { S.sizzle(0.05); }); });
+          burstAt(vesselEl, { emoji: '♨️', count: 4, distance: 60, size: 18 });
+        });
+        later(at + 700, function () { vessel.baked = true; renderVessel(); });   // (behind the door)
+        later(at + 900, function () {
+          sfx.play('ding');
+          vesselEl.classList.remove('is-baking');
+          burstAt(vesselEl, { emoji: '✨', count: 8, distance: 70, size: 18 });
+        });
+        return 1200;
       }
 
       /** The last beat is done: the dish is finished, the kitchen is saved now, a present, the party. */
       function finale() {
         kit.done++;
         kit.cooked[recipeId] = (kit.cooked[recipeId] || 0) + 1;
+        var madeBefore = made(recipeId);
+        if (pickedChoice != null) kit.made[recipeId] = madeBefore | (1 << pickedChoice);   // the variant she made is remembered
         save();
-        var gift = giftFor(kit.done - 1), had = u;
-        u = unlocks(kit.done);
+        var allThree = madeBefore !== 7 && made(recipeId) === 7;
+        var gift = giftFor(kit.done - 1, kit.legacy), had = u;
+        u = unlocks(kit.done, kit.legacy);
         setState('finale');
         hint(null);
         fill = 1;
@@ -938,6 +1279,8 @@
           showDish();
           if (recipeId === 'cake') S.birthday(); else sfx.play('boost');
         });
+        // the first time all three of a dish's variants are made: stars
+        if (allThree) later(300, function () { burstAt(dishEl, { emoji: '⭐', count: 6, distance: 80, size: 22 }); sfx.play('star'); });
         later(600, function () {
           giftEl.textContent = '';
           giftEl.appendChild(el('span', { class: 'kt-gift__box' }, ctx.sticker('🎁')));
@@ -961,7 +1304,7 @@
       }
 
       function giftFace(g) {
-        if (g.kind === 'recipe') return el('span', { class: 'kt-minicard' }, ctx.sticker(g.e), el('span', { class: 'kt-minicard__new' }, ctx.sticker('✨')));
+        if (g.kind === 'recipe') return el('span', { class: 'kt-minicard', style: { '--tone': 'var(--' + GROUP_OF[g.id].tone + '-soft)' } }, ctx.sticker(g.e), el('span', { class: 'kt-minicard__new' }, ctx.sticker('✨')));
         if (g.kind === 'medal') return el('span', { class: 'kt-medal' }, ctx.sticker(g.e), el('span', { class: 'kt-medal__m' }, ctx.sticker('🏅')));
         if (g.kind === 'tier' && g.n === 3) return el('span', { class: 'kt-signgift' }, ctx.sticker('🏮'), ctx.sticker(players[0].emoji), ctx.sticker(players[1].emoji), ctx.sticker('🏮'));
         return ctx.sticker(g.e);
@@ -970,13 +1313,12 @@
       /** The finished dish: the dish sticker, with what she picked around it (or its colour behind it), and herbs. */
       function showDish() {
         dishEl.textContent = '';
-        var pk = null;
-        beats.forEach(function (bt) { [bt.a, bt.b].forEach(function (j) { if (j.do === 'pick') pk = j; }); });
-        var choice = pk ? pickedChoice : null;
+        var pk = pickOf(recipe), choice = pk ? pickedChoice : null;
         if (pk && choice != null) {
           var e = pk.choices[choice];
           dishEl.dataset.choice = e;
-          if (pk.paint) dishEl.appendChild(el('span', { class: 'kt-dish__disc', style: { '--c': pk.paint[choice] } }));
+          // a colour: the disc behind the dish, and one of what she chose beside it (colour and shape both say which)
+          if (pk.paint) { dishEl.appendChild(el('span', { class: 'kt-dish__disc', style: { '--c': pk.paint[choice] } })); dishEl.appendChild(el('span', { class: 'kt-dish__top', 'data-i': '2' }, ctx.sticker(e))); }
           else for (var t = 0; t < 3; t++) dishEl.appendChild(el('span', { class: 'kt-dish__top', 'data-i': String(t) }, ctx.sticker(e)));
         }
         dishEl.appendChild(el('span', { class: 'kt-dish__main' }, ctx.sticker(recipe.e)));
@@ -1050,7 +1392,7 @@
           if (b.done || b.verb !== 'fry') return;
           if (b.phase === 'heat1' || b.phase === 'heat2') {
             heatStep(b);
-            if (ctx.time - b.sizzleAt >= 0.3) { b.sizzleAt = ctx.time; S.sizzle(0.03); }
+            if (b.job.prop !== 'fridge' && ctx.time - b.sizzleAt >= 0.3) { b.sizzleAt = ctx.time; S.sizzle(0.03); }   // (a fridge is quiet)
           }
         });
       }
@@ -1136,7 +1478,7 @@
         shake: function (b, o) {
           var sh = el('span', { class: 'kt-shaker' }, ctx.sticker(b.job.e));
           o.appendChild(el('span', { class: 'kt-plate-s' }));
-          o.appendChild(el('span', { class: 'kt-fall', style: { '--c': b.job.dots } }));
+          o.appendChild(el('span', { class: 'kt-fall' + (b.job.dots === 'rainbow' ? ' is-rainbow' : ''), style: { '--c': b.job.dots === 'rainbow' ? RAINBOW[0] : b.job.dots } }));
           o.appendChild(sh);
           b.parts = { shaker: sh };
         },
@@ -1147,17 +1489,26 @@
           b.parts = { bits: bits };
         },
         scoop: function (b, o) {
-          var dome = el('span', { class: 'kt-dome' });
+          var dome = el('span', { class: 'kt-dome', 'data-e': b.job.e || '🍚' });   // (noodles look like noodles)
           o.appendChild(el('span', { class: 'kt-ricepot' }, dome, el('span', { class: 'kt-ricepot__body' })));
           var spoon = el('span', { class: 'kt-scoop' }, ctx.sticker('🥄'));
           o.appendChild(spoon);
           b.parts = { dome: dome, spoon: spoon };
         },
         fry: function (b, o) {
-          var job = b.job, food = el('span', { class: 'kt-food' }, ctx.sticker(job.e));
+          var job = b.job, food = el('span', { class: 'kt-food' }, job.e === 'jelly' ? jellyEl(variantColour()) : ctx.sticker(job.e));
           o.classList.add('kt-prop--' + job.prop);
           o.style.setProperty('--cook', '0');
           o.style.setProperty('--side2', '0');
+          if (job.prop === 'fridge') {
+            // a fridge: it chills instead of heating (frost creeps over the window), then the door opens and out it comes
+            o.appendChild(el('span', { class: 'kt-fridge' },
+              el('span', { class: 'kt-fridge__win' }, food, el('span', { class: 'kt-fridge__frost' })),
+              el('span', { class: 'kt-fridge__door' })));
+            o.appendChild(el('span', { class: 'kt-goldspark' }, ctx.sticker('❄️')));
+            b.parts = { food: food, result: food, win: o.querySelector('.kt-fridge__win') };
+            return;
+          }
           if (job.prop === 'pan') {
             o.appendChild(el('span', { class: 'kt-fire' }, ctx.sticker('🔥')));
             o.appendChild(el('span', { class: 'kt-pan' }, el('span', { class: 'kt-pan__handle' })));
@@ -1172,6 +1523,28 @@
           o.appendChild(el('span', { class: 'kt-goldspark' }, ctx.sticker('✨')));
           o.appendChild(el('span', { class: 'kt-steam' }, ctx.sticker('♨️')));
           b.parts = { food: food, result: food };
+        },
+        roll: function (b, o) {
+          // a rolling pin flattens the dough; then a cutter pops out the shape (or the dough itself is the pizza base)
+          var pin = el('span', { class: 'kt-pin' }), dough = el('span', { class: 'kt-dough' }), cutter = el('span', { class: 'kt-cutter' });
+          var cut = b.job.base ? null : el('span', { class: 'kt-cut' }, el('span', { class: 'kt-cut__raw' }, ctx.sticker(b.job.e)));
+          o.appendChild(el('span', { class: 'kt-cboard' }));
+          o.appendChild(dough);
+          if (cut) o.appendChild(cut);
+          o.appendChild(cutter);
+          o.appendChild(pin);
+          o.style.setProperty('--f', '0');
+          b.parts = { pin: pin, dough: dough, cutter: cutter, cut: cut, result: dough };
+        },
+        blend: function (b, o) {
+          // the big button on your own board whirrs the blender in the middle
+          var swirl = ctx.sticker('🌀'), btn = el('span', { class: 'kt-bigbtn' }, swirl);
+          o.appendChild(el('span', { class: 'kt-bjug' }, el('span', { class: 'kt-bjug__fill' })));
+          o.appendChild(el('span', { class: 'kt-bbase' }));
+          o.appendChild(btn);
+          o.style.setProperty('--liq-now', vessel.liq || '#FFF4E0');
+          o.style.setProperty('--fillk', '0.3');
+          b.parts = { btn: btn, swirl: swirl };
         },
         taste: function (b, o) {
           o.appendChild(el('span', { class: 'kt-tbowl' }, el('span', { class: 'kt-tbowl__food' }, ctx.sticker(recipe.e))));
@@ -1217,13 +1590,16 @@
       }
 
       function buildPick(b) {
-        var job = b.job;
+        var job = b.job, mk = made(recipeId);
         var bowlsEl = el('div', { class: 'kt-bowls' });
         var bowls = job.choices.map(function (e, i) {
           var inner = el('span', { class: 'kt-pbowl' });
           if (job.paint) { inner.appendChild(el('span', { class: 'kt-pool', style: { '--c': job.paint[i] } })); inner.appendChild(el('span', { class: 'kt-pbowl__fruit' }, ctx.sticker(e))); }
           else for (var t = 0; t < 3; t++) inner.appendChild(el('span', { class: 'kt-pbowl__bit', 'data-t': String(t) }, ctx.sticker(e)));
-          var bowl = el('button', { type: 'button', class: 'kt-bowl', 'data-i': String(i), 'data-pos': String(i), 'aria-label': 'Bowl' }, inner);
+          // once a variant of this dish has been made, the ones never made wear a sparkle (made ones look normal)
+          var fresh = mk && !(mk & (1 << i));
+          var bowl = el('button', { type: 'button', class: 'kt-bowl' + (fresh ? ' is-fresh' : ''), 'data-i': String(i), 'data-pos': String(i), 'aria-label': 'Bowl' }, inner,
+            fresh ? el('span', { class: 'kt-bowl__new' }, ctx.sticker('✨')) : null);
           bowlsEl.appendChild(bowl);
           return bowl;
         });
@@ -1367,12 +1743,12 @@
         },
         scoop: function (b) {
           anim(b.parts.spoon, [{ transform: 'rotate(0deg)' }, { transform: 'rotate(-30deg) translateY(-12%)' }, { transform: 'rotate(0deg)' }], 260);
-          fly('🍚', b.parts.dome, vesselEl, { ms: 420, size: resultSize() });
+          fly(b.job.e || '🍚', b.parts.dome, vesselEl, { ms: 420, size: resultSize() });
           sfx.play('pop', { pitch: b.k ? 650 : 500 });
           b.k++;
           countAloud(b.k);
           b.obj.style.setProperty('--left', String(1 - b.k / b.n));
-          addPiece('🍚');
+          addPiece(b.job.e || '🍚');
           ctx.after(RM ? 0 : 420, renderVessel);
           if (b.k >= b.n) sfx.play('good');
         },
@@ -1382,6 +1758,7 @@
             if (b.phase === 'heat1') { b.heat = Math.min(0.99, b.heat + 0.15); b.obj.style.setProperty('--cook', b.heat.toFixed(2)); }
             else { b.heat2 = Math.min(0.99, b.heat2 + 0.15); b.obj.style.setProperty('--side2', b.heat2.toFixed(2)); }
             fx.wiggle(b.parts.food);
+            if (b.job.prop === 'fridge') { S.clink(); burstAt(b.parts.win, { emoji: '❄️', count: 3, distance: 30, size: 14 }); return; }
             S.sizzle(0.06);
             if (b.job.prop === 'grill') burstAt(b.obj.querySelector('.kt-coals'), { emoji: '💨', count: 3, distance: 30, size: 14 });
             if (b.job.prop === 'oven') anim(b.obj.querySelector('.kt-oven__win'), [{ opacity: 1 }, { opacity: 0.6 }, { opacity: 1 }], 300, { replace: true });
@@ -1470,20 +1847,54 @@
               else { n.classList.add('is-gone'); n.setAttribute('aria-disabled', 'true'); }
             });
             b.parts.result = bowl;
+            refreshPips();                                     // (the steps that use what she chose now show it)
           }
           var e = job.choices[b.chosen];
           fly(e, b.parts.bowls[b.chosen], vesselEl, { ms: 420, size: resultSize() });
           b.k++;
           countAloud(b.k);
-          addPiece(e);
+          addPiece(e, true, { pick: true });                   // (what she chose is never pushed out of the dish)
           if (job.paint) {
             var to = job.paint[b.chosen];
             if (vessel.kind === 'cake') vessel.frost = mixColor('#FFF4E0', to, b.k / 3);
+            else if (vessel.kind === 'plate' || vessel.kind === 'pizza') vessel.glaze = mixColor('#FFF4E0', to, b.k / 3);   // the donuts' glaze
             else { vessel.liq = mixColor(vessel.liq && vessel.liq !== 'transparent' ? vessel.liq : '#FFF4E0', to, 1 / 3 + (b.k - 1) / 3); vessel.level = Math.max(vessel.level, 0.3); }
             if (b.k === 1) { burstAt(b.parts.bowls[b.chosen], { count: 8, distance: 40, size: 10, colors: [to] }); sfx.play('splash'); }
           }
           ctx.after(RM ? 0 : 420, renderVessel);
           if (b.k >= b.n) sfx.play('star');
+        },
+        roll: function (b) {
+          var p = b.parts, o = b.obj;
+          if (!RM) anim(p.pin, [{ transform: 'translateX(-12%)' }, { transform: 'translateX(12%)' }, { transform: 'translateX(0)' }], 240);
+          b.k++;
+          if (b.k < b.n) {
+            o.style.setProperty('--f', (b.k / (b.n - 1)).toFixed(2));
+            S.fwump(); sfx.scale(b.k + 1);
+            return;
+          }
+          o.style.setProperty('--f', '1');
+          if (b.job.base) {
+            o.classList.add('is-base');                      // the dough is the base: a crust ring
+            S.fwump(); burstAt(p.dough, { emoji: '✨', count: 6, distance: 50, size: 16 });
+            sfx.play('good');
+          } else {
+            o.classList.add('is-cut');                       // the cutter drops in and lifts out: a ring of dough
+            S.chk(); sfx.play('pop'); sfx.play('good');
+            p.result = p.cut;
+          }
+        },
+        blend: function (b) {
+          var p = b.parts;
+          anim(p.btn, [{ transform: 'translateY(0)' }, { transform: 'translateY(8%)' }, { transform: 'translateY(0)' }], 140);
+          anim(p.swirl, [{ transform: 'rotate(0deg)' }, { transform: 'rotate(120deg)' }], 300);
+          b.turns++;
+          vesselEl.style.setProperty('--spin' + b.side, (b.turns * 90) + 'deg');
+          fx.shake(contentsEl);
+          S.whirr(b.k); sfx.scale(b.k + 2);
+          b.k++;
+          b.obj.style.setProperty('--fillk', (0.3 + 0.7 * b.k / b.n).toFixed(2));
+          if (b.k >= b.n) { p.btn.classList.add('is-done'); sfx.play('good'); }
         },
         taste: function (b) {
           var hot = recipe.taste === 'hot', cold = recipe.taste === 'cold';
@@ -1591,17 +2002,18 @@
 
       /* ---- input ---- */
 
-      ctx.tap(menuEl, function (ev, card) {
+      ctx.tap(pageEl, function (ev, card) {
         lastHinted = null;
         menuTap = ctx.time;
         if (ev.target && ev.target.closest && ev.target.closest('.kt-next')) return;   // (slop never snaps the present onto a card)
         pick(card.dataset.id, card);
       }, { delegate: '.kt-card', slop: 24 });
+      ctx.tap(railEl, onTab, { delegate: '.kt-tab', slop: 12 });   // (its own container: slop never turns a tab tap into a card)
       boards.forEach(function (b) { ctx.tap(b.el, function (ev) { onBoard(b.side, ev); }); });
       ctx.tap(wallEl, onWall);
 
       function save() {
-        try { ctx.save('kitchen', { v: 1, done: kit.done, cooked: kit.cooked, chicks: kit.chicks, seen: kit.seen }); } catch (e) { /* storage may be unavailable */ }
+        try { ctx.save('kitchen', { v: 2, done: kit.done, legacy: kit.legacy, cooked: kit.cooked, made: kit.made, chicks: kit.chicks, seen: kit.seen }); } catch (e) { /* storage may be unavailable */ }
       }
 
       /* ---- the clocks: cooking, and the quiet ghost hand ---- */
@@ -1630,7 +2042,13 @@
         get recipe() { return recipeId; },
         get beat() { return beatI; },
         get beats() { return beats.map(function (bt) { return { extra: !!bt.extra, serve: bt.serve || null, a: bt.a.do, b: bt.b.do }; }); },
-        get boards() { return boards.map(function (b) { return { side: b.side, role: b.side === aSide ? 'a' : 'b', do: b.verb, e: b.job ? b.job.e || null : null, n: b.n, k: b.k, done: b.done, phase: b.phase, heat: b.heat, chosen: b.chosen }; }); },
+        get boards() { return boards.map(function (b) { return { side: b.side, role: b.side === aSide ? 'a' : 'b', do: b.verb, e: b.job ? b.job.e || null : null, n: b.n, k: b.k, done: b.done, phase: b.phase, heat: b.heat, chosen: b.chosen, prop: b.job ? b.job.prop || null : null, variant: b.job ? b.job.e || null : null }; }); },
+        /** The bowl she chose this round (null until she chooses). */
+        get variant() { return pickedChoice; },
+        /** The menu's open group tab (null when the menu is one page). */
+        get tab() { return activeTab; },
+        GROUPS: GROUPS,
+        LIST: LIST.length,
         get kitchen() { return JSON.parse(JSON.stringify(kit)); },
         get aSide() { return aSide; },
         /** The element the ghost hand last pointed at (tests follow it). */
@@ -1640,7 +2058,10 @@
         get vessel() {
           return { kind: vessel.kind, pieces: vessel.added, level: vessel.level, fill: fill, liq: vessel.liq, frost: vessel.frost, mix: vessel.mix,
             contents: vessel.pieces.map(function (p) { return p.e; }), kept: vessel.pieces.filter(function (p) { return p.keep; }).map(function (p) { return p.e; }),
-            blobs: vessel.blobs.slice(), rim: vessel.rim.map(function (r) { return r.e; }), dots: vessel.dots.length, drizzles: vessel.drizzles.length, layers: vessel.layers };
+            blobs: vessel.blobs.slice(), rim: vessel.rim.map(function (r) { return r.e; }), dots: vessel.dots.length, drizzles: vessel.drizzles.length, layers: vessel.layers,
+            picks: vessel.pieces.filter(function (p) { return p.pick; }).map(function (p) { return p.e; }), scoops: vessel.scoops.slice(), base: vessel.base, baked: vessel.baked,
+            sauce: vessel.sauce, glaze: vessel.glaze, jellies: vessel.pieces.filter(function (p) { return p.e === 'jelly'; }).map(function (p) { return p.c; }),
+            dotColors: vessel.dots.map(function (d) { return d.c; }) };
         },
         get locked() { return ctx.locked; },
         get events() { return events.slice(); },
@@ -1648,7 +2069,7 @@
         start: function (id) { pick(id, menuEl.querySelector('.kt-card[data-id="' + id + '"]')); },
         setKitchen: function (raw) {
           if (state !== 'menu') return false;
-          kit = cleanKitchen(raw); u = unlocks(kit.done); save();
+          kit = cleanKitchen(raw); u = unlocks(kit.done, kit.legacy); save();
           buildMenu(); buildShelf(); renderTier(); fit();
           hint(null); menuTap = ctx.time;
           return true;
@@ -1661,7 +2082,13 @@
         jump: function (i) {
           if (state !== 'beat' && state !== 'merge') return false;
           i = Math.max(0, Math.min(beats.length - 1, i));
-          for (var j = 0; j < i; j++) if (beats[j].serve) { vessel = newVessel(beats[j].serve); if (vessel.kind === 'cake') vessel.layers = 2; }
+          for (var j = 0; j < i; j++) if (beats[j].serve) {
+            vessel = newVessel(beats[j].serve);
+            if (vessel.kind === 'cake') vessel.layers = 2;
+            if (vessel.kind === 'cone') vessel.scoops = [variantColour(), variantColour()];
+          }
+          if (vessel.kind === 'pizza' && i > 0) vessel.base = true;
+          vesselEl.classList.remove('is-out', 'is-baking', 'has-lid');   // (a jump from the middle of a merge: no flourish is left half-done)
           fill = i / beats.length;
           renderVessel();
           startBeat(i);
@@ -1670,6 +2097,9 @@
         cleanKitchen: cleanKitchen,
         unlocks: unlocks,
         giftFor: giftFor,
+        giftV1: giftV1,
+        restAfter: restAfter,
+        resolveJob: function (job, V, id) { return resolveJob(job, pickOf(RECIPES[id || recipeId]), V); },
         nFor: nFor,
         beatsFor: beatsFor,
         resultOf: resultOf,
