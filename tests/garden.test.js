@@ -247,9 +247,16 @@ h.run(ID, async (t) => {
   assert.deepStrictEqual([f.plots[0].water, f.plots[1].water], [3, 3], 'the next tap waters it, to full');
   assert.ok(await page.locator(bed(0) + '.is-wet').count(), 'wet soil');
   assert.deepStrictEqual((await cues(page)).filter((c) => ['plant', 'water'].includes(c)), ['plant', 'plant', 'water', 'water']);
-  for (let k = 0; k < 8; k++) await tap(page, bed(0));            // mashing it
+  // mashing it: fingers 50ms apart on the real clock (a growing plant drinks as it grows, tickled or not, so a mash
+  // lasting game seconds at 8x would rightly use its water up and then water it again)
+  await fast(page, 1);
+  const mashFrom = (await log(page)).length;
+  for (let k = 0; k < 8; k++) await tap(page, bed(0));
   f = await farm(page);
+  const mashCues = (await log(page)).slice(mashFrom).filter((x) => x.i === 0).map((x) => x.c);
   assert.ok(f.plots[0].crop === 'tomato' && f.plots[0].water >= 2, 'mashing a watered bed only tickles it');
+  assert.ok(mashCues.includes('tickle') && mashCues.every((c) => c === 'tickle' || c === 'tickle-rest'), 'nothing but tickles: ' + mashCues.join(' '));
+  await fast(page, 8);
   // grow (tapping both beds now and then: dry, they are watered; wet, tickled) until they ask for food
   const tapBedIf = (i, maxStage) => page.evaluate(([i, maxStage, id]) => {
     const a = MG.current.api, p = a.farm.plots[i], n = document.querySelector(`.g-garden .gd-plot[data-i="${i}"]`);
@@ -449,7 +456,9 @@ h.run(ID, async (t) => {
   assert.strictEqual((await api(page, 'ghosts'))[0], 'chilli', 'and it shows the chilli the visitor wants');
   await page.waitForTimeout(250);
   await tap(page, bed(0));
-  assert.strictEqual((await farm(page)).plots[0].crop, 'chilli');
+  f = await farm(page);
+  assert.deepStrictEqual([f.plots[0].crop, f.plots[0].stage, f.plots[0].water], ['chilli', 0, 0], 'sown in the damp bed, the new seed still wants its first drink');
+  assert.strictEqual(await page.locator(bed(0) + ' .gd-need').textContent(), '💧', 'and asks for it');
   // a child tapping anything at random still fills the order
   await openGarden(page, { bugs: 'some' });
   await fast(page, 8);
@@ -482,10 +491,11 @@ h.run(ID, async (t) => {
     for (; steps < maxSteps && !(await p.evaluate((s) => (0, eval)('(' + s + ')')(MG.current.api), until.toString())); steps++) {
       const did = await p.evaluate((id) => {
         const a = MG.current.api;
-        if (a.delivering || a.state === 'pop') return 'wait';
+        if (a.state === 'pop') return 'wait';
         if (a.state !== 'play' && a.state !== 'pull') return 'wait';
         a.hintNext();
         const n = a.hinted;
+        if (a.delivering) return n ? 'bad: anything while the hand-over is flying (' + n.className + ')' : 'wait';   // (a giant there cannot be pulled yet)
         if (!n) { a.grow(1); return 'grow'; }
         if (n.closest('.gd-yard')) return 'bad: the yard';
         if (n.classList.contains('gd-plot')) {
@@ -495,6 +505,7 @@ h.run(ID, async (t) => {
           const happy = pl.crop && pl.stage < 4 && pl.water > 0 && !pl.bug && !(pl.stage === 2 && !pl.fed && pl.t >= 0.5);
           const freeing = a.neededSeeds().length && !a.farm.plots.some((q) => !q.crop);
           if (happy && still(pl.crop) <= 0 && !freeing) return 'bad: a happy plant nobody wants yet';
+          if (happy && a.tickleCapped(i)) return 'bad: a bed at its tickle cap';
         }
         const r = n.getBoundingClientRect();
         const ev = { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
@@ -513,6 +524,64 @@ h.run(ID, async (t) => {
   await fast(page, 8);
   let fol = await followHand(page, (a) => a.farm.done >= 1, 260);
   assert.ok((await farm(page)).done === 1, `the ghost hand alone leads to a filled order (${fol.steps} steps)`);
+  await page.waitForTimeout(800);
+  // the care rhythm: following the hand from a fresh garden (and no rain, which waters everything), a plant asks for
+  // water about twice on its way from seed to ripe, once when it is sown and once while it grows; nothing loses its
+  // care fruit for it. Two rounds; every plant counted from its sowing to the moment it is ripe. Then a later garden.
+  const careWatch = (p) => p.evaluate(() => {
+    clearInterval(window.__care);
+    window.__lives = []; window.__open = {}; window.__seen = new Set();
+    window.__care = setInterval(() => {
+      const a = MG.current && MG.current.api;
+      if (!a || !a.farm) return;
+      const f = a.farm;
+      a.log.forEach((x) => {
+        const k = x.t + '|' + x.c + '|' + x.i;
+        if (window.__seen.has(k)) return;
+        window.__seen.add(k);
+        if (x.c === 'plant') window.__open[x.i] = { crop: f.plots[x.i].crop, water: 0 };
+        if (x.c === 'water' && window.__open[x.i]) window.__open[x.i].water++;
+      });
+      f.plots.forEach((p, i) => {
+        const L = window.__open[i];
+        if (L && p.crop === L.crop && p.stage === 4) { L.perfect = p.perfect; window.__lives.push(L); delete window.__open[i]; }
+      });
+    }, 10);
+  });
+  await openGarden(page, { bugs: 'some', farm: { rainIn: 110 } });
+  await careWatch(page);
+  await fast(page, 8);
+  fol = await followHand(page, (a) => a.farm.done >= 1, 260);
+  await page.waitForTimeout(800);
+  await page.evaluate(() => {          // the next round, still without rain; it has a new clock
+    MG.timeScale = 1; MG.home();
+    const f = JSON.parse(localStorage.getItem('mg:game:garden:farm'));
+    f.rainIn = 110; localStorage.setItem('mg:game:garden:farm', JSON.stringify(f));
+    window.__seen = new Set(); MG.open('garden');
+  });
+  await ready(page);
+  await fast(page, 8);
+  fol = await followHand(page, (a) => a.farm.done >= 2, 260);
+  const lives = await page.evaluate(() => { clearInterval(window.__care); return window.__lives; });
+  const WATER_PER_PLANT = 1.8;           // the target: about twice from seed to ripe (0.9-1.4 before plants drank as they grew, and about 1
+                                         // in later gardens before a seed was sown in dry soil and the fountain only gave dry plants a sip; 2.0 now)
+  const perPlant = lives.reduce((s, x) => s + x.water, 0) / lives.length;
+  assert.ok((await farm(page)).done === 2 && lives.length >= 3, `two rounds following the hand: ${lives.length} plants grew from seed to ripe`);
+  assert.ok(perPlant >= WATER_PER_PLANT, `a plant is watered about twice from seed to ripe: ${perPlant.toFixed(2)} per plant (${lives.map((x) => x.crop + ' ' + x.water).join(', ')})`);
+  assert.ok(lives.every((x) => x.water >= 1 && x.water <= 3), 'every plant: at least once, never more than three times');
+  assert.ok(lives.every((x) => x.perfect), 'following the hand, every plant keeps its care fruit: ' + JSON.stringify(lives));
+  await page.waitForTimeout(800);
+  // a later garden: nine beds still wet from before (a seed is sown in dry soil all the same) and the fountain (it only
+  // gives a plant that has run dry a sip) take nothing away from it
+  await openGarden(page, { bugs: 'some', farm: { done: 12, giants: 1, rainIn: 110, plots: Array.from({ length: 9 }, () => ({ water: 3 })) } });
+  await careWatch(page);
+  await fast(page, 8);
+  fol = await followHand(page, (a) => a.farm.done >= 13, 400);
+  const later = await page.evaluate(() => { clearInterval(window.__care); return window.__lives; });
+  const laterPer = later.reduce((s, x) => s + x.water, 0) / later.length;
+  assert.ok((await farm(page)).done === 13 && later.length >= 2, `a later garden, following the hand: ${later.length} plants grew from seed to ripe (${fol.steps} steps)`);
+  assert.ok(laterPer >= WATER_PER_PLANT, `in a later garden too, a plant is watered about twice: ${laterPer.toFixed(2)} per plant (${later.map((x) => x.crop + ' ' + x.water).join(', ')})`);
+  assert.ok(later.every((x) => x.water >= 1 && x.water <= 3 && x.perfect), 'every plant: one to three times, and it keeps its care fruit: ' + JSON.stringify(later));
   await page.waitForTimeout(800);
   // and through a giant pull to a filled order
   await openGarden(page, { farm: { done: 3, giants: 0, rainIn: 110, order: { who: '🐰', want: { carrot: 3 }, got: {} }, plots: [P('carrot', 3, { t: 0.99, fed: 'leaf' }), P('tomato', 2, { t: 0.1, fed: 'bone' }), null, null, null, null] } });
@@ -571,22 +640,25 @@ h.run(ID, async (t) => {
   assert.ok(await page.evaluate(() => MG.current.api.giant(0)), 'a giant in bed 0');
   await tap(page, bed(0), 0);
   await page.evaluate(() => {
-    window.__most = 0;
+    window.__acts = []; window.__seen = new Set(MG.current.api.log.map((x) => x.t + '|' + x.c + '|' + x.i));   // (only what the mash does)
+    const sync = () => MG.current.api.log.forEach((x) => { const k = x.t + '|' + x.c + '|' + x.i; if (!window.__seen.has(k)) { window.__seen.add(k); window.__acts.push(x); } });
     window.__mash = setInterval(() => {
       for (let k = 0; k < 4; k++) {
         const n = document.querySelectorAll('.g-garden .gd-pull__half')[k % 2], r = n.getBoundingClientRect(), id = 9000 + Math.floor(Math.random() * 1e6);
         const o = { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
         n.dispatchEvent(new PointerEvent('pointerdown', o)); n.dispatchEvent(new PointerEvent('pointerup', o));
-        const pl = MG.current.api.pull;
-        if (pl) window.__most = Math.max(window.__most, pl.pulled - pl.need);
+        sync();
       }
     }, 15);
   });
   await page.waitForTimeout(2000);
-  const mash = await page.evaluate(() => { clearInterval(window.__mash); return { most: window.__most, giants: MG.current.api.farm.giants, log: MG.current.api.log }; });
-  assert.deepStrictEqual([mash.giants, mash.most <= 0], [2, true], 'mashing: exactly one more giant, never pulled past the top');
+  const mash = await page.evaluate(() => { clearInterval(window.__mash); return { giants: MG.current.api.farm.giants, acts: window.__acts }; });
+  const mashed = mash.acts.map((x) => x.c), outAt = mashed.indexOf('pull-done');
+  assert.strictEqual(mashed.filter((c) => c === 'pull-done').length, 1, 'mashing: the giant comes out once: ' + mashed.join(' '));
+  assert.ok(outAt > 0 && mashed.slice(outAt + 1).every((c) => !c.startsWith('heave')), 'and no heave counts once it is out: ' + mashed.join(' '));
+  assert.strictEqual(mash.giants, 2, 'exactly one more giant');
   for (const s of [0, 1]) {
-    const ts = mash.log.filter((x) => x.c === 'heave' + s).map((x) => x.t);
+    const ts = mash.acts.filter((x) => x.c === 'heave' + s).map((x) => x.t);
     for (let k = 1; k < ts.length; k++) assert.ok(ts[k] - ts[k - 1] >= 0.15 - 0.01, `one heave at a time on each side: ${ts.join(', ')}`);
   }
   await page.waitForFunction(() => MG.current.api.state === 'play', null, { timeout: 2500 });
@@ -602,6 +674,55 @@ h.run(ID, async (t) => {
   assert.deepStrictEqual([f.plots[0].crop, f.plots[0].stage, f.plots[0].giant, f.giants], ['pumpkin', 4, true, 2], 'left mid-pull: the giant is still there');
   await tap(page, bed(0), 0);
   assert.strictEqual(await api(page, 'state'), 'pull', 'and a tap pulls again');
+  // the last hand-over is flying and someone taps the ripe giant (the hand used to point there): no pull now, and the
+  // round still ends with the thank-you and the party (it used to stay filled and unthanked for ever)
+  const raceFarm = (want, basket) => ({ done: 13, giants: 1, rainIn: 110, basket, order: { who: '🐷', want, got: {} },
+    plots: [P('potato', 4, { giant: true, fruits: 3 }), P('tomato', 2, { t: 0.1, fed: 'bone' }), null, null, null, null, null, null, null] });
+  const watchHand = () => page.evaluate(() => {
+    window.__onBed = []; window.__pulled = false;
+    window.__watch = setInterval(() => {
+      const a = MG.current.api;
+      if (a.state === 'pull') window.__pulled = true;
+      if (a.delivering && a.hinted && a.hinted.classList.contains('gd-plot')) window.__onBed.push(+MG.current.ctx.time.toFixed(2));
+    }, 5);
+  });
+  const handOnVisitor = () => page.waitForFunction(() => MG.current.api.hinted && MG.current.api.hinted.classList.contains('gd-visitor'), null, { timeout: 4000 });
+  await openGarden(page, { farm: raceFarm({ tomato: 2, carrot: 2 }, { tomato: 2, carrot: 2 }) });
+  assert.deepStrictEqual((await farm(page)).plots[0].giant, true, 'a ripe giant in bed 0, and a basket that fills the order');
+  await handOnVisitor();                                            // (the hand shows the visitor; tapping it brings the next hand sooner)
+  await watchHand();
+  const t0 = await page.evaluate(() => MG.current.ctx.time);
+  await tap(page, '.g-garden .gd-visitor', 250);
+  rd = await tapRead(page, bed(0), (a) => [a.delivering, a.state]);
+  assert.deepStrictEqual([rd.before, rd.after[1]], [[true, 'play'], 'play'], 'the giant tapped 250ms into the hand-over: a squash, no pull');
+  for (let k = 0; k < 30 && (await api(page, 'state')) === 'pull'; k++) await tap(page, half(k % 2), 200);   // (were a pull open after all: out with it)
+  await page.waitForFunction(() => MG.current.api.state === 'gift', null, { timeout: 6000 }).catch(() => {});
+  const race = await page.evaluate((t0) => { clearInterval(window.__watch); const a = MG.current.api; return { state: a.state, done: a.farm.done, t: MG.current.ctx.time - t0, onBed: window.__onBed, pulled: window.__pulled, giant: a.farm.plots[0].giant }; }, t0);
+  assert.ok(race.state === 'gift' && race.t <= 4, `the round still ends: the thank-you ${race.t.toFixed(2)} game s after the visitor was tapped (${race.state})`);
+  assert.strictEqual(race.done, 14, 'the order counts, once');
+  assert.ok(!race.pulled && race.giant, 'the giant waits in its bed for later');
+  assert.deepStrictEqual(race.onBed, [], 'the hand is never on a bed while the hand-over is flying');
+  await t.waitForWin(page, 6000);
+  // a long hand-over that does not fill the order: no hand while it flies, then straight back to the giant
+  await openGarden(page, { farm: raceFarm({ tomato: 2, carrot: 3, potato: 1 }, { tomato: 2, carrot: 3 }) });
+  await handOnVisitor();
+  await watchHand();
+  await tap(page, '.g-garden .gd-visitor', 0);
+  await page.waitForFunction(() => !MG.current.api.delivering, null, { timeout: 4000 });
+  await page.waitForTimeout(250);
+  const long = await page.evaluate(() => { clearInterval(window.__watch); const a = MG.current.api; return { onBed: window.__onBed, after: a.hinted && a.hinted.dataset.i, shown: !!document.querySelector('.mg-hint'), state: a.state }; });
+  assert.deepStrictEqual(long.onBed, [], 'five things handed over: the hand is never on a bed meanwhile');
+  assert.deepStrictEqual([long.state, long.after, long.shown], ['play', '0', true], 'and once they have landed, it shows the giant');
+  // left during the last hand-over: when they come back, the visitor still says thank you (the gift and the party)
+  await openGarden(page, { farm: { done: 5, rainIn: 110, basket: { tomato: 2, chilli: 2 }, order: { who: '🐷', want: { tomato: 2, chilli: 2 }, got: {} } } });
+  await tap(page, '.g-garden .gd-visitor', 300);
+  const left = await page.evaluate(() => { MG.home(); return JSON.parse(localStorage.getItem('mg:game:garden:farm')); });
+  assert.deepStrictEqual([left.done, left.order.got], [5, { tomato: 2, chilli: 2 }], 'left with the order filled but not yet thanked for');
+  await page.evaluate(() => MG.open('garden'));
+  await page.waitForFunction(() => MG.current && MG.current.api && MG.current.api.state === 'gift', null, { timeout: 4000 });
+  await t.waitForWin(page, 6000);
+  const back = await page.evaluate(() => ({ done: MG.current.api.farm.done, log: MG.current.api.log.map((x) => x.c) }));
+  assert.ok(back.done === 6 && back.log[0] === 'arrive' && back.log.includes('thanks0') && back.log.includes('gift-from-visitor'), 'back again: the visitor knocks, then thanks them with a present: ' + back.log.join(' '));
   // the hand: the little one's side first, then whoever has pulled less; following it alone gets it out
   const pg = await t.open(ID);
   await pg.evaluate(() => { localStorage.setItem('mg:players', JSON.stringify([{ emoji: '🐰', color: 'berry', little: false }, { emoji: '🐻', color: 'sea', little: true }])); });
@@ -647,12 +768,24 @@ h.run(ID, async (t) => {
   assert.strictEqual((await farm(page)).plots[2].fed, null, 'a tap on a hungry plant uses nothing up');
   await page.evaluate(() => MG.current.api.rain());
   assert.ok((await farm(page)).plots.every((p) => p.water === 3), 'rain waters every bed');
+  // a plant that waits (for its food, or for the bug to go) is not growing, so it drinks nothing meanwhile
+  await setFarm(page, { done: 0, rainIn: 110, plots: [P('chilli', 2, { t: 0.6, water: 1 }), P('tomato', 1, { t: 0.3, water: 1, bug: '🐛' }), null, null] });
+  await grow(page, 30);
+  f = await farm(page);
+  assert.deepStrictEqual(f.plots.slice(0, 2).map((p) => [p.stage, p.t, p.water]), [[2, 0.6, 1], [1, 0.3, 1]], 'waiting for food or for the bug to go, a plant drinks nothing');
 
   // ===================================================================== 9. helpers, the puppy, the yard, the tree
   await setFarm(page, { done: 3, rainIn: 110, plots: [P('tomato', 1), P('chilli', 2, { t: 0.1 }), null, null, null, null] });
   await page.evaluate(() => MG.current.api.bug(0));
   await grow(page, 10);
   assert.strictEqual((await farm(page)).plots[0].bug, null, 'the ladybird ate it');
+  // the fountain: now and then it sends a sip to every plant that has run dry, and only to those (watering stays a job)
+  await setFarm(page, { done: 12, rainIn: 110, plots: [P('tomato', 1, { t: 0.3, water: 0 }), P('chilli', 2, { t: 0.6, water: 2 }), null, null, null, null, null, null, null] });
+  const fountainFrom = await page.evaluate(() => MG.current.ctx.time - 0.01);   // (cues keep the time to the millisecond)
+  await grow(page, 16);
+  const sips = (await log(page)).filter((x) => x.c === 'fountain' && x.t >= fountainFrom).map((x) => x.i);
+  assert.ok(sips.includes(0) && !sips.includes(1), 'the fountain gives the dry bed a sip: ' + sips);
+  assert.strictEqual((await farm(page)).plots[1].water, 2, 'and leaves a bed that still has water as it is');
   await setFarm(page, { done: 0, rainIn: 110, plots: [P('tomato', 1), P('chilli', 1), P('tomato', 2, { fed: 'bone' }), P('chilli', 1)] });
   for (let k = 0; k < 8; k++) { await grow(page, 5); await page.evaluate(() => MG.current.api.rain()); }
   assert.ok((await farm(page)).plots.every((p) => !p.bug), 'no bugs when bugs are off');
@@ -682,12 +815,23 @@ h.run(ID, async (t) => {
   await setFarm(page, { done: 12, rainIn: 110, plots: [P('tomato', 4, { fruits: 2 })] });
   // a tap in the yard: things hop and make their sounds, and nothing changes
   const before = await page.evaluate(() => ({ lastTap: MG.current.api.lastTap, plots: JSON.stringify(MG.current.api.farm.plots), basket: JSON.stringify(MG.current.api.farm.basket) }));
+  const yardT0 = await page.evaluate(() => MG.current.ctx.time);
   await tap(page, '.g-garden .gd-tree', 0);
   for (let k = 0; k < 9; k++) { await page.waitForTimeout(50); await tap(page, k % 2 ? '.g-garden .gd-yard__items .gd-yard__item' : '.g-garden .gd-tree', 0); }
+  const yardT1 = await page.evaluate(() => MG.current.ctx.time);
   const after = await page.evaluate(() => ({ lastTap: MG.current.api.lastTap, plots: JSON.stringify(MG.current.api.farm.plots), basket: JSON.stringify(MG.current.api.farm.basket) }));
-  const pokes = (await cues(page)).filter((c) => c.startsWith('poke:'));
-  assert.ok(pokes[0] === 'poke:🌳' && pokes.length <= 4, 'poking the tree: a rustle; ten taps in half a second: a few pokes (' + pokes.join(' ') + ')');
+  const pokeLog = (await log(page)).filter((x) => x.c.startsWith('poke:')), pokes = pokeLog.map((x) => x.c);
+  const mostPokes = Math.floor((yardT1 - yardT0) / 0.15) + 1;       // (bounded by the game time the ten taps took, however long that was)
+  assert.ok(pokes[0] === 'poke:🌳' && pokes.length >= 2 && pokes.length <= mostPokes, `poking the tree: a rustle; ten taps in ${(yardT1 - yardT0).toFixed(2)} game s: at most one poke each 0.15s (${pokes.length} of at most ${mostPokes}: ${pokes.join(' ')})`);
+  for (let k = 1; k < pokeLog.length; k++) assert.ok(pokeLog[k].t - pokeLog[k - 1].t >= 0.15 - 0.002, 'pokes 0.15s apart or more: ' + pokeLog.map((x) => x.t).join(', '));
   assert.deepStrictEqual(after, before, 'the yard is just for fun: it changes nothing, and does not count as doing something');
+  // and a poke never takes the ghost hand away (it used to vanish until the next idle moment)
+  await page.waitForTimeout(200);
+  await page.evaluate(() => MG.current.api.hintNext());
+  rd = await tapRead(page, '.g-garden .gd-tree', (a) => [!!document.querySelector('.mg-hint'), a.hinted && a.hinted.className]);
+  assert.ok(rd.before[0] && rd.before[1], 'the hand is showing a job: ' + JSON.stringify(rd.before));
+  assert.deepStrictEqual(rd.after, rd.before, 'poking the tree: the hand stays where it was');
+  assert.strictEqual((await cues(page)).pop(), 'poke:🌳');
   // our tree grows during a thank-you (at 3 orders, not at 4); from 25 orders it gives the visitor a mango
   for (const [done, grows, mango] of [[2, true, false], [3, false, false], [25, false, true]]) {
     await openGarden(page, { farm: { done, rainIn: 110, basket: { tomato: 3, chilli: 3 }, order: { who: '🐷', want: { tomato: 1, chilli: 1 }, got: {} } } });
@@ -764,11 +908,13 @@ h.run(ID, async (t) => {
 
   // ===================================================================== 13. every size, both ways round
   const shotDir = process.env.MG_SHOTS || path.join(h.ROOT, 'tests', 'shots');
-  for (const vp of ['small', 'phone', 'phoneWide', 'tabletTall', 'tablet']) {
+  const SIZES = { tiny: { width: 568, height: 320 } };            // a small phone held sideways
+  for (const vp of ['small', 'phone', 'phoneWide', 'tabletTall', 'tablet', 'tiny']) {
     const dark = vp === 'phoneWide' || vp === 'tablet';
-    const p = await t.open(ID, { viewport: vp, dark, reducedMotion: vp === 'tabletTall' });
+    const small = vp === 'small' || vp === 'tiny';
+    const p = await t.open(ID, { viewport: SIZES[vp] || vp, dark, reducedMotion: vp === 'tabletTall' });
     await ready(p);
-    for (const done of [0, 3, 6, 23, 40]) {
+    for (const done of vp === 'tiny' ? [3, 6, 23] : [0, 3, 6, 23, 40]) {
       const n = done >= 6 ? 9 : done >= 2 ? 6 : 4;
       const crops = done >= 12 ? ALL : done >= 6 ? ALL.slice(0, 5) : done >= 1 ? ALL.slice(0, 3) : ALL.slice(0, 2);
       const plots = Array.from({ length: n }, (_, i) => {
@@ -783,29 +929,38 @@ h.run(ID, async (t) => {
       assert.deepStrictEqual(await t.outsidePlayArea(p, sel + ', .g-garden .gd-yard__item, .g-garden .gd-tree'), [], `in view ${label}`);
       const min = (await t.minTargetSize(p, sel)).min;
       assert.ok(min >= 64, `big enough ${label}: ${min}px`);
+      const inset = await p.evaluate((sel) => {
+        const g = document.querySelector('#mg-game').getBoundingClientRect();
+        return Math.min(...[...document.querySelectorAll(sel)].map((n) => n.getBoundingClientRect()).filter((r) => r.width).map((r) => Math.min(r.left - g.left, r.top - g.top, g.right - r.right, g.bottom - r.bottom)));
+      }, sel);
+      assert.ok(inset >= 12 - 0.5, `every target 12px or more inside the play area ${label}: ${inset.toFixed(1)}px`);
       assert.ok(await t.noPageScroll(p), `no page scroll ${label}`);
       assert.deepStrictEqual(await overlaps(p, sel + ', .g-garden .gd-yard__item'), [], `nothing overlaps (the yard included) ${label}`);
       assert.deepStrictEqual(await escapes(p, '.g-garden .gd-need, .g-garden .gd-unripe, .g-garden .gd-peek, .g-garden .gd-label, .g-garden .gd-stake, .g-garden .gd-marker', '.gd-plot', 1), [], `what is drawn in a bed stays in it ${label}`);
       assert.deepStrictEqual(await escapes(p, '.g-garden .gd-pile', '.gd-basket', 0), [], `every pile shows inside the basket ${label}`);
       const pileSize = await p.evaluate(() => Math.min(...[...document.querySelectorAll('.g-garden .gd-pile .mg-sticker')].map((n) => n.getBoundingClientRect().height)));
-      assert.ok(pileSize >= (vp === 'small' ? 12 : 16), `basket vegetables big enough to see ${label}: ${Math.round(pileSize)}px`);
+      assert.ok(pileSize >= (small ? 12 : 16), `basket vegetables big enough to see ${label}: ${Math.round(pileSize)}px`);
       const yard = await p.evaluate(() => {
         const a = MG.current.api, f = a.farm;
         const items = [...document.querySelectorAll('.g-garden .gd-yard__items > .gd-yard__item')];
         const tree = document.querySelector('.g-garden .gd-tree').getBoundingClientRect();
         return { n: items.length, want: Object.keys(f.helpers).length + f.decor.length, min: Math.min(...items.map((x) => parseFloat(getComputedStyle(x.firstChild).fontSize))), tree: Math.min(tree.width, tree.height),
+          poke: document.querySelector('.g-garden .gd-yard').dataset.poke,
           cols: getComputedStyle(document.querySelector('.g-garden .gd-beds')).gridTemplateColumns.split(' ').length, cell: document.querySelector('.g-garden .gd-plot').getBoundingClientRect().width,
           labels: document.querySelectorAll('.g-garden .gd-label').length, text: document.querySelector('.g-garden').innerText.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}\s]/gu, '') };
       });
       assert.strictEqual(yard.n, yard.want, `every helper and decoration is in the yard ${label}`);
       if (done === 40) assert.strictEqual(yard.n, 14);
-      if (yard.n) assert.ok(yard.min >= (vp === 'small' ? 17 : 24), `yard stickers big enough ${label}: ${yard.min}px`);
-      assert.ok(yard.tree >= 64, `our tree is big enough ${label}: ${yard.tree}px`);
+      if (yard.n) assert.ok(yard.min >= (small ? 17 : 24), `yard stickers big enough ${label}: ${yard.min}px`);
+      if (yard.poke === 'on') assert.ok(yard.tree >= 64, `our tree is big enough ${label}: ${yard.tree}px`);
+      // (only nine beds on a small phone held sideways take room from the yard; it stops taking taps, so it is no target)
+      else assert.ok(vp === 'tiny' && n === 9 && yard.tree >= 48, `the yard gave its room to the beds only where it must ${label}: ${yard.tree}px`);
+      if (vp === 'tiny' && n === 9) assert.ok(yard.cell >= 64 && yard.poke === 'off', `nine beds on a small phone held sideways: 64px or more (${yard.cell}px)`);
       assert.strictEqual(yard.text, '', `nothing to read ${label}`);
       if (n === 6 && vp === 'phone') assert.ok(yard.cols === 2 && yard.cell >= 135, `six beds on a tall phone: two big columns ${label}: ${yard.cols} x ${yard.cell}px`);
       if (n === 6 && vp === 'small') assert.strictEqual(yard.cols, 3, `six beds on a small phone: three columns ${label}`);
       if (n === 9 && vp === 'phone') assert.ok(yard.labels > 0, `labels on the beds ${label}`);
-      if (n === 9 && vp === 'small') assert.strictEqual(yard.labels, 0, `no labels on the smallest beds ${label}`);
+      if (n === 9 && small) assert.strictEqual(yard.labels, 0, `no labels on the smallest beds ${label}`);
       if (done === 23) await t.shot(p, `${ID}-${vp}.png`);
     }
     // a rainbow over the beds, in view

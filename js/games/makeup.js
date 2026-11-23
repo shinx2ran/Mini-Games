@@ -133,19 +133,19 @@
   /* ---------------------------------------------------------- the parties */
 
   var PARTIES = {
-    party:   { e: '🎉', bg: 'sun',  deco: ['🎈', '🎉', '🎈'], zones: ['cheeks', 'eyes', 'mouth', 'top'], extra: ['eyes'],
+    party:   { e: '🎉', bg: 'sun',  deco: ['🎈', '🎉', '🎈'], zones: ['cheeks', 'eyes', 'mouth', 'neck', 'top'], extra: ['eyes', 'neck'],
                sig: { cheeks: 'star', eyes: 'specs', mouth: 'lips-red', top: 'cone', sparkle: 'gold' } },
-    circus:  { e: '🎪', bg: 'stripes', deco: ['🎪', '🎈', '⭐'], zones: ['cheeks', 'nose', 'mouth', 'top'], extra: ['mouth'],
+    circus:  { e: '🎪', bg: 'stripes', deco: ['🎪', '🎈', '🤹'], zones: ['cheeks', 'eyes', 'nose', 'mouth', 'top'], extra: ['eyes', 'mouth'],
                sig: { cheeks: 'dots', nose: 'clown', mouth: 'smile', top: 'wig', sparkle: 'stars' } },
-    hero:    { e: '⚡', bg: 'sea',  deco: ['💥', '🏙️', '⚡'], zones: ['eyes', 'cheeks', 'mouth', 'neck'], extra: ['mouth'],
+    hero:    { e: '⚡', bg: 'sea',  deco: ['💥', '🏙️', '⚡'], zones: ['eyes', 'cheeks', 'nose', 'mouth', 'neck'], extra: ['nose', 'mouth'],
                sig: { eyes: 'mask-red', cheeks: 'bolt', neck: 'cape', sparkle: 'stars' } },
-    jungle:  { e: '🐯', bg: 'leaf', deco: ['🌴', '🐒', '🌿'], zones: ['cheeks', 'nose', 'eyes', 'top'], extra: ['eyes'],
+    jungle:  { e: '🐯', bg: 'leaf', deco: ['🌴', '🐒', '🌿'], zones: ['cheeks', 'nose', 'eyes', 'mouth', 'top'], extra: ['eyes', 'mouth'],
                sig: { cheeks: 'stripes', nose: 'whiskers', top: 'leaves', sparkle: 'flowers' } },
-    royal:   { e: '👑', bg: 'grape', deco: ['🏰', '✨', '💎'], zones: ['eyes', 'mouth', 'neck', 'top'], extra: ['eyes'],
-               sig: { eyes: 'lashes', mouth: 'lips-plum', neck: 'pearls', top: 'crown', sparkle: 'gold' } },
-    beach:   { e: '🏖️', bg: 'sea-soft', deco: ['☀️', '🌊', '🐚'], zones: ['eyes', 'nose', 'neck', 'top'], extra: ['neck'],
-               sig: { eyes: 'shades', nose: 'cream', neck: 'lei', top: 'sunhat', sparkle: 'hearts' } },
-    space:   { e: '🚀', bg: 'night', deco: ['🌙', '⭐', '🛸'], zones: ['cheeks', 'eyes', 'mouth', 'top'], extra: ['mouth'],
+    royal:   { e: '👑', bg: 'grape', deco: ['🏰', '✨', '💎'], zones: ['cheeks', 'eyes', 'mouth', 'neck', 'top'], extra: ['cheeks', 'eyes'],
+               sig: { cheeks: 'gem', eyes: 'lashes', mouth: 'lips-plum', neck: 'pearls', top: 'crown', sparkle: 'gold' } },
+    beach:   { e: '🏖️', bg: 'sea-soft', deco: ['☀️', '🌊', '🐚'], zones: ['cheeks', 'eyes', 'nose', 'neck', 'top'], extra: ['cheeks', 'neck'],
+               sig: { cheeks: 'shell', eyes: 'shades', nose: 'cream', neck: 'lei', top: 'sunhat', sparkle: 'hearts' } },
+    space:   { e: '🚀', bg: 'night', deco: ['🌙', '🛸', '⭐'], zones: ['cheeks', 'eyes', 'nose', 'mouth', 'top'], extra: ['nose', 'mouth'],
                sig: { cheeks: 'moon', eyes: 'goggles', top: 'antennae', sparkle: 'dust' } },
     rainbow: { e: '🌈', bg: 'rainbow', deco: ['🌈', '🎤', '✨'], zones: ['cheeks', 'eyes', 'nose', 'mouth', 'top'], extra: ['nose'],
                sig: { cheeks: 'rainbow', eyes: 'shadow-grape', top: 'horn', sparkle: 'rainbow-dust' } },   // the capstone show
@@ -191,32 +191,34 @@
   /* ---------------------------------------------------------- the kinds */
 
   // n/plus: base dabs and the grown-up's extra; fixed: [hers, his] whatever the options; named: slots with a look of their own
-  // (dabs past them add a spare sparkle); clip: drawn inside the skin; react/sound are per item (ITEMS.r) and per kind (S)
+  // (dabs past them add a spare sparkle); clip: drawn inside the skin; react/sound are per item (ITEMS.r) and per kind (S).
+  // At Normal with help Some (the default) every step but the pose is 3 taps for her: base 4 less one for the help, and 3 for
+  // every fixed kind. That is what makes a Full round last about a minute (see zonesFor).
   var KINDS = {
-    foam:     { n: 3, plus: 0, clip: true, named: 3 },
-    blush:    { n: 2, plus: 1, clip: true, named: 3 },
-    stamp:    { n: 2, plus: 1, named: 3 },
-    dots:     { n: 2, plus: 1, clip: true, named: 3 },
-    stripes:  { n: 2, plus: 1, clip: true, named: 3 },
-    shadow:   { n: 2, plus: 1, clip: true, named: 3 },
-    lashes:   { n: 2, plus: 1, named: 3 },
-    googly:   { n: 2, plus: 1, named: 3 },
-    glasses:  { fixed: [2, 2], named: 2 },
-    mask:     { n: 2, plus: 0, named: 3 },
-    ball:     { fixed: [2, 2], named: 2 },
-    tip:      { fixed: [2, 2], named: 2 },
-    whisk:    { fixed: [2, 2], named: 3 },
-    cream:    { n: 2, plus: 1, clip: true, named: 3 },
-    lips:     { n: 2, plus: 1, named: 3 },
-    smile:    { fixed: [2, 2], named: 2 },
-    stache:   { n: 2, plus: 1, named: 3 },
-    bowtie:   { fixed: [2, 2], named: 2 },
-    cape:     { fixed: [2, 2], named: 2 },
-    wear:     { fixed: [1, 2], named: 2 },
-    ring:     { n: 2, plus: 1, named: 3 },
-    cone:     { fixed: [1, 2], named: 2 },
-    wig:      { n: 2, plus: 1, named: 3 },
-    antennae: { fixed: [2, 2], named: 2 },
+    foam:     { n: 4, plus: 0, clip: true, named: 3 },
+    blush:    { n: 4, plus: 1, clip: true, named: 3 },
+    stamp:    { n: 4, plus: 1, named: 3 },
+    dots:     { n: 4, plus: 1, clip: true, named: 3 },
+    stripes:  { n: 4, plus: 1, clip: true, named: 3 },
+    shadow:   { n: 4, plus: 1, clip: true, named: 3 },
+    lashes:   { n: 4, plus: 1, named: 3 },
+    googly:   { n: 4, plus: 1, named: 3 },
+    glasses:  { fixed: [3, 3], named: 2 },
+    mask:     { n: 4, plus: 0, named: 3 },
+    ball:     { fixed: [3, 3], named: 2 },
+    tip:      { fixed: [3, 3], named: 2 },
+    whisk:    { fixed: [3, 3], named: 3 },
+    cream:    { n: 4, plus: 1, clip: true, named: 3 },
+    lips:     { n: 4, plus: 1, named: 3 },
+    smile:    { fixed: [3, 3], named: 2 },
+    stache:   { n: 4, plus: 1, named: 3 },
+    bowtie:   { fixed: [3, 3], named: 2 },
+    cape:     { fixed: [3, 3], named: 2 },
+    wear:     { fixed: [3, 3], named: 2 },
+    ring:     { n: 4, plus: 1, named: 3 },
+    cone:     { fixed: [3, 3], named: 2 },
+    wig:      { n: 4, plus: 1, named: 3 },
+    antennae: { fixed: [3, 3], named: 2 },
     glitter:  { fixed: [3, 3], named: 3 },
     pose:     { fixed: [1, 1], named: 1 },
   };
@@ -319,7 +321,10 @@
     return clamp(K.n + (isB ? K.plus : 0) + (DABS[dabs] || 0) - (help || 0), 1, 6);
   }
 
-  /** The zones of a round: Full washes first and keeps the party's extra zone; both end with sparkle and pose. */
+  /** The zones of a round: Full washes first and keeps the party's two extra zones (8 steps); Short drops them (5; the
+   *  capstone 6); both end with sparkle and pose. Measured in game seconds, card tap to the party, help Some: with real taps
+   *  (her one every 2s, his every 1s) Full about 57-58s, Short about 35-36s, the capstone about 58s (Short 43s);
+   *  following only the ghost hand on a new salon, Full about 90s (96s at help Off), Short about 57s, the capstone about 98s. */
   function zonesFor(party, length) {
     if (typeof party === 'string') party = PARTIES[party];
     var mid = party.zones.filter(function (z) { return length === 'full' || party.extra.indexOf(z) < 0; });
@@ -968,46 +973,85 @@
 
       function menuCount() { return u.parties.length + (u.next ? 1 : 0); }
 
+      /** The step pips across `room` px: one row when they fit at 20px or more (closing up to 2px apart first), else two
+       *  (or three) rows; never under 20. Returns the pip size, the gap, the rows and the strip's size. */
+      function pipFit(nb, room, gap, big) {
+        // (one row first, closing up the gap; more rows keep their pips small, so the strip takes little height from the photos)
+        var tries = [[1, gap], [1, gap > 2 ? 2 : 1], [2, gap], [3, gap]], S = 20, rows = 3, g = gap;
+        for (var i = 0; i < tries.length; i++) {
+          var per = Math.ceil(nb / tries[i][0]), s1 = Math.min(tries[i][0] > 1 ? Math.min(big, 24) : big, Math.floor((room - (per - 1) * tries[i][1]) / per));
+          if (s1 >= 20 || i === tries.length - 1) { S = Math.max(20, s1); rows = tries[i][0]; g = tries[i][1]; break; }
+        }
+        var n = Math.ceil(nb / rows);
+        return { S: S, gap: g, rows: rows, w: n * S + (n - 1) * g + 1, h: rows * S + (rows - 1) * 4 };
+      }
+
       function fit() {
         var s = ctx.size(), w = s.w, h2 = s.h, P = 12, G = 8, FR = 6, PAD = 6, BD = 3, U = util, port = s.orient === 'portrait';
-        var Wb, B, wallH = 0, midW = 0, inner, row, J, Jw, Mh, nb = zones.length || 7;
+        var Wb, B, wallH = 0, midW = 0, inner, tray = 'row', J, Jw, Mh, pf, ph, nb = zones.length || 8, mq = u.tier >= 3;
+        var bubOf = function (m) { return U.clamp(Math.round(m * 0.24), 28, 64); };
+        // what a mirror needs for a friend m wide: the friend, the frame, and headroom for half the reaction bubble
+        var needOf = function (m) { return Math.ceil(m * 1.2) + 2 * FR + Math.round(bubOf(m) * 0.5); };
         if (port) {
-          wallH = U.clamp(Math.round(h2 * 0.17), 76, 190);
+          var S0 = U.clamp(Math.round(h2 * 0.045), 20, 34), rowW = w - 2 * P - 12;
+          // (tier 3: the two marquee animals sit at the ends of the strip's line)
+          pf = pipFit(nb, rowW - 4 - (mq ? 2 * (Math.ceil(S0 * 0.86) + 10) : 0), 4, S0);
           Wb = Math.floor((w - 2 * P - G) / 2);
-          B = h2 - 2 * P - wallH - G;
           inner = Wb - 2 * PAD - 2 * BD;
-          row = inner >= 3 * 80 + 12;
-          if (row) {
-            Jw = Math.floor((inner - 12) / 3); J = U.clamp(Jw, 64, 120);
-            Mh = B - 2 * BD - 2 * PAD - J - 6;
-          } else {                                                      // phones: a column of 3 full-width buttons
-            Jw = inner;
-            var M0 = Math.min(inner - 2 * FR, 320);
-            J = Math.floor((B - 2 * BD - 2 * PAD - (Math.ceil(M0 * 1.2) + 2 * FR) - 6 - 12) / 3);
-            J = U.clamp(J, 64, 96);                                     // capped so the mirror gets the rest
-            Mh = B - 2 * BD - 2 * PAD - 6 - 3 * J - 12;
-          }
+          tray = inner >= 3 * 80 + 12 ? 'row' : 'col';                // phones: a column of 3 full-width buttons
+          var M0 = Math.min(inner - 2 * FR, 320), need = needOf(M0);
+          Jw = tray === 'row' ? Math.floor((inner - 12) / 3) : inner;
+          var J0 = tray === 'row' ? U.clamp(Jw, 64, 120) : 96;
+          // The mirror gets what its friend needs. The wall band takes the rest, as far as it can use it: one row of
+          // polaroids where 3 (4 on a tablet) still show, fanned, beside the smallest stickers; never over 0.3 of the height.
+          // (beside the helpers and decorations at 16px; on a tablet at 24px, with 4 photos)
+          var k = rowW >= 600 ? 4 : 3, dmin = rowW >= 600 ? 24 : 16;
+          var phUse = Math.min(200, Math.floor((rowW - (6 * dmin + 8) - 12 - 8) / (1.15 * (1 + 0.55 * (k - 1)))));
+          var wall0 = Math.max(U.clamp(Math.round(h2 * 0.17), 76, 190), pf.h + 16 + 43);
+          var wallTop = Math.max(wall0, Math.min(Math.round(h2 * 0.3), Math.ceil(phUse / 0.94) + pf.h + 16));
+          wallH = U.clamp(h2 - 2 * P - G - (2 * BD + 2 * PAD + need + 6 + (tray === 'row' ? J0 : 3 * J0 + 12)), wall0, wallTop);
+          B = h2 - 2 * P - wallH - G;
+          // what is left after that goes to her tray buttons (phones: up to 120px each; a row: up to 1.3 times as tall as wide)
+          if (tray === 'row') J = U.clamp(B - 2 * BD - 2 * PAD - need - 6, J0, Math.max(J0, Math.min(140, Math.round(Jw * 1.3))));
+          else J = U.clamp(Math.floor((B - 2 * BD - 2 * PAD - need - 6 - 12) / 3), 64, 120);
+          Mh = B - 2 * BD - 2 * PAD - 6 - (tray === 'row' ? J : 3 * J + 12);
+          // (0.94: room for the polaroids' tilt)
+          ph = Math.floor((wallH - 12 - pf.h - 4) * 0.94);
         } else {
           Wb = U.clamp(Math.round(w * 0.34), 150, 360);
           midW = w - 2 * P - 2 * Wb - 2 * G;
-          if (midW < 120) { Wb = Math.floor((w - 2 * P - 2 * G - 120) / 2); midW = 120; }
-          B = h2 - 2 * P; inner = Wb - 2 * PAD - 2 * BD; row = true;
+          if (midW < 120) { Wb = Math.floor((w - 2 * P - 2 * G - 120) / 2); midW = w - 2 * P - 2 * G - 2 * Wb; }
+          B = h2 - 2 * P; inner = Wb - 2 * PAD - 2 * BD;
           Jw = Math.floor((inner - 12) / 3);
-          J = U.clamp(Math.floor(Math.min(Jw, B * 0.28)), 64, 120);
-          Mh = B - 2 * BD - 2 * PAD - J - 6;
+          if (Jw < 64) {                                   // a small phone turned: a narrower wall (its pips go to two rows)
+            Wb = Math.max(Wb, Math.floor((w - 2 * P - 2 * G - 108) / 2));
+            midW = w - 2 * P - 2 * G - 2 * Wb;
+            inner = Wb - 2 * PAD - 2 * BD;
+            Jw = Math.floor((inner - 12) / 3);
+          }
+          if (Jw < 64) {                                   // still too narrow for three: the tray goes 2 + 1, every button 64+ square
+            tray = 'grid';
+            Jw = Math.floor((inner - 6) / 2);
+            J = U.clamp(Math.min(Jw, Math.floor(B * 0.24)), 64, 120);
+            Mh = B - 2 * BD - 2 * PAD - (2 * J + 6) - 6;
+          } else {
+            J = U.clamp(Math.floor(Math.min(Jw, B * 0.28)), 64, 120);
+            // (height the friend cannot use goes to the tray, up to 1.3 times as tall as wide)
+            J = U.clamp(B - 2 * BD - 2 * PAD - 6 - needOf(Math.min(inner - 2 * FR, 320)), J, Math.max(J, Math.min(140, Math.round(Jw * 1.3))));
+            Mh = B - 2 * BD - 2 * PAD - J - 6;
+          }
+          // (a small phone turned: two rows. Tier 3: the strip sits on the marquee sign, inside its 4px inline padding, and
+          // the sign's two animals have a row of their own above it)
+          pf = pipFit(nb, mq ? midW - 2 * BD - 2 * 3 - 2 * 4 - 1 : midW - 16, 2, mq ? 30 : 34);
+          ph = U.clamp(Math.round(midW * 0.42), 40, 110);
+          ph = Math.min(ph, Math.floor((midW - 20) / 1.15), Math.floor((B - 12 - pf.h - 4 - (mq ? pf.S + 4 : 0)) / 1.6));
         }
         var M = Math.max(40, Math.min(inner - 2 * FR, Math.floor((Mh - 2 * FR) / 1.2), 320));
         var sty = U.clamp(Math.round(Wb * 0.2), 30, 60);
-        var bub = U.clamp(Math.round(M * 0.24), 28, 64);
+        var bub = bubOf(M);
         var badge = U.clamp(Math.round(M * 0.2), 22, 48);
         var chk = U.clamp(Math.round(sty * 0.62), 20, 36);
-        var S = port ? U.clamp(Math.round(h2 * 0.045), 20, 34)
-                     : U.clamp(Math.floor((midW - 12 - (nb - 1) * 2) / nb), 18, 34);
-        var mq = u.tier >= 3;
-        // (portrait: the two animals of the marquee sit at the strip's ends; the pips shrink to make room if they must)
-        if (port) S = Math.max(20, Math.min(S, Math.floor((w - 2 * P - 12 - (mq ? 2 * (S + 8) : 0) - (nb - 1) * 4) / nb)));
-        var ph = port ? wallH - 12 - S - 4 : U.clamp(Math.round(midW * 0.42), 40, 110);
-        if (!port) ph = Math.min(ph, Math.floor((B - 12 - S - 4 - (mq ? S + 4 : 0)) / 1.6));
+        var S = pf.S;
         // menu: the biggest square cards above the look-book row
         var L = U.clamp(Math.round(Math.min(w, h2) * 0.1), 28, 60), n = menuCount(), W = w - 2 * P, H = h2 - 2 * P - L - G, card = 0, cols = 1;
         for (var c = 1; c <= 5; c++) { var r = Math.ceil(n / c), z = Math.floor(Math.min((W - (c - 1) * G) / c, (H - (r - 1) * G) / r)); if (z > card) { card = z; cols = c; } }
@@ -1018,32 +1062,53 @@
         var set = function (k, v) { root.style.setProperty(k, v); };
         set('--wall', wallH + 'px'); set('--mid', midW + 'px'); set('--board-w', Wb + 'px'); set('--board-h', B + 'px');
         set('--m', M + 'px'); set('--j', J + 'px'); set('--jw', Jw + 'px'); set('--sty', sty + 'px'); set('--bub', bub + 'px');
-        set('--badge', badge + 'px'); set('--chk', chk + 'px'); set('--pip', S + 'px'); set('--ph', ph + 'px'); set('--pm', Math.round(ph * 0.42) + 'px');
+        set('--badge', badge + 'px'); set('--chk', chk + 'px'); set('--pip', S + 'px'); set('--strip-w', pf.w + 'px'); set('--strip-h', pf.h + 'px'); set('--pgap', pf.gap + 'px');
+        set('--ph', ph + 'px'); set('--pm', Math.round(ph * 0.52) + 'px');
         set('--card', card + 'px'); set('--cols', String(cols)); set('--book', L + 'px'); set('--pw', PW + 'px'); set('--m2', M2 + 'px');
         set('--grid-w', (cols * card + (cols - 1) * G) + 'px'); set('--grid-h', (rows * card + (rows - 1) * G) + 'px');
         set('--nx', ((ni % cols) * (card + G)) + 'px'); set('--ny', (Math.floor(ni / cols) * (card + G)) + 'px');
         set('--gift', Math.min(Math.round(M2 * 0.9), 170) + 'px');
-        root.dataset.tray = row ? 'row' : 'col';
-        var deco = U.clamp(Math.round(ph * 0.5), 14, 40);
+        root.dataset.tray = tray;
+        var deco0 = U.clamp(Math.round(ph * (port ? 0.45 : 0.5)), 14, 40), deco = deco0;
         set('--deco', deco + 'px');
         if (scene.hidden) return;
-        // then make sure everything really fits, whatever the emoji font: hide the oldest photos, shrink the stickers, then the faces
-        var over = function () { return port ? rowEl.scrollWidth > rowEl.clientWidth + 1 : rowEl.scrollHeight > rowEl.clientHeight + 1; };
+        // then make sure the wall row really fits, whatever the emoji font. First the stickers shrink (to 16px), then the
+        // photos fan out (each slides under the one before) and the stickers grow back as far as they still fit; then the
+        // stickers go to 14px, and only then do the oldest photos come down (the newest always stays)
+        var fits = function () { return rowEl.scrollWidth <= rowEl.clientWidth + 1 && rowEl.scrollHeight <= rowEl.clientHeight + 1; };
+        var setDeco = function (v) { deco = v; set('--deco', v + 'px'); };
         var pols = [].slice.call(photosEl.querySelectorAll('.mk-polaroid:not(.is-empty)'));
         pols.forEach(function (p) { p.hidden = false; });
-        for (var i = pols.length - 1; i > 0 && over(); i--) pols[i].hidden = true;
-        for (var t = 0; t < 8 && deco > 14 && over(); t++) { deco = Math.max(14, Math.floor(deco * 0.9)); set('--deco', deco + 'px'); }
+        photosEl.classList.remove('is-fan');
+        for (var t = 0; t < 12 && deco > 16 && !fits(); t++) setDeco(Math.max(16, Math.floor(deco * 0.9)));
+        if (!fits() && pols.length > 1) {
+          photosEl.classList.add('is-fan');
+          for (var t1 = 0; t1 < 12 && deco < deco0 && fits(); t1++) {
+            var was = deco;
+            setDeco(Math.min(deco0, deco + 2));
+            if (!fits()) { setDeco(was); break; }
+          }
+        }
+        for (var t3 = 0; t3 < 3 && deco > 14 && !fits(); t3++) setDeco(deco - 1);
+        for (var i = pols.length - 1; i > 0 && !fits(); i--) pols[i].hidden = true;
+        // (the room a hidden photo leaves goes back to the stickers)
+        for (var t4 = 0; t4 < 12 && i < pols.length - 1 && deco < deco0 && fits(); t4++) {
+          var was2 = deco;
+          setDeco(Math.min(deco0, deco + 2));
+          if (!fits()) { setDeco(was2); break; }
+        }
         var tall = function () { return boards.some(function (b) { return b.F.el.offsetHeight > b.mirror.clientHeight + 0.5 || b.F.el.offsetWidth > b.mirror.clientWidth + 0.5; }); };
         for (var t2 = 0; t2 < 4 && tall(); t2++) { M = Math.floor(M * 0.94); set('--m', M + 'px'); }
       }
 
       /* ---- the wall: pips, helpers, photos, decorations ---- */
 
+      /** A party's backdrop; deco: true for all three corner stickers, or how many (the menu card keeps its bottom row clear). */
       function bgEl(id, deco) {
         var P0 = PARTIES[id], n = el('span', { class: 'mk-bg', 'data-bg': P0.bg });
         if (P0.bg === 'night') for (var i = 0; i < 6; i++) n.appendChild(el('i', { class: 'mk-star', 'data-i': String(i) }));
         if (P0.bg === 'rainbow') for (var j = 0; j < 6; j++) n.appendChild(el('i', { class: 'mk-band', style: { background: RAINBOW[j], top: (j * 100 / 6) + '%' } }));
-        if (deco) P0.deco.forEach(function (e, k) { n.appendChild(el('span', { class: 'mk-deco', 'data-i': String(k) }, ctx.sticker(e))); });
+        if (deco) P0.deco.slice(0, deco === true ? 3 : deco).forEach(function (e, k) { n.appendChild(el('span', { class: 'mk-deco', 'data-i': String(k) }, ctx.sticker(e))); });
         return n;
       }
 
@@ -1071,7 +1136,8 @@
       function polaroid(ph, i) {
         var faces = photoFaces(ph, 'var(--pm)');
         var shot = el('span', { class: 'mk-pshot' }, bgEl(ph.p, false), el('span', { class: 'mk-pfaces' }, faces[0].el, faces[1].el));
-        return el('span', { class: 'mk-polaroid', 'data-i': String(i), style: { '--tilt': ((i % 2 ? 3 : -3) + (i % 3) - 1) + 'deg' } }, shot);
+        // (the newest first and on top: in a fan each older photo slides under the one before it; see the css for landscape)
+        return el('span', { class: 'mk-polaroid', 'data-i': String(i), style: { '--tilt': ((i % 2 ? 3 : -3) + (i % 3) - 1) + 'deg', '--z': String(8 - i) } }, shot);
       }
       function buildPhotos() {
         photosEl.textContent = '';
@@ -1131,7 +1197,7 @@
           var medals = el('span', { class: 'mk-card__medals' });
           for (var k = 0; k < m; k++) medals.appendChild(ctx.sticker('🏅'));
           cardsEl.appendChild(el('button', { type: 'button', class: 'mk-card' + (n ? '' : ' is-new'), 'data-id': id, 'aria-label': NAMES[id] },
-            bgEl(id, true), el('span', { class: 'mk-card__e' }, ctx.sticker(PARTIES[id].e)), stars, medals,
+            bgEl(id, 2), el('span', { class: 'mk-card__e' }, ctx.sticker(PARTIES[id].e)), stars, medals,
             n ? null : el('span', { class: 'mk-card__new' }, ctx.sticker('✨'))));
         });
         nextEl.textContent = '';
@@ -1184,11 +1250,6 @@
         if (state !== 'zone') { hint(null); return; }
         var s = handSideNow();
         hint(s < 0 ? null : targetOf(boards[s]));
-      }
-      function handSide() {
-        if (!lastHinted) return -1;
-        for (var s = 0; s < 2; s++) if (boards[s].el.contains(lastHinted)) return s;
-        return -1;
       }
       /** Quiet seconds before the hand shows the next thing on side s's board. */
       function idleFor(s) {
@@ -1391,7 +1452,7 @@
         events.push({ t: ctx.time, side: b.side, k: b.k });
         if (events.length > 200) events.shift();
         lastTap = wasHinted && b.el.contains(wasHinted) ? ctx.time - idleFor(b.side) + 1.5 : ctx.time;
-        if (b.k >= b.n) finish(b);
+        if (b.k >= b.n) finish(b, wasHinted);
       }
       function roll(name, p) { if (forced[name]) { delete forced[name]; return true; } return Math.random() < p; }
 
@@ -1420,8 +1481,8 @@
         sfx.play('star');
       }
 
-      /** This board's step is done: latched, once only. */
-      function finish(b) {
+      /** This board's step is done: latched, once only. wasHinted: what the hand was on when the finishing tap came. */
+      function finish(b, wasHinted) {
         if (b.done || state !== 'zone') return;
         b.done = true;
         b.k = b.n;
@@ -1436,7 +1497,7 @@
         if (boards[0].done && boards[1].done) {
           if (zoneI >= zones.length - 1) finale();
           else admire();
-        } else if (handSide() === b.side) hintNext();     // it finished under the hand: the hand moves on at once
+        } else if (wasHinted && b.el.contains(wasHinted)) hintNext();   // it finished under the hand: the hand moves on at once
       }
 
       /** A done board, a different item: the look changes (free, as often as they like); it stays done. */
@@ -1720,7 +1781,6 @@
         setState('finale');
         hint(null);
         booth = !!had.helpers.booth;
-        var D = booth ? 300 : 0;
         renderPips();
         stripEl.querySelectorAll('.mk-pip').forEach(function (p) { p.classList.add('is-done'); p.classList.remove('is-now'); });
         boards.forEach(function (b) {
@@ -1732,22 +1792,24 @@
         });
         sfx.play('whoosh');
         if (had.helpers.radio) { var radio = helperEl('radio'); if (radio && !RM) fx.bounce(radio); S.tune(); }
+        // 3.8s in all, booth or not: the friends hop out (+0.15), 3-2-1 (+0.55), the posed photo (+1.15) holds 1.2s
+        // (the booth's silly shot takes its second half), then it flies to the wall (+2.35) and a present opens (+2.85)
         var faces = buildFrame(photo);
         later(150, function () { swapHome(faces); });
         [0, 1, 2].forEach(function (j) {
-          later(750 + 250 * j, function () {
+          later(550 + 200 * j, function () {
             var bl = frameEl.querySelectorAll('.mk-flashbulb')[j];
             if (bl) bl.classList.add('is-lit');
             sfx.scale(4 + 2 * j);
             ctx.say(3 - j);
           });
         });
-        later(1500, function () { flash(faces, photo); });
-        if (booth) later(1800, function () { sillyShot(faces); });
-        later(1800 + D, function () { pinPhoto(); });
-        later(1900 + D, function () { dropGift(gift); });
-        later(2400 + D, function () { openGift(gift); });
-        later(2600 + D, function () { ctx.win('team', { emoji: party.e, delay: 1200 - D }); });
+        later(1150, function () { flash(faces, photo); });
+        if (booth) later(1750, function () { sillyShot(faces); });
+        later(2350, function () { pinPhoto(); });
+        later(2450, function () { dropGift(gift); });
+        later(2850, function () { openGift(gift); });
+        later(3000, function () { ctx.win('team', { emoji: party.e, delay: 800 }); });
       }
 
       /** The photo frame, drawn from the saved photo (so the wall later shows exactly this), poses hidden until the flash. */

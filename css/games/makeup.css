@@ -1,8 +1,9 @@
 /* Make-Up Mirrors: styles. Every selector is scoped under .g-makeup, classes are mk-.
    Sizes come from js (fit): --wall (the wall band in portrait), --mid (the middle column in landscape), --board-w/-h,
-   --m (a friend in a mirror), --j/--jw (a tray button), --sty (the stylist), --bub, --badge, --chk, --pip, --ph/--pm
-   (a polaroid and its faces), --card/--cols/--grid-w/--grid-h/--nx/--ny (the menu), --book (a look-book slot),
-   --m2 (a friend in the finale photo), --gift, --deco. data-tray="row|col" on the root.
+   --m (a friend in a mirror), --j/--jw (a tray button), --sty (the stylist), --bub, --badge, --chk, --pip and
+   --strip-w/-h (a step pip and the strip of them, which may wrap onto 2 rows), --ph/--pm (a polaroid and its faces),
+   --card/--cols/--grid-w/--grid-h/--nx/--ny (the menu), --book (a look-book slot), --m2 (a friend in the finale photo),
+   --gift, --deco. data-tray="row|col|grid" on the root (grid: 2 + 1 buttons, on a small phone turned sideways).
    The friend (.mk-model) is 100em x 120em with 1em = 1% of its width; every part and piece is placed in those em. */
 
 .g-makeup {
@@ -18,7 +19,7 @@
   --mk-case: #B9C3CF;
   --mk-sil: brightness(0);
   --wall: 81px; --mid: 0px; --board-w: 125px; --board-h: 361px; --m: 95px; --j: 66px; --jw: 107px; --sty: 30px; --bub: 28px;
-  --badge: 22px; --chk: 20px; --pip: 21px; --ph: 44px; --pm: 18px; --card: 100px; --cols: 2; --book: 30px; --pw: 280px; --m2: 100px;
+  --badge: 22px; --chk: 20px; --pip: 21px; --strip-w: 220px; --strip-h: 21px; --ph: 44px; --pm: 23px; --card: 100px; --cols: 2; --book: 30px; --pw: 280px; --m2: 100px;
   --grid-w: 208px; --grid-h: 100px; --nx: 0px; --ny: 0px; --gift: 90px; --deco: 20px; --drows: 2;
   background: var(--mk-wall);
 }
@@ -81,9 +82,11 @@
   background: var(--mk-band);
   overflow: hidden;
 }
-.g-makeup .mk-marquee { position: relative; flex: none; height: var(--pip); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.g-makeup .mk-marquee { position: relative; flex: none; height: var(--strip-h); display: flex; align-items: center; justify-content: center; gap: 4px; }
 .g-makeup .mk-mq-pet { display: none; position: relative; z-index: 1; font-size: calc(var(--pip) * 0.86); line-height: 1; }
 .g-makeup .mk-wall[data-tier="3"] .mk-mq-pet { display: block; }
+/* the marquee sign: one animal at each end */
+.g-makeup .mk-wall[data-tier="3"] .mk-marquee { justify-content: space-between; padding: 0 6px; }
 .g-makeup .mk-wall[data-tier="3"] .mk-marquee::before {
   content: "";
   position: absolute;
@@ -95,21 +98,36 @@
     var(--sun);
 }
 .g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-marquee {
-  height: calc(var(--pip) * 2 + 4px);
+  height: calc(var(--pip) + 4px + var(--strip-h));
   display: grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: var(--pip) var(--pip);
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: var(--pip) var(--strip-h);
   grid-template-areas: "a b" "s s";
-  justify-content: center;
   row-gap: 4px;
-  column-gap: 12px;
+  column-gap: 4px;
+  padding: 0 4px;   /* (fit() counts this padding when it sizes the pips) */
 }
-.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-mq-pet:first-child { grid-area: a; }
-.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-mq-pet:last-child { grid-area: b; }
-.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-strip { grid-area: s; }
+/* (the sign reaches 1px into the wall's padding, so the pips at its ends still have yellow round them) */
+.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-marquee::before { inset: -2px -1px; border-radius: 14px; }
+.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-mq-pet { align-self: center; }
+.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-mq-pet:first-child { grid-area: a; justify-self: start; }
+.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-mq-pet:last-child { grid-area: b; justify-self: end; }
+.g-makeup[data-orient="landscape"] .mk-wall[data-tier="3"] .mk-strip { grid-area: s; justify-self: center; }
 
-.g-makeup .mk-strip { position: relative; z-index: 1; display: flex; justify-content: center; align-items: center; gap: 4px; }
-.g-makeup[data-orient="landscape"] .mk-strip { gap: 2px; }
+.g-makeup .mk-strip {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  gap: 4px var(--pgap, 4px);
+  width: var(--strip-w);
+  max-width: 100%;
+  height: var(--strip-h);
+}
 .g-makeup .mk-pip {
   position: relative;
   flex: none;
@@ -136,6 +154,7 @@
 .g-makeup[data-orient="landscape"] .mk-row { flex-direction: column; justify-content: flex-start; padding-top: 2px; }
 .g-makeup .mk-helpers, .g-makeup .mk-decor {
   flex: none;
+  box-sizing: content-box;
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(var(--drows), var(--deco));
@@ -153,8 +172,10 @@
   max-width: 100%;
 }
 .g-makeup .mk-helpers:empty, .g-makeup .mk-decor:empty { display: none; }
+/* (room above the helpers for what the poodle wears, inside the wall row) */
+.g-makeup .mk-helpers { padding-top: calc(var(--deco) * 0.2); }
 .g-makeup .mk-helper, .g-makeup .mk-dec, .g-makeup .mk-vase { position: relative; display: grid; place-items: center; width: var(--deco); height: var(--deco); }
-.g-makeup .mk-pwear { position: absolute; left: 50%; top: -18%; font-size: 0.5em; line-height: 1; transform: translateX(-50%); pointer-events: none; }
+.g-makeup .mk-pwear { position: absolute; left: 50%; top: 0; font-size: 0.5em; line-height: 1; transform: translate(-50%, -35%); pointer-events: none; }
 .g-makeup .mk-pwear[data-kind="css"] { left: auto; right: -12%; top: 40%; transform: none; }
 .g-makeup .mk-pbub {
   position: absolute;
@@ -179,6 +200,13 @@
 
 .g-makeup .mk-photos { flex: none; display: flex; align-items: center; gap: 6px; }
 .g-makeup[data-orient="landscape"] .mk-photos { flex-wrap: wrap; justify-content: center; max-width: 100%; }
+/* a fan: each older photo slides under the one before by 45% of its width. In landscape the fan runs down the middle
+   column and each photo lies on the bottom 45% of the one before (its white strip and the bibs), so every pair of faces shows. */
+.g-makeup .mk-photos.is-fan { gap: 0; }
+.g-makeup .mk-photos.is-fan .mk-polaroid + .mk-polaroid { margin-left: calc(var(--ph) * -0.5175); }
+.g-makeup[data-orient="landscape"] .mk-photos.is-fan { flex-direction: column; flex-wrap: nowrap; }
+.g-makeup[data-orient="landscape"] .mk-photos.is-fan .mk-polaroid { z-index: auto; }
+.g-makeup[data-orient="landscape"] .mk-photos.is-fan .mk-polaroid + .mk-polaroid { margin-left: 0; margin-top: calc(var(--ph) * -0.45); }
 .g-makeup .mk-polaroid {
   position: relative;
   flex: none;
@@ -191,12 +219,15 @@
   border-radius: 4px;
   background: var(--mk-paper);
   transform: rotate(var(--tilt, 0deg));
+  z-index: var(--z, auto);
 }
 .g-makeup .mk-polaroid[hidden] { display: none; }
 .g-makeup .mk-polaroid.is-empty { border-style: dashed; background: transparent; transform: none; }
 .g-makeup .mk-polaroid.is-pinning { visibility: hidden; }
 .g-makeup .mk-pshot { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border-radius: 2px; }
-.g-makeup .mk-pfaces { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; gap: 4%; }
+/* the two faces fill the photo: big, at its top, overlapping a little */
+.g-makeup .mk-pfaces { position: absolute; inset: 0; display: flex; align-items: flex-start; justify-content: center; }
+.g-makeup .mk-pfaces .mk-model + .mk-model { margin-left: calc(var(--pm) * -0.1); }
 .g-makeup .mk-pfaces .mk-model, .g-makeup .mk-fslot .mk-model { flex: none; }
 
 /* backdrops: the menu card, a polaroid, the photo frame */
@@ -358,8 +389,11 @@
 .g-makeup .mk-tray { flex: none; display: grid; gap: 6px; transition: transform 0.2s ease-out, opacity 0.2s, visibility 0s; }
 .g-makeup[data-tray="row"] .mk-tray { grid-template-columns: repeat(3, minmax(0, 1fr)); height: var(--j); }
 .g-makeup[data-tray="col"] .mk-tray { grid-template-rows: repeat(3, var(--j)); }
+.g-makeup[data-tray="grid"] .mk-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, var(--j)); }
+.g-makeup[data-tray="grid"] .mk-tray > .mk-item:nth-child(3) { grid-column: 1 / -1; }
 .g-makeup[data-tray="row"] .mk-tray.is-one { grid-template-columns: minmax(0, 1fr); }
 .g-makeup[data-tray="col"] .mk-tray.is-one { grid-template-rows: calc(var(--j) * 3 + 12px); }
+.g-makeup[data-tray="grid"] .mk-tray.is-one { grid-template-columns: minmax(0, 1fr); grid-template-rows: calc(var(--j) * 2 + 6px); }
 .g-makeup .mk-tray.is-up { animation: mk-tray-up 0.2s ease-out; }
 .g-makeup .mk-tray.is-away { transform: translateY(10px); opacity: 0; visibility: hidden; transition: transform 0.2s ease-in, opacity 0.2s, visibility 0s linear 0.2s; }
 @keyframes mk-tray-up { from { transform: translateY(10px); opacity: 0; } }
@@ -731,10 +765,11 @@
 .g-makeup .mk-card:active { transform: translateY(3px); box-shadow: 0 3px 0 var(--line); }
 .g-makeup .mk-card.is-pop { animation: mk-card-in 0.28s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--k, 0) * 40ms); }
 @keyframes mk-card-in { from { transform: scale(0.6); opacity: 0; } }
-.g-makeup .mk-card__e { position: relative; font-size: 0.5em; }
-.g-makeup .mk-card__stars { position: absolute; left: 0; right: 0; bottom: 5%; display: flex; justify-content: center; gap: 0.02em; font-size: 0.15em; }
-.g-makeup .mk-card__medals { position: absolute; left: 6%; bottom: 6%; display: flex; font-size: 0.16em; }
-.g-makeup .mk-card__medals .mg-sticker + .mg-sticker { margin-left: -0.4em; }
+.g-makeup .mk-card__e { position: relative; font-size: 0.44em; }
+.g-makeup .mk-card__stars { position: absolute; left: 0; right: 0; bottom: 5%; display: flex; justify-content: center; gap: 0.02em; font-size: 0.13em; }
+/* the play stars along the bottom, the medals stacked in the bottom-right corner (the backdrop keeps that corner clear) */
+.g-makeup .mk-card__medals { position: absolute; right: 3%; bottom: 3%; display: flex; flex-direction: column-reverse; align-items: center; font-size: 0.14em; line-height: 1; }
+.g-makeup .mk-card__medals .mg-sticker + .mg-sticker { margin-bottom: -0.5em; }
 .g-makeup .mk-card__new { position: absolute; left: 50%; top: 4%; font-size: 0.18em; transform: translateX(-50%); animation: mk-twinkle 0.9s ease-in-out infinite alternate; }
 .g-makeup .mk-next { position: absolute; left: var(--nx); top: var(--ny); border-style: dashed; box-shadow: none; background: var(--surface-2); }
 .g-makeup .mk-next[hidden] { display: none; }

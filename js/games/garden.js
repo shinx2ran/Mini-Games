@@ -72,6 +72,9 @@
   var STAGE_S = [6, 7, 8, 8];     // seconds in each stage, at normal speed, when cared for
   var STAGE_S_EARLY = [3, 5, 7, 7]; // the first two rounds: things happen sooner
   var MAX_WATER = 3;              // drops of water a bed holds
+  var DRINK = 4 / 3;              // drops a plant drinks per stage it grows (by itself or tickled; waiting, it drinks nothing): a seed is sown
+                                  // in dry soil and a full bed lasts it 2.25 of its 4 stages, so it is watered when sown and once more on
+                                  // the way (never right at the food ask at 2.5, nor at ripe)
   var MAX_BASKET = 3;             // of one vegetable (the basket shows them all: no hidden amounts)
 
   var BED_GAP = 0.18;             // s between counted actions on one bed
@@ -122,13 +125,15 @@
     return o.giants === 0 || r < GIANT_P;   // the first one is certain, then 1 in 5
   }
 
-  /** Saved garden, checked and repaired: anything odd becomes something sensible. */
-  function cleanFarm(raw) {
+  /** Saved garden, checked and repaired: anything odd becomes something sensible.
+   *  An order already filled was left during the hand-over: it counts here, or with `keepFilled` it is kept as it
+   *  is, so the visitor can still say thank you (the game does that when it opens). */
+  function cleanFarm(raw, keepFilled) {
     if (!raw || typeof raw !== 'object') raw = {};
     var num = function (v, lo, hi, d) { if (v === null || v === '' || typeof v === 'boolean') return d; v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
     var done = Math.floor(num(raw.done, 0, 9999, 0));
     var u = unlocks(done);
-    // the visitor's order; one that is already filled was left during the hand-over: it still counts
+    // the visitor's order (see above for one that is already filled)
     var order = null;
     var o = raw.order;
     if (o && typeof o === 'object' && VISITORS.indexOf(o.who) >= 0 && o.want && typeof o.want === 'object') {
@@ -141,7 +146,7 @@
         if (g) got[c] = g;
       });
       if (ok && kinds >= 1 && kinds <= 3) {
-        if (orderDone({ want: want, got: got })) { done++; u = unlocks(done); }
+        if (orderDone({ want: want, got: got }) && !keepFilled) { done++; u = unlocks(done); }
         else order = { who: o.who, want: want, got: got };
       }
     }
@@ -156,7 +161,7 @@
           p.crop = q.crop;
           p.stage = Math.floor(num(q.stage, 0, 4, 0));
           p.t = num(q.t, 0, 1, 0);
-          p.dry = num(q.dry, 0, 60, 0);
+          p.dry = num(q.dry, 0, 1, 0);          // the part of the next drop already drunk
           p.fed = FOOD_IDS.indexOf(q.fed) >= 0 ? q.fed : null;
           p.bug = BUGS.indexOf(q.bug) >= 0 && p.stage >= 1 && p.stage <= 3 ? q.bug : null;
           p.perfect = q.perfect !== false;
@@ -223,21 +228,29 @@
       var c2 = grow[Math.floor(rnd() * grow.length)];
       if (want[c2] < 3) { want[c2]++; left--; }
     }
-    // something always has to be grown (and the favourite is never the one given up)
-    if (chosen.every(function (c) { return stock(c) >= want[c]; })) {
-      var byStock = function (list) { return list.slice().sort(function (a, b) { return stock(a) - stock(b); }); };
-      var low = byStock(grow)[0];                        // (the whole pile stays wanted)
-      if (low && stock(low) < 3) want[low] = Math.min(3, stock(low) + 1);
+    // something always has to be grown (and the favourite is never the one given up): what is ready to pick
+    // counts as stock here too, so the basket and the ripe plants together never already hold the whole order
+    // (when even that cannot be helped, three of everything being ready, at least the basket alone never holds it)
+    var ripe = {};
+    (farm.plots || []).forEach(function (p) { if (p && p.crop && p.stage === 4) ripe[p.crop] = (ripe[p.crop] || 0) + (p.giant ? 3 : p.fruits || 1); });
+    var ready = function (c) { return stock(c) + (ripe[c] || 0); };
+    var covered = function (has) { return Object.keys(want).every(function (c) { return has(c) >= want[c]; }); };
+    [ready, stock].some(function (has) {
+      if (!covered(has)) return true;
+      var byHas = function (list) { return list.slice().sort(function (a, b) { return has(a) - has(b); }); };
+      var low = byHas(grow)[0];                          // (the whole pile stays wanted)
+      if (low && has(low) < 3) want[low] = Math.min(3, has(low) + 1);
       else {
-        var other = crops.filter(function (c) { return !want[c] && stock(c) < 3; }).sort(function (a, b) { return stock(a) - stock(b); })[0];
+        var other = crops.filter(function (c) { return !want[c] && has(c) < 3; }).sort(function (a, b) { return has(a) - has(b); })[0];
         if (other) {
           var noFav = grow.filter(function (c) { return c !== fav; });
-          var drop = noFav.length ? byStock(noFav)[0] : drain || low;
+          var drop = noFav.length ? byHas(noFav)[0] : drain || low;
           if (drop) delete want[drop];
-          want[other] = stock(other) + 1;
+          want[other] = has(other) + 1;
         }
       }
-    }
+      return !covered(has);
+    });
     return { who: who, want: want, got: {} };
   }
 
@@ -269,7 +282,6 @@
       if (BUGRATE == null) BUGRATE = 1;
       // one shared garden: the little one's help level softens it for both
       var help = Math.max(ctx.helpFor(0), ctx.helpFor(1));
-      var DRY_S = [7, 8.5, 10][help];                    // seconds a drop of water lasts
       var BUG_P = [0.12, 0.08, 0.05][help] * BUGRATE;    // chance per growing plant per bug check
       var IDLE_S = help ? 7 : 14;                        // quiet seconds before the ghost hand shows what to do
       var GRACE_S = [4, 6, 8][help];                     // a plant left dry or bugged this long gives one fruit fewer
@@ -277,10 +289,10 @@
       var littles = [0, 1].filter(function (i) { return ctx.players[i] && ctx.players[i].little; });
       var aSide = littles.length === 1 ? littles[0] : ctx.firstPlayer;
 
-      var farm = cleanFarm(ctx.load('farm', null));
+      var farm = cleanFarm(ctx.load('farm', null), true);   // (an order filled just before leaving: thanked for in tick)
       if (!farm.order) farm.order = makeOrder(farm, Math.random, ctx.load('lastWho', null));
       var state = 'play';                 // play -> pull -> pop -> play (a giant); play -> gift (the order is filled)
-      var delivering = false;
+      var delivering = false, handAfterDeliver = false;
       var tutorBug = false;               // the first rounds bring one bug early, to show what a bed tap does to it
       var raining = 0, nextRain = farm.rainIn != null ? farm.rainIn : util.randf(25, 60);
       var bugClock = 0, ladyClock = 0, fountainClock = 0, saveClock = 0;
@@ -628,6 +640,15 @@
         if (port && cell < 64) {                       // the beds never go under 64: the yard gives up room first
           var rws = Math.ceil(n / best.cols), short = 64 * rws + (rws - 1) * G - gh;
           yard = Math.max(48, yard - short); cell = 64;
+        } else if (!port && cell < 64) {               // sideways too: width from the yard (down to 48, no pokes), then the gate (down to 84)
+          var rwl = Math.ceil(n / best.cols), needW = best.cols * 64 + (best.cols - 1) * G, shortW = needW - gw;
+          var dy = U.clamp(shortW, 0, yard - 48);
+          yard -= dy; shortW -= dy;
+          var dg = U.clamp(shortW, 0, Math.max(0, gateS - 84));
+          gateS -= dg;
+          gateSz = gateS;
+          gw += dy + dg;
+          cell = Math.min(190, Math.floor(Math.min((gw - (best.cols - 1) * G) / best.cols, (gh - (rwl - 1) * G) / rwl)));
         }
         cellSz = cell;
         // the yard: the tree is a square as thick as the yard; the items share the rest in 1..3 lines
@@ -704,6 +725,7 @@
         lastHinted = null;
         if (state === 'pull') { hint(halfEls[pullSide()]); return; }
         if (state !== 'play') return;
+        if (delivering) { hint(null); handAfterDeliver = true; return; }   // nothing to point at until the hand-over lands
         if (canDeliver()) { hint(visitBtn); return; }
         var ps = farm.plots, wantedFirst = function (f) {          // plants of a still-wanted crop first, then any
           for (var pass = 0; pass < 2; pass++) for (var k = 0; k < ps.length; k++)
@@ -730,6 +752,7 @@
         if (state !== 'play') return;
         var p = farm.plots[i], b = plotEls[i], c = care[i];
         if (!p || !b || !c) return;
+        if (delivering && p.crop && p.stage === 4 && p.giant) { squash(i); return; }   // no pull while the hand-over is flying
         if (ctx.time < c.nextAt) { squash(i); return; }             // per-bed gap: a squash, no change
         c.nextAt = ctx.time + BED_GAP;
         if (p.crop && p.stage === 4) { if (p.giant) openPull(i); else harvest(i); return; }
@@ -753,10 +776,9 @@
         if (!ghost[i]) planSeeds();
         var crop = ghost[i];
         if (!crop) return;
-        var keep = farm.plots[i].water;
+        // sowing turns the soil over: a new seed always wants its first drink (whatever the bed held before)
         farm.plots[i] = emptyPlot();
         farm.plots[i].crop = crop;
-        farm.plots[i].water = keep;
         delete ghost[i];
         care[i].tk = 0;
         bonusAt[i] = null;
@@ -778,6 +800,15 @@
         var n = el('span', { class: 'gd-cameo gd-cameo--' + kind, 'aria-hidden': 'true' }, ctx.sticker(kind === 'rain' ? '🌧️' : '🧴'), bits);
         b.appendChild(n);
         ctx.after(950, function () { if (n.parentNode) n.parentNode.removeChild(n); });
+      }
+
+      /** A plant uses up `d` drops' worth of water. True when that finishes a drop. */
+      function drink(p, d) {
+        p.dry += d;
+        if (p.dry < 1 - 1e-9) return false;
+        p.water = Math.max(0, p.water - 1);
+        p.dry = p.water > 0 ? Math.max(0, p.dry - 1) : 0;
+        return true;
       }
 
       function water(i) {
@@ -819,6 +850,7 @@
         }
         p.t += add;
         c.tk += add;
+        drink(p, add * DRINK);                                          // growing faster, it drinks faster
         if (p.stage === 2 && !p.fed && 0.5 - p.t < 1e-6) p.t = 0.5;     // it stops just where the plant asks for food
         c.tickleAt = ctx.time + TICKLE_GAP;
         c.tickles++;
@@ -1102,6 +1134,8 @@
           pull = null;
           after();
           renderOrder();
+          // a hand-over that landed during the pull filled the order: the thank-you it could not give, now
+          if (!delivering && farm.order && orderDone(farm.order)) { thankYou(); return; }
           hintNext();
         });
       }
@@ -1129,9 +1163,14 @@
         if (ctx.time < pupUntil) return;
         pupUntil = ctx.time + 0.9;
         if (RM || !pup.animate || !plotEls[i]) { fx.bounce(pup); return; }
-        var c = centre(plotEls[i]), from = centre(pup), d = 'translate(' + Math.round(c.x - from.x) + 'px, ' + Math.round(c.y - from.y) + 'px)';
-        pup.animate([{ transform: 'translate(0, 0)' }, { transform: d + ' scale(1.3)', offset: 0.45 }, { transform: d + ' scale(1.3) rotate(-12deg)', offset: 0.55 }, { transform: 'translate(0, 0)' }], { duration: 900, easing: 'ease-in-out' });
+        // to the bed's bottom-right quarter (where the bug sat), so the spray bottle in its top-left corner stays in view
+        var r = plotEls[i].getBoundingClientRect(), c = { x: r.right - r.width * 0.25, y: r.bottom - r.height * 0.25 };
+        var from = centre(pup), d = 'translate(' + Math.round(c.x - from.x) + 'px, ' + Math.round(c.y - from.y) + 'px)';
+        pup.animate([{ transform: 'translate(0, 0)' }, { transform: d + ' scale(1.1)', offset: 0.45 }, { transform: d + ' scale(1.1) rotate(-12deg)', offset: 0.55 }, { transform: 'translate(0, 0)' }], { duration: 900, easing: 'ease-in-out' });
       }
+
+      /** After a poke (which, like every tap, took the ghost hand away): the hand is back where it was. */
+      function keepHand() { if (lastHinted && lastHinted.isConnected) ctx.hint(lastHinted); }
 
       /** A tap in the yard: whatever is there hops and makes its own sound. Just for fun: it changes nothing. */
       function poke(node) {
@@ -1256,7 +1295,8 @@
           delivering = false;
           renderOrder();
           after();
-          if (done) thankYou();
+          if (done) thankYou();          // (if a pull is open after all, it thanks them when the giant is out: finishPull)
+          else if (handAfterDeliver) { handAfterDeliver = false; hintNext(); }   // the hand held back during the hand-over
         });
       }
 
@@ -1347,8 +1387,11 @@
           return;
         }
         if (state !== 'play') return;                 // after the order is filled the garden rests until next time
+        // never a round that cannot end: a filled order, with nothing flying, is always thanked for
+        // (after the knock-knock, when the visitor was already given everything before they left last time)
+        if (!delivering && farm.order && orderDone(farm.order)) { if (ctx.time >= 0.8) thankYou(); return; }
         var S = farm.done < 2 ? STAGE_S_EARLY : STAGE_S;
-        var changed = false;
+        var changed = false, thirsty = false;
         farm.plots.forEach(function (p, i) {
           if (!p.crop || p.stage >= 4) return;
           if (p.water <= 0) {
@@ -1356,14 +1399,18 @@
             if (p.stage > 0 || p.t > 0) { p.thirst += dt; if (p.thirst > GRACE_S) p.perfect = false; }
             return;
           }
-          p.dry += dt;
-          if (p.dry >= DRY_S) { p.dry = 0; p.water--; changed = true; }
-          if (p.bug) { p.bugT += dt; if (p.bugT > GRACE_S) p.perfect = false; return; }   // waits for the bug to go
-          if (isHungry(p)) return;                                                     // waits for food
-          p.t += dt / (S[p.stage] * SPEED);
+          if (p.bug || isHungry(p)) {                  // waits for the bug to go, or for food: not growing, it drinks nothing
+            if (p.bug) { p.bugT += dt; if (p.bugT > GRACE_S) p.perfect = false; }
+            return;
+          }
+          var grown = dt / (S[p.stage] * SPEED);
+          p.t += grown;
+          if (drink(p, grown * DRINK)) { changed = true; thirsty = thirsty || p.water === 0; }   // a growing plant drinks
           if (isHungry(p)) { changed = true; if (help) sfx.play('tick'); }
           if (p.t >= 1) { stageUp(i); changed = true; }
         });
+        // a plant ran dry on the way: it asks (a soft tick with help), and the hand shows it when it is the job to do
+        if (thirsty) { if (help) sfx.play('tick'); if (lastHinted || help) hintNext(); }
         // the first rounds: one bug comes early, so a tap on it gets shown while it is still new
         if (farm.done < 2 && BUGRATE > 0 && !tutorBug && farm.plots.filter(function (p) { return p.bug; }).length < 2) {
           var ti = farm.plots.findIndex(function (p) { return p.crop && p.stage === 1 && p.t >= 0.4 && p.water > 0 && !p.bug; });
@@ -1374,7 +1421,7 @@
             changed = true;
             sfx.play('pop', { pitch: 300 });
             // (not while a needed seed is still waiting to be sown: the hand shows that first)
-            if (help && !(neededSeeds().length && farm.plots.some(function (p) { return !p.crop; }))) hint(plotEls[ti], { delay: 500 });
+            if (help && !delivering && !(neededSeeds().length && farm.plots.some(function (p) { return !p.crop; }))) hint(plotEls[ti], { delay: 500 });
           }
         }
         // bugs come by now and then (never more than two at once)
@@ -1396,14 +1443,28 @@
             if (bi >= 0) { ladybirdTo(bi); changed = true; }
           }
         }
-        // the fountain gives every bed a little water now and then
+        // the fountain sends a little water (a drop flies over) to every plant that has run dry, now and then: watering
+        // stays the children's job (topping up every bed took away the ask a plant makes on the way), but a thirsty
+        // plant they have not got to yet never waits long, and keeps growing
         if (farm.helpers.fountain) {
           fountainClock += dt;
           if (fountainClock >= 15) {
             fountainClock = 0;
-            var wet = false;
-            farm.plots.forEach(function (p) { if (p.crop && p.stage < 4 && p.water < MAX_WATER) { p.water++; p.dry = 0; p.thirst = 0; wet = true; } });
-            if (wet) { changed = true; if (lastHinted) hintNext(); }     // the hand moves on from a job the fountain has done
+            var fz = yardSticker('fountain'), fzAt = fz ? centre(fz) : null, sips = 0;
+            farm.plots.forEach(function (p, i) {
+              if (!p.crop || p.stage >= 4 || p.water > 0) return;
+              p.water = 1; p.dry = 0; p.thirst = 0;
+              if (fzAt && plotEls[i] && !RM) fly('💧', fzAt, plotEls[i], sips * 120);
+              else if (plotEls[i]) fx.bounce(plotEls[i]);
+              sips++;
+              cue('fountain', i);
+            });
+            if (sips) {
+              changed = true;
+              if (fz) fx.bounce(fz);
+              sfx.play('splash');
+              if (lastHinted) hintNext();                // the hand moves on from a job the fountain has done
+            }
           }
         }
         // rain: the countdown carries over between rounds, so it comes every minute or two of play; then a rainbow
@@ -1434,7 +1495,7 @@
         rainbowEl.classList.add('is-on');
         sfx.play('star');
         cue('rainbow');
-        ctx.after(2600, function () { rainbowEl.classList.remove('is-on'); });
+        ctx.after(1600, function () { rainbowEl.classList.remove('is-on'); });   // (see-through, and short: the beds stay readable)
       }
 
       /* ---- input ---- */
@@ -1449,8 +1510,8 @@
       ctx.tap(sacksEl, function (ev, node) { counted(node); feed(node.dataset.tool); }, { delegate: '.gd-tool', slop: 10 });
       // the whole gate hands over: visitor, basket, and the gap between them
       ctx.tap(gate, function () { counted(visitBtn); deliver(); });
-      // the yard is just for fun: it never counts as doing something (the hand keeps its timing)
-      ctx.tap(yardEl, function (ev, node) { poke(node); }, { delegate: '.gd-yard__item', slop: 24 });
+      // the yard is just for fun: it never counts as doing something (the hand keeps its timing, and stays where it was)
+      ctx.tap(yardEl, function (ev, node) { poke(node); keepHand(); }, { delegate: '.gd-yard__item', slop: 24 });
       ctx.tap(pullEl, function (ev, node) { tapped = true; heave(+node.dataset.side); }, { delegate: '.gd-pull__half', slop: 12 });
 
       /* ---- go ---- */
@@ -1484,6 +1545,8 @@
         get treeShown() { return treeShown; },
         hintNext: hintNext,
         neededSeeds: neededSeeds,
+        /** Has bed i had all the tickle growth its stage allows (the hand never points at it to tickle)? */
+        tickleCapped: function (i) { return !!care[i] && care[i].tk >= TICKLE_CAP - 1e-6; },
         planSeeds: function () { planSeeds(); renderAll(); },
         /** Replace the plans for empty beds and redraw, without planning again (tests). */
         setGhosts: function (m) {
@@ -1524,7 +1587,7 @@
         FAV: FAV,
         TREE_AT: TREE_AT,
         GIFTS: GIFTS.length,
-        tuning: { help: help, DRY_S: DRY_S, BUG_P: BUG_P, SPEED: SPEED, STAGE_S: STAGE_S, STAGE_S_EARLY: STAGE_S_EARLY, GRACE_S: GRACE_S, MAX_BASKET: MAX_BASKET,
+        tuning: { help: help, DRINK: DRINK, MAX_WATER: MAX_WATER, BUG_P: BUG_P, SPEED: SPEED, STAGE_S: STAGE_S, STAGE_S_EARLY: STAGE_S_EARLY, GRACE_S: GRACE_S, MAX_BASKET: MAX_BASKET,
           BED_GAP: BED_GAP, TICKLE: TICKLE, TICKLE_GAP: TICKLE_GAP, TICKLE_CAP: TICKLE_CAP, GIANT_P: GIANT_P, PULL_NEED: PULL_NEED, HEAVE_GAP: HEAVE_GAP, TOGETHER_S: TOGETHER_S, IDLE_S: IDLE_S },
       });
 

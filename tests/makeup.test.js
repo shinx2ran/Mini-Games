@@ -1,17 +1,19 @@
 /* Make-Up Mirrors: two mirrors, two trays. The rules and the data hold; a round plays with real taps; following only the
-   ghost hand plays every party and finds five secret looks; swaps, mashing, rotating and damaged saves never break it;
-   every face lands its make-up on the right spot; every size fits. */
+   ghost hand plays every party and finds five secret looks, and the real hand on screen moves straight on and never
+   leaves anyone waiting; a round with real taps lasts long enough; swaps, mashing, rotating and damaged saves never break
+   it; every face lands its make-up on the right spot; every size fits (568x320 too); the posed photo holds. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const h = require('./harness');
 const ID = 'makeup';
 const KEY = 'mg:game:makeup:makeup';
+const SMALL_WIDE = { width: 568, height: 320 };
 
 // Appendix A of the spec: every emoji the game may use (all Unicode 11 or older)
 const ALLOWED = [...('💄🐇🐣🎨💪' + '🐰🐻🐱🐶🐼🐸🐵🐯🐷🐨🐙🐧🐥🦁🦄🦊' +
   '🧽⭐❤⚡🐾💎🐚🌙🌈👓🕶🥽🧣👔🌺🎀🌸🎩🦆🌿👑👒✨💕🌼💫' + '👋😘✌' + '🧼👀👃👄📸✔' +
-  '😊😆🤩😍😎🤪🤡😁😸🥳👽🤧😮😝' + '💋💦🎈💥🔍🛸🎁🍃' + '🎉🎪🏖🚀🏙🌴🐒🏰☀🌊🎤' + '🦸🕵' +
+  '😊😆🤩😍😎🤪🤡😁😸🥳👽🤧😮😝' + '💋💦🎈💥🔍🛸🎁🍃' + '🎉🎪🏖🚀🏙🌴🐒🏰☀🌊🎤🤹' + '🦸🕵' +
   '🐩🦜📻💡💐🧸🌵🌻🎐🧁🏅')];
 
 const api = (page, k) => page.evaluate((k) => MG.current.api[k], k);
@@ -72,20 +74,24 @@ async function startAt(page, id, z) {
   if (z) await handUntil(page, (a, z) => a.state === 'zone' && a.zone === z, z);
   await gameWait(page, 0.35);
 }
-/** Follow the hand until cond(api) holds. */
+/** Follow the hand until cond(api) holds. (The clock runs at least 8x on the way, then goes back to what it was.) */
 function handUntil(page, cond, arg, max = 400) {
   return page.evaluate(async ([src, arg, max]) => {
     const cond = (0, eval)('(' + src + ')');
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     let id = 70000 + Math.floor(Math.random() * 1000) * 50;
-    for (let i = 0; i < max; i++) {
-      const a = MG.current.api;
-      if (cond(a, arg)) return true;
-      a.hintNext();
-      const n = a.hinted;
-      if (n && a.state === 'zone') { const r = n.getBoundingClientRect(); const o = { bubbles: true, pointerId: ++id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; n.dispatchEvent(new PointerEvent('pointerdown', o)); n.dispatchEvent(new PointerEvent('pointerup', o)); }
-      await sleep(40);
-    }
+    const s0 = MG.timeScale;
+    MG.timeScale = Math.max(s0 || 1, 8);
+    try {
+      for (let i = 0; i < max; i++) {
+        const a = MG.current.api;
+        if (cond(a, arg)) return true;
+        a.hintNext();
+        const n = a.hinted;
+        if (n && a.state === 'zone') { const r = n.getBoundingClientRect(); const o = { bubbles: true, pointerId: ++id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; n.dispatchEvent(new PointerEvent('pointerdown', o)); n.dispatchEvent(new PointerEvent('pointerup', o)); }
+        await sleep(40);
+      }
+    } finally { MG.timeScale = s0; }
     throw new Error('handUntil: never got there');
   }, [cond.toString(), arg, max]);
 }
@@ -105,12 +111,14 @@ const pieces = (page, s, z) => page.evaluate(([s, z]) => document.querySelectorA
 const ONLY = process.env.MG_MK_ONLY ? process.env.MG_MK_ONLY.split(',') : null;
 const part = (n) => !ONLY || ONLY.includes(String(n));
 
-/** Follow only the ghost hand until the round is won. Watches where the hand points on the way. */
+/** Follow only the ghost hand until the round is won. Watches where the hand points on the way. (The clock runs at least
+ *  8x until the win, then goes back to what it was.) */
 function followHand(page, max = 500) {
   return page.evaluate(async ([max]) => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     let id = 40000 + Math.floor(Math.random() * 1000) * 100, steps = 0, herOk = true, picked = null;
-    const bad = [];
+    const bad = [], s0 = MG.timeScale;
+    MG.timeScale = Math.max(s0 || 1, 8);
     for (; steps < max && MG.current && !MG.current.ctx.over; steps++) {
       const a = MG.current.api;
       a.hintNext();
@@ -131,8 +139,76 @@ function followHand(page, max = 500) {
       n.dispatchEvent(new PointerEvent('pointerup', o));
       await sleep(35);
     }
+    MG.timeScale = s0;
     return { steps, bad, herOk, picked, over: !!(MG.current && MG.current.ctx.over), party: MG.current && MG.current.api.party };
   }, [max]);
+}
+
+/** Follow only the REAL ghost hand: tap api.hinted only while the core's .mg-hint is on screen, about 0.3 game seconds
+ *  after it shows (a person's reaction), and never call hintNext(). Logs, in game time, every wait between taps and how
+ *  soon the hand was on the other board after a board finished under it. */
+function followRealHand(page, maxGame = 400) {
+  return page.evaluate(async ([maxGame]) => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const c = MG.current.ctx, t0 = c.time, waits = [], moved = [], drawn = { menu: 0, zone: 0 };
+    let id = 30000, lastTap = null, seenAt = null, seenNode = null;
+    while (!c.over && c.time - t0 < maxGame) {
+      const a = MG.current.api, n = a.hinted, shown = !!document.querySelector('.g-makeup .mg-hint, #mg-game .mg-hint');
+      if (!shown || !n) { seenAt = null; await sleep(5); continue; }
+      if (n !== seenNode || seenAt === null) { seenNode = n; seenAt = c.time; }
+      if (c.time - seenAt < 0.3) { await sleep(5); continue; }
+      drawn[a.state === 'menu' ? 'menu' : 'zone']++;
+      const bd = n.closest('.mk-board'), s = bd ? +bd.dataset.side : -1, was = s >= 0 ? a.boards[s].done : null;
+      const r = n.getBoundingClientRect();
+      const o = { bubbles: true, cancelable: true, pointerId: ++id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+      n.dispatchEvent(new PointerEvent('pointerdown', o));
+      n.dispatchEvent(new PointerEvent('pointerup', o));
+      if (lastTap !== null) waits.push(+(c.time - lastTap).toFixed(2));
+      lastTap = c.time;
+      seenAt = null;
+      const b = MG.current.api;
+      // her board (or his) finished under the hand while the other is still going: the hand must go there at once
+      if (s >= 0 && !was && b.state === 'zone' && b.boards[s].done && !b.boards[1 - s].done) {
+        const tf = c.time;
+        while (c.time - tf < 1.5) {
+          const h = MG.current.api.hinted;
+          if (h && document.querySelector('#mg-game .mg-hint') && h.closest(`.mk-board[data-side="${1 - s}"]`)) break;
+          await sleep(2);
+        }
+        moved.push(+(c.time - tf).toFixed(3));
+      }
+      await sleep(5);
+    }
+    return { over: c.over, waits, moved, drawn, party: MG.current.api.party };
+  }, [maxGame]);
+}
+/** A real-touch two-player round: she taps her own board every `her` game seconds, he his every `his` seconds (each the
+ *  chosen item, else the party's signature, else the first or second button), each first tap of a step one beat after it
+ *  appears. Game seconds from the card tap to the party overlay. */
+function twoPlayers(page, party, her, his) {
+  return page.evaluate(async ([party, her, his]) => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const c = MG.current.ctx;
+    let id = 20000;
+    const touch = (n) => { const r = n.getBoundingClientRect(); const o = { bubbles: true, cancelable: true, pointerId: ++id, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; n.dispatchEvent(new PointerEvent('pointerdown', o)); n.dispatchEvent(new PointerEvent('pointerup', o)); };
+    touch(document.querySelector(`.g-makeup .mk-card[data-id="${party}"]`));
+    const t0 = c.time, next = [t0, t0];
+    while (!document.querySelector('.mg-overlay--win') && c.time - t0 < 400) {
+      const a = MG.current.api;
+      if (a.state === 'zone') {
+        for (const s of [0, 1]) {
+          const bd = a.boards[s], mine = s === a.aSide;
+          if (bd.done || c.time < next[s]) continue;
+          const sig = a.PARTIES[a.party].sig[a.zone];
+          const want = bd.item || (sig && bd.tray.includes(sig) ? sig : bd.tray[mine ? 0 : 1]);
+          touch(document.querySelector(`.g-makeup .mk-board[data-side="${s}"] .mk-item[data-id="${want}"]`));
+          next[s] = c.time + (mine ? her : his);
+        }
+      } else for (const s of [0, 1]) next[s] = c.time + (s === a.aSide ? her : his);   // (a new step: each looks at it for one beat first)
+      await sleep(4);
+    }
+    return { len: +(c.time - t0).toFixed(1) };
+  }, [party, her, his]);
 }
 
 /** Every layout rule for what is on screen now. */
@@ -160,12 +236,39 @@ async function layoutChecks(t, p, label, o = {}) {
     pairs(rects('.g-makeup .mk-board'));
     pairs(rects('.g-makeup .mk-item'));
     pairs(rects('.g-makeup .mk-card, .g-makeup .mk-next'));
-    pairs(rects('.g-makeup .mk-polaroid'));
     pairs(rects('.g-makeup .mk-board.is-done .mk-check'));
     pairs(rects('.g-makeup .mk-lookslot'));
     return out;
   });
   assert.deepStrictEqual(clash, [], `nothing overlaps ${label}`);
+  // the photos may fan out, but each one still shows at least half of itself (layout boxes: their tilt is decoration)
+  const fan = await p.evaluate(() => {
+    const ps = [...document.querySelectorAll('.g-makeup .mk-polaroid')].filter((n) => n.offsetParent && getComputedStyle(n).visibility !== 'hidden');
+    const out = [];
+    for (let i = 1; i < ps.length; i++) {
+      const a = ps[i - 1], b = ps[i], dx = Math.abs(b.offsetLeft - a.offsetLeft) / b.offsetWidth, dy = Math.abs(b.offsetTop - a.offsetTop) / b.offsetHeight;
+      if (Math.max(dx, dy) < 0.5) out.push(`photo ${i} shows only ${Math.round(100 * Math.max(dx, dy))}%`);
+    }
+    return out;
+  });
+  assert.deepStrictEqual(fan, [], `every photo on the wall shows at least half of itself ${label}`);
+  // the wall clips what pokes out of it: every pip (the current one too), the marquee animals and every photo shown are inside
+  const clipped = await p.evaluate(() => {
+    const w = document.querySelector('.g-makeup .mk-wall');
+    if (!w || !w.offsetParent) return [];
+    const W = w.getBoundingClientRect(), row = document.querySelector('.g-makeup .mk-row').getBoundingClientRect(), out = [];
+    const inside = (r, b, inset, tol) => r.left >= b.left + inset - tol && r.right <= b.right - inset + tol && r.top >= b.top + inset - tol && r.bottom <= b.bottom - inset + tol;
+    document.querySelectorAll('.g-makeup .mk-pip, .g-makeup .mk-mq-pet > .mg-sticker').forEach((n) => {
+      const r = n.getBoundingClientRect();
+      if (n.offsetParent && r.width && !inside(r, W, 3, 0.5)) out.push(`${n.className} ${n.dataset.zone || n.textContent} [${[r.left, r.right].map(Math.round)}] outside the wall [${[W.left + 3, W.right - 3].map(Math.round)}]`);
+    });
+    document.querySelectorAll('.g-makeup .mk-polaroid').forEach((n, i) => {
+      const r = n.getBoundingClientRect();
+      if (n.offsetParent && r.width && !inside(r, row, 0, 3)) out.push(`photo ${i} cut off by the wall row`);
+    });
+    return out;
+  });
+  assert.deepStrictEqual(clipped, [], `nothing on the wall is cut off ${label}`);
   const escapes = await p.evaluate(() => {
     const out = [];
     const inside = (r, b, tol) => r.left >= b.left - tol && r.right <= b.right + tol && r.top >= b.top - tol && r.bottom <= b.bottom + tol;
@@ -185,7 +288,7 @@ async function layoutChecks(t, p, label, o = {}) {
   assert.deepStrictEqual(escapes, [], `the friend, bubble, badges and tick sit inside ${label}`);
   if (await vis('.g-makeup .mk-pip')) assert.ok((await t.minTargetSize(p, '.g-makeup .mk-pip.is-in')).min >= 20, `pips at least 20px ${label}`);
   if (await vis('.g-makeup .mk-helper, .g-makeup .mk-dec')) assert.ok((await t.minTargetSize(p, '.g-makeup .mk-helper, .g-makeup .mk-dec')).min >= 14, `helpers and decorations at least 14px ${label}`);
-  if (o.wall) assert.ok(await vis('.g-makeup .mk-polaroid') >= 1, `at least one polaroid shows ${label}`);
+  if (o.wall) { const n = await vis('.g-makeup .mk-polaroid'); assert.ok(n >= o.wall, `at least ${o.wall} polaroids show ${label}: ${n}`); }
   assert.ok(await t.noPageScroll(p), `no page scroll ${label}`);
   // (only pictographs, skin tones, the variation selector, the joiner and the keycap go: \p{Emoji_Component} would also take 0-9, # and *)
   const text = await p.evaluate(() => document.querySelector('.g-makeup').innerText.replace(/\p{Extended_Pictographic}|\p{Emoji_Modifier}|[\u{FE0F}\u{200D}\u{20E3}]|\s/gu, ''));
@@ -299,7 +402,7 @@ h.run(ID, async (t) => {
     assert.deepStrictEqual([await api(page, 'state'), await api(page, 'mud')], ['deal', [3, 3]], 'the friends arrive muddy');
     await stateIs(page, 'zone');
     const zones = await api(page, 'zones');
-    assert.deepStrictEqual(zones, ['wash', 'cheeks', 'eyes', 'mouth', 'top', 'sparkle', 'pose']);
+    assert.deepStrictEqual(zones, ['wash', 'cheeks', 'eyes', 'mouth', 'neck', 'top', 'sparkle', 'pose']);
     const chosen = [{}, {}];
     for (let zi = 0; zi < zones.length; zi++) {
       const z = zones[zi];
@@ -341,9 +444,11 @@ h.run(ID, async (t) => {
     await stateIs(page, 'finale');
     const sv = await saved(page);
     assert.deepStrictEqual([sv.done, sv.played, sv.photos.length], [1, { party: 1 }, 1], 'saved as soon as the finale starts');
-    const ph = sv.photos[0], LZ = ['cheeks', 'eyes', 'mouth', 'top', 'sparkle'];
+    const ph = sv.photos[0], LZ = ['cheeks', 'eyes', 'mouth', 'neck', 'top', 'sparkle'];
     const zOf = (s) => Object.fromEntries(LZ.map((z) => [z, chosen[s][z]]));
-    assert.deepStrictEqual(ph, { p: 'party', l: { e: '🐰', z: zOf(1), x: [], o: 'kiss' }, r: { e: '🐻', z: zOf(0), x: [], o: 'ears' } }, 'the photo: both animals, the chosen items, both poses');
+    // (the random trays can make a secret look, e.g. specs and a moustache: the spy; the photo carries what each board found)
+    const found = (await boards(page)).map((b) => b.found);
+    assert.deepStrictEqual(ph, { p: 'party', l: { e: '🐰', z: zOf(1), x: found[1], o: 'kiss' }, r: { e: '🐻', z: zOf(0), x: found[0], o: 'ears' } }, 'the photo: both animals, the chosen items, the looks found, both poses');
     const win = await t.waitForWin(page, 8000);
     assert.strictEqual(win.faces.length, 2);
     await openMakeup(page, { keep: true });
@@ -378,7 +483,9 @@ h.run(ID, async (t) => {
     await gameWait(page, 0.27);
     await tap(page, ITEM(1, z), 0);
     b = (await boards(page))[1];
-    assert.ok(b.done && b.k === b.n && b.item === z, 'the third item finishes the board');
+    assert.deepStrictEqual([b.item, b.k], [z, 3], 'the third item takes the next dab');
+    for (let i = 0; i < 6 && !b.done; i++) { await gameWait(page, 0.27); await tap(page, ITEM(1, z), 0); b = (await boards(page))[1]; }
+    assert.ok(b.done && b.k === b.n && b.item === z, `and, dabbed on, finishes the board (his ${b.n})`);
     for (let i = 0; i < 10; i++) { await tap(page, ITEM(1, [x, y, z][i % 3]), 0); await gameWait(page, 0.27); }
     b = (await boards(page))[1];
     const last = [x, y, z][9 % 3];
@@ -566,8 +673,21 @@ h.run(ID, async (t) => {
     await gameWait(page, 0.35);
     await tap(page, ITEM(0, 'ears'), 0);
     await tap(page, ITEM(1, 'kiss'), 0);
+    const tF = await page.evaluate(() => MG.current.ctx.time);      // (the second pose starts the finale in that tap)
     await stateIs(page, 'finale');
     await page.waitForSelector('.g-makeup .mk-frame.is-posed', { timeout: 4000 });
+    // the posed photo, the round's punchline, is still there in full 1.8s in (it holds from 1.15s to 2.35s)
+    await page.waitForFunction((t) => MG.current.ctx.time >= t + 1.8, tF, { timeout: 5000 });
+    const held = await page.evaluate(() => {
+      const f = document.querySelector('.g-makeup .mk-frame'), r = f.getBoundingClientRect(), g = document.querySelector('#mg-game').getBoundingClientRect();
+      return { shown: !f.hidden, posed: f.classList.contains('is-posed'), full: r.width >= f.offsetWidth * 0.98, moving: f.getAnimations().length,
+        inView: r.left >= g.left - 1 && r.right <= g.right + 1 && r.top >= g.top - 1 && r.bottom <= g.bottom + 1, poses: document.querySelectorAll('.g-makeup .mk-frame .mk-posed').length };
+    });
+    assert.deepStrictEqual([held.shown, held.posed, held.full, held.moving, held.inView], [true, true, true, 0, true], 'the posed photo is still fully on screen 1.8s into the finale: ' + JSON.stringify(held));
+    assert.ok(held.poses >= 2, 'with both poses on it');
+    // (timed in the page: the game clock when the party overlay appears)
+    const tEnd = await page.evaluate(() => new Promise((res) => { const c = MG.current.ctx, f = () => (document.querySelector('.mg-overlay--win') ? res(c.time) : setTimeout(f, 3)); f(); }));
+    assert.ok(tEnd - tF < 4, `the finale ends under 4s (${(tEnd - tF).toFixed(2)}s)`);
     const frame = await page.evaluate(() => ({
       l: [...document.querySelectorAll('.g-makeup .mk-fslot[data-side="l"] .mk-posed .mg-sticker')].map((n) => n.textContent),
       lUnder: [...document.querySelectorAll('.g-makeup .mk-fslot[data-side="l"] .mk-under .mk-posed .mg-sticker')].map((n) => n.textContent),
@@ -597,10 +717,10 @@ h.run(ID, async (t) => {
       const ph = (p, i) => ({ p, l: { e: '🐰', z: { cheeks: 'star', nose: 'clown', top: ['wig', 'crown', 'duck', 'cone'][i % 4], sparkle: 'stars' }, x: i % 2 ? ['clown'] : [], o: 'ears' }, r: { e: '🐻', z: { eyes: 'specs', mouth: 'lips-red', neck: 'bowtie', top: 'tophat' }, x: [], o: 'kiss' } });
       return { done: 40, looks: ['clown', 'tiger', 'hero', 'royal', 'spy', 'alien'], played: { party: 2 }, photos: ['party', 'circus', 'hero', 'jungle', 'royal', 'beach', 'space', 'rainbow'].map(ph) };
     })();
-    const runs = [['small'], ['phone'], ['phoneWide', 'dark'], ['phoneWide'], ['tabletTall', 'rm'], ['tabletTall'], ['tablet', 'dark'], ['tablet']];
+    const runs = [['small'], ['phone'], ['phoneWide', 'dark'], ['phoneWide'], ['smallWide'], ['tabletTall', 'rm'], ['tabletTall'], ['tablet', 'dark'], ['tablet']];
     for (const [vp, mode] of runs) {
       const label = `@${vp}${mode ? ' ' + mode : ''}`, tag = `${vp}${mode ? '-' + mode : ''}`;
-      const p = await newPage(t, { viewport: vp, dark: mode === 'dark', reducedMotion: mode === 'rm' });
+      const p = await newPage(t, { viewport: vp === 'smallWide' ? SMALL_WIDE : vp, dark: mode === 'dark', reducedMotion: mode === 'rm' });
       await openMakeup(p, { kit: { done: 13, looks: FULLWALL.looks } });
       await layoutChecks(t, p, 'menu ' + label);
       assert.strictEqual(await p.locator('.g-makeup .mk-card').count(), 8);
@@ -611,12 +731,22 @@ h.run(ID, async (t) => {
       await p.waitForTimeout(250);
       await layoutChecks(t, p, 'zone ' + label);
       if (!mode) await t.shot(p, `${ID}-${vp}-zone.png`);
+      if (!mode && /Wide$|^tablet$/.test(vp)) {
+        // landscape, tier 3 (the marquee and its two animals) in a Short round: one row of big pips, all on the sign
+        await openMakeup(p, { length: 'short', kit: FULLWALL });
+        await startAt(p, 'party');
+        assert.strictEqual(await p.evaluate(() => document.querySelector('.g-makeup .mk-wall').dataset.tier), '3', 'the marquee is up');
+        for (const s of [0, 1]) await tap(p, ITEM(s, (await boards(p))[s].tray[0]), 0);
+        await p.waitForTimeout(250);
+        await layoutChecks(t, p, 'tier-3 Short zone ' + label, { wall: vp === 'tablet' ? 4 : 3 });
+        await t.shot(p, `${ID}-${vp}-short3.png`);
+      }
       await openMakeup(p, { kit: FULLWALL });
       await startAt(p, 'rainbow');
       assert.strictEqual(await p.locator('.g-makeup .mk-pip').count(), 8, 'the capstone has 8 pips');
       for (const s of [0, 1]) await tap(p, `${B(s)} .mk-mirror`, 0);
       await p.waitForTimeout(300);
-      await layoutChecks(t, p, 'capstone ' + label, { wall: true });
+      await layoutChecks(t, p, 'capstone ' + label, { wall: /^tablet/.test(vp) ? 4 : 3 });   // (8 photos saved)
       if (!mode) await t.shot(p, `${ID}-${vp}-wall.png`);
       else await t.shot(p, `${ID}-${tag}-wall.png`);
       await openMakeup(p, { length: 'short', dabs: 'few', kit: { done: 3 } });
@@ -625,7 +755,7 @@ h.run(ID, async (t) => {
       await handUntil(p, (a) => a.state === 'finale');
       await p.evaluate(() => { MG.timeScale = 0.5; });
       await p.waitForSelector('.g-makeup .mk-frame.is-posed', { timeout: 6000 });
-      await p.evaluate(() => { MG.timeScale = 0.08; });   // (the photo stays 300ms before it flies to the wall: slow the clock to look at it)
+      await p.evaluate(() => { MG.timeScale = 0.08; });   // (the photo holds 1.2s before it flies to the wall: slow the clock for the checks)
       await p.waitForTimeout(350);
       await layoutChecks(t, p, 'photo ' + label);
       await t.shot(p, `${ID}-${tag}-photo.png`);
@@ -736,6 +866,22 @@ h.run(ID, async (t) => {
       const pol = await page.locator('.g-makeup .mk-polaroid').count();
       assert.ok(pol >= 1, 'and draws the photo wall');
     }
+    // a late salon's menu: on every card the medals, the play stars and the corner stickers keep apart, and no sticker is a star
+    for (const first of [1, 2, 3]) {
+      const played = Object.fromEntries(['party', 'circus', 'hero', 'jungle', 'royal', 'beach', 'space', 'rainbow'].map((id, i) => [id, ((first + i - 1) % 3) + 1]));
+      await openMakeup(page, { kit: { done: 40, played } });
+      const bad = await page.evaluate(() => {
+        const out = [], hit = (r, q) => r.left < q.right - 0.5 && q.left < r.right - 0.5 && r.top < q.bottom - 0.5 && q.top < r.bottom - 0.5;
+        document.querySelectorAll('.g-makeup .mk-card').forEach((c) => {
+          const parts = [...c.querySelectorAll('.mk-card__stars .mg-sticker, .mk-card__medals .mg-sticker, .mk-deco, .mk-card__e')]
+            .map((n) => [n.closest('.mk-card__stars, .mk-card__medals, .mk-deco, .mk-card__e').className, n.getBoundingClientRect()]);
+          parts.forEach(([a, r], i) => parts.slice(i + 1).forEach(([b, q]) => { if (a !== b && hit(r, q)) out.push(`${c.dataset.id}: ${a} x ${b}`); }));
+          c.querySelectorAll('.mk-deco').forEach((n) => { if (/⭐/.test(n.textContent)) out.push(c.dataset.id + ': a star sticker'); });
+        });
+        return out;
+      });
+      assert.deepStrictEqual(bad, [], `menu badges keep apart (played ${JSON.stringify(played)})`);
+    }
     lap(12);
   }
 
@@ -745,7 +891,12 @@ h.run(ID, async (t) => {
     await openMakeup(p);
     await startAt(p, 'party');
     let b = await boards(p);
-    assert.deepStrictEqual([b[0].n, b[1].n], [1, 3], 'help Lots: her wash is one dab; his is unchanged');
+    assert.deepStrictEqual([b[0].n, b[1].n], [2, 4], 'help Lots: her wash is two dabs (4, less 2); his is unchanged');
+    // (Few takes one more off: her one-dab steps)
+    await openMakeup(p, { dabs: 'few' });
+    await startAt(p, 'party');
+    b = await boards(p);
+    assert.deepStrictEqual([b[0].n, b[1].n], [1, 3], 'help Lots and Few: her wash is one dab; his only loses the one for Few');
     await tap(p, `${B(0)} .mk-mirror`, 0);
     b = await boards(p);
     assert.ok(b[0].done && (await api(p, 'mud'))[0] === 0, 'one dab and the rinse');
@@ -760,7 +911,7 @@ h.run(ID, async (t) => {
     assert.strictEqual(b[1].n, 0, '(his board waits for his choice)');
     await tap(p, ITEM(1, b[1].tray[0]), 0);
     b = await boards(p);
-    assert.strictEqual(b[1].n, 3, 'the grown-up still has his three');
+    assert.strictEqual(b[1].n, 4, 'the grown-up still has his four (4, one less for Few, and his one more)');
     assert.strictEqual(await A(p, (a) => a.tuning.GAP), 0.16);
     // her hand comes after 2.5s at Lots (once the thing to press is not new to her)
     const SEEN = ['foam', 'stamp', 'blush', 'dots', 'glasses', 'shadow', 'lashes', 'googly', 'lips', 'smile', 'stache', 'cone', 'wear', 'wig', 'glitter', 'pose'];
@@ -777,11 +928,48 @@ h.run(ID, async (t) => {
     await startAt(page, 'circus');
     assert.deepStrictEqual(await api(page, 'zones'), ['cheeks', 'nose', 'top', 'sparkle', 'pose'], 'Short: no wash, no extra zone, ending sparkle and pose');
     const n = await A(page, (a) => ['few', 'normal', 'lots'].map((d) => [a.nFor('blush', false, d, 0), a.nFor('blush', true, d, 0), a.nFor('wear', false, d, 0), a.nFor('glitter', true, d, 0)]));
-    assert.deepStrictEqual(n, [[1, 2, 1, 3], [2, 3, 1, 3], [4, 5, 1, 3]], 'Few and Lots change only the variable kinds');
+    assert.deepStrictEqual(n, [[3, 4, 3, 3], [4, 5, 3, 3], [6, 6, 3, 3]], 'Few and Lots change only the variable kinds (Few < Normal < Lots)');
+    // at Normal with help Some (the default) every step but the pose is three taps for her, whatever the tray holds
+    const some = await A(page, (a) => Object.keys(a.KINDS).filter((k) => k !== 'pose' && a.nFor(k, false, 'normal', 1) !== 3));
+    assert.deepStrictEqual(some, [], 'help Some: three taps a step for her');
     await t.pause(page);
     const menu = await page.evaluate(() => document.querySelector('.mg-overlay--pause').innerText);
     assert.ok(/Makeover/.test(menu) && /Taps per step/.test(menu) && /makeover/.test(menu), 'the pause menu explains it and offers the options');
     await page.evaluate(() => MG.home());
     lap(13);
+  }
+
+  // --- 14. the real ghost hand: a fresh salon, following only the hand that is on screen, never asking for it
+  if (part(14)) {
+    const p = await newPage(t, { help: 1 });
+    await openMakeup(p, { scale: 6 });
+    const r = await followRealHand(p);
+    assert.ok(r.over, 'following only the hand on screen plays a whole Full round to the win: ' + JSON.stringify(r.drawn));
+    assert.strictEqual(r.party, 'party', 'starting with the party the hand shows on the menu');
+    const steps = (await A(p, (a) => a.zones)).length;
+    assert.ok(r.moved.length >= steps - 2, `a board finished under the hand in (nearly) every step: ${r.moved.length} of ${steps}`);
+    assert.ok(r.moved.every((dt) => dt <= 0.3), `then the hand is on the other unfinished board within 0.3s: ${r.moved}`);
+    assert.ok(Math.max(...r.waits) <= 10.5, `no wait between taps is over 10.5s: the longest is ${Math.max(...r.waits)}s`);
+    await t.waitForWin(p, 8000);
+    await p.close();
+    lap(14);
+  }
+
+  // --- 15. how long a round lasts with two real players: her a tap every 2s, his every 1s (help Some, the default)
+  if (part(15)) {
+    const p = await newPage(t, { help: 1 });
+    const len = { full: [], short: [] };
+    for (const L of ['full', 'short', 'full', 'short']) {     // (two of each: the random trays move a round by a few seconds)
+      await openMakeup(p, { length: L, scale: 12 });
+      len[L].push((await twoPlayers(p, 'party', 2, 1)).len);
+      await t.waitForWin(p, 8000);
+    }
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length, full = avg(len.full), short = avg(len.short);
+    if (process.env.MG_MK_TIME) console.log(`  round lengths: ${JSON.stringify(len)}`);
+    // (every step but the pose is three taps for her: measured, Full about 58s and Short about 36s with the overlay)
+    assert.ok(full >= 55 && Math.max(...len.full) <= 180, `a Full round with real taps lasts about a minute: ${len.full}s (8 steps)`);
+    assert.ok(short < full * 0.75, `Short is clearly shorter: ${len.short}s against ${len.full}s`);
+    await p.close();
+    lap(15);
   }
 });
