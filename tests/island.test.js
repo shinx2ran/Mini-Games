@@ -14,6 +14,35 @@ const goTo = (page, k) => tapEl(page, `.il-sq[data-k="${k}"]`);
 /** A square next to k (that is not k), for standing on before a one-step walk onto k. */
 const besideOf = (k) => { const [x, y] = k.split(',').map(Number); return [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].find(([a, b]) => a >= 0 && b >= 0 && a < 6 && b < 6); };
 const findTile = (page, what) => page.evaluate((w) => { const t = MG.current.api.tiles; return Object.keys(t).find((k) => t[k].what === w); }, what);
+/* The board is dealt at random, so every walk the test does not aim at something crosses only bare sand
+ * (nothing on it, no hidden gem): it picks nothing up, opens nothing, and does not stop on the parrot or the crab. */
+/** Pass a turn quietly: stand the player whose turn it is on bare sand and take one step onto bare sand next to it.
+ *  (at least 22 of the 36 squares are bare, and at most 18 squares can keep from touching: some two bare ones always touch.) */
+const passTurn = async (page) => {
+  const me = await api(page, 'turn');
+  const [from, to] = await page.evaluate(() => {
+    const t = MG.current.api.tiles, plain = (k) => !!t[k] && t[k].what === null && !t[k].gems;
+    for (const k of Object.keys(t)) {
+      if (!plain(k)) continue;
+      const [x, y] = k.split(',').map(Number), n = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].map(([a, b]) => a + ',' + b).find(plain);
+      if (n) return [k, n];
+    }
+    return [null, null];
+  });
+  if (!from) throw new Error('no two bare squares side by side');
+  const [x, y] = from.split(',').map(Number);
+  await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, x, y]);
+  await rollDie(page, 1);
+  await goTo(page, to);
+  await state(page, 'roll');
+  return me;
+};
+/** Two footprints from where the player whose turn it is stands: squares whose whole walk is bare sand, two-step walks first. */
+const quietWalks = (page) => page.evaluate(() => {
+  const a = MG.current.api, t = a.tiles, at = a.pos[a.turn], w = a.within(at, 2);
+  return Object.keys(w).filter((k) => a.route(at, w[k], t).every((p) => { const q = t[a.key(p.x, p.y)]; return q.what === null && !q.gems; }))
+    .sort((p, q) => w[q].d - w[p].d);
+});
 
 h.run(ID, async (t) => {
   const { assert } = t;
@@ -42,6 +71,14 @@ h.run(ID, async (t) => {
   assert.deepStrictEqual(r.route, [{ x: 0, y: 4 }, { x: 0, y: 3 }, { x: 1, y: 3 }], 'the walk goes the cloudier way');
 
   // --- a turn: tap your die, a few squares glow, tap one: you walk there, the clouds on the way puff off; then the other's turn
+  //     (on an island where the first walk can cross bare sand only, so it takes nothing the later steps count on: deal again until it can)
+  let quiet = await quietWalks(page);
+  for (let n = 0; !quiet.length && n < 40; n++) {
+    await page.evaluate(() => { MG.home(); MG.open('island'); });
+    await state(page, 'roll');
+    quiet = await quietWalks(page);
+  }
+  assert.ok(quiet.length, 'an island with a bare walk away from the boat');
   const first = await api(page, 'turn');
   await page.waitForSelector('.mg-hint', { state: 'attached', timeout: 5000 });
   await tapEl(page, `.il-die[data-p="${1 - first}"]`);
@@ -57,7 +94,8 @@ h.run(ID, async (t) => {
   const far = await page.evaluate((reach) => { const t = MG.current.api.tiles; return Object.keys(t).find((k) => !reach.includes(k) && k !== '0,5' && k !== '5,5'); }, reach);
   await goTo(page, far);
   assert.strictEqual(await api(page, 'state'), 'choose', 'a square too far away does nothing');
-  const dest = reach.find((k) => k === '0,3' || k === '5,3') || reach[0];
+  const dest = quiet[0];
+  assert.ok(reach.includes(dest), '(the quiet walk is one of the glowing squares)');
   await goTo(page, dest);
   await state(page, 'roll');
   const p0 = (await api(page, 'pos'))[first];
@@ -85,14 +123,12 @@ h.run(ID, async (t) => {
   [bx, by] = besideOf(chestK);
   await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
   g0 = (await api(page, 'bags'))[me].gems;
-  const keys0 = (await api(page, 'bags'))[me].keys;
-  if (!keys0) {
-    await rollDie(page, 1);
-    await goTo(page, chestK);
-    await state(page, 'roll');
-    assert.strictEqual((await api(page, 'tiles'))[chestK].what, 'chest', 'locked: it stays shut');
-    me = await api(page, 'turn');
-  }
+  assert.strictEqual((await api(page, 'bags'))[me].keys, 0, '(no key yet: nothing but sand on the first walk)');
+  await rollDie(page, 1);
+  await goTo(page, chestK);
+  await state(page, 'roll');
+  assert.strictEqual((await api(page, 'tiles'))[chestK].what, 'chest', 'locked: it stays shut');
+  me = await api(page, 'turn');
   const keyK = await findTile(page, 'key');
   [bx, by] = besideOf(keyK);
   await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
@@ -100,13 +136,10 @@ h.run(ID, async (t) => {
   await goTo(page, keyK);
   await state(page, 'roll');
   assert.strictEqual((await api(page, 'bags'))[me].keys, 1, 'a key');
-  me = await api(page, 'turn');
   // (now the other player's turn: hand the key holder the next turn by passing a turn)
-  await rollDie(page, 1);
-  await goTo(page, (await api(page, 'reach'))[0]);
-  await state(page, 'roll');
-  me = await api(page, 'turn');
-  const holder = me;
+  await passTurn(page);
+  const holder = await api(page, 'turn');
+  assert.strictEqual(holder, me, '(the key holder gets the next turn)');
   const chest2 = await findTile(page, 'chest');
   [bx, by] = besideOf(chest2);
   await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [holder, bx, by]);
@@ -125,27 +158,25 @@ h.run(ID, async (t) => {
     me = await api(page, 'turn');
     const keyK2 = await findTile(page, 'key');
     const chest3 = await findTile(page, 'chest');
-    if (keyK2 && chest3) {
-      [bx, by] = besideOf(keyK2);
-      await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
-      await rollDie(page, 1);
-      await goTo(page, keyK2);
-      await state(page, 'roll');
-      await rollDie(page, 1);                                         // (the other player's turn passes)
-      await goTo(page, (await api(page, 'reach'))[0]);
-      await state(page, 'roll');
-      await page.evaluate((k) => MG.current.api.stash(k), chest3);
-      stashed++;
-      assert.strictEqual(await page.locator(`.g-island .il-sq[data-k="${chest3}"] .il-hidden-gem`).count(), 0, '(still under its cloud)');
-      [bx, by] = besideOf(chest3);
-      await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
-      const g1 = (await api(page, 'bags'))[me].gems;
-      await rollDie(page, 1);
-      await goTo(page, chest3);
-      await state(page, 'roll');
-      assert.strictEqual((await api(page, 'bags'))[me].gems, g1 + 1 + 3, 'the hidden gem and the chest\'s three');
-      assert.strictEqual((await api(page, 'tiles'))[chest3].what, 'opened');
-    }
+    assert.ok(keyK2 && chest3, '(the other key and the other chest are still out there)');
+    [bx, by] = besideOf(keyK2);
+    await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
+    await rollDie(page, 1);
+    await goTo(page, keyK2);
+    await state(page, 'roll');
+    await passTurn(page);                                           // (the other player's turn passes)
+    assert.strictEqual((await api(page, 'tiles'))[chest3].open, false, '(nobody has been to the other chest yet)');
+    await page.evaluate((k) => MG.current.api.stash(k), chest3);
+    stashed++;
+    assert.strictEqual(await page.locator(`.g-island .il-sq[data-k="${chest3}"] .il-hidden-gem`).count(), 0, '(still under its cloud)');
+    [bx, by] = besideOf(chest3);
+    await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
+    const g1 = (await api(page, 'bags'))[me].gems;
+    await rollDie(page, 1);
+    await goTo(page, chest3);
+    await state(page, 'roll');
+    assert.strictEqual((await api(page, 'bags'))[me].gems, g1 + 1 + 3, 'the hidden gem and the chest\'s three');
+    assert.strictEqual((await api(page, 'tiles'))[chest3].what, 'opened');
   }
   // --- once rolled, the die rests (it does not wobble "tap me", and tapping it leaves the ghost hand alone)
   me = await api(page, 'turn');
@@ -170,7 +201,7 @@ h.run(ID, async (t) => {
   {
     const players = await page.evaluate(() => MG.current.ctx.players.map((p) => p.little));
     me = await api(page, 'turn');
-    if (players[me]) { await rollDie(page, 1); await goTo(page, (await api(page, 'reach'))[0]); await state(page, 'roll'); me = await api(page, 'turn'); }
+    if (players[me]) { await passTurn(page); me = await api(page, 'turn'); }
     const crab = await findTile(page, 'crab');
     [bx, by] = besideOf(crab);
     await page.evaluate(([me, x, y]) => MG.current.api.place(me, x, y), [me, bx, by]);
