@@ -1,7 +1,9 @@
 /* Make-Up Mirrors: two mirrors, two trays. The rules and the data hold; a round plays with real taps; following only the
    ghost hand plays every party and finds five secret looks, and the real hand on screen moves straight on and never
    leaves anyone waiting; a round with real taps lasts long enough; swaps, mashing, rotating and damaged saves never break
-   it; every face lands its make-up on the right spot; every size fits (568x320 too); the posed photo holds. */
+   it; every face lands its make-up on the right spot; every size fits (568x320 too); the posed photo holds. v2: the presents
+   and an old salon's move to v2 (the 👝 bag), the new parties, kinds, poses, gags and the cicak, the themed rotation and the
+   guest step. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -14,7 +16,46 @@ const SMALL_WIDE = { width: 568, height: 320 };
 const ALLOWED = [...('💄🐇🐣🎨💪' + '🐰🐻🐱🐶🐼🐸🐵🐯🐷🐨🐙🐧🐥🦁🦄🦊' +
   '🧽⭐❤⚡🐾💎🐚🌙🌈👓🕶🥽🧣👔🌺🎀🌸🎩🦆🌿👑👒✨💕🌼💫' + '👋😘✌' + '🧼👀👃👄📸✔' +
   '😊😆🤩😍😎🤪🤡😁😸🥳👽🤧😮😝' + '💋💦🎈💥🔍🛸🎁🍃' + '🎉🎪🏖🚀🏙🌴🐒🏰☀🌊🎤🤹' + '🦸🕵' +
-  '🐩🦜📻💡💐🧸🌵🌻🎐🧁🏅')];
+  '🐩🦜📻💡💐🧸🌵🌻🎐🧁🏅' +
+  // v2 (spec 2.9): 6.0, then 8.0, 9.0, 10.0, 11.0
+  '💅🍓🌟🍒🎊🍀✋🙌🐠🐟🍭🍬🐝🐞💖💞🐬🐳🌷🌋🍩👝😋' + '🤗🦀' + '🦋🥕🥚🦎' + '🧢🦖🦕🧜🧚' + '🦷')];
+// the 59 v1 items with their zone and kind, frozen: an old polaroid redraws from these
+const OLD_ITEMS = ('sponge:wash:foam blush-pink:cheeks:blush blush-peach:cheeks:blush star:cheeks:stamp heart:cheeks:stamp dots:cheeks:dots bolt:cheeks:stamp ' +
+  'stripes:cheeks:stripes paws:cheeks:stamp gem:cheeks:stamp shell:cheeks:stamp moon:cheeks:stamp rainbow:cheeks:stamp shadow-grape:eyes:shadow ' +
+  'shadow-sea:eyes:shadow lashes:eyes:lashes specs:eyes:glasses googly:eyes:googly mask-red:eyes:mask mask-blue:eyes:mask shadow-gold:eyes:shadow ' +
+  'shades:eyes:glasses goggles:eyes:glasses clown:nose:ball button:nose:ball heart-nose:nose:tip whiskers:nose:whisk cream:nose:cream lips-red:mouth:lips ' +
+  'lips-pink:mouth:lips stache:mouth:stache smile:mouth:smile lips-plum:mouth:lips bowtie:neck:bowtie scarf:neck:wear tie:neck:wear cape:neck:cape ' +
+  'pearls:neck:ring lei:neck:ring cone:top:cone bow:top:wear flower:top:wear tophat:top:wear wig:top:wig duck:top:wear leaves:top:ring crown:top:wear ' +
+  'sunhat:top:wear antennae:top:antennae horn:top:cone gold:sparkle:glitter hearts:sparkle:glitter stars:sparkle:glitter flowers:sparkle:glitter ' +
+  'dust:sparkle:glitter rainbow-dust:sparkle:glitter wave:pose:pose kiss:pose:pose ears:pose:pose').split(' ');
+// the eight v1 parties as v1 shipped them (copied from v1's PARTIES), frozen: an old salon's cards, photos and medals mean these
+const OLD_PARTIES = {
+  party:   { e: '🎉', bg: 'sun',  deco: ['🎈', '🎉', '🎈'], zones: ['cheeks', 'eyes', 'mouth', 'neck', 'top'], extra: ['eyes', 'neck'],
+             sig: { cheeks: 'star', eyes: 'specs', mouth: 'lips-red', top: 'cone', sparkle: 'gold' } },
+  circus:  { e: '🎪', bg: 'stripes', deco: ['🎪', '🎈', '🤹'], zones: ['cheeks', 'eyes', 'nose', 'mouth', 'top'], extra: ['eyes', 'mouth'],
+             sig: { cheeks: 'dots', nose: 'clown', mouth: 'smile', top: 'wig', sparkle: 'stars' } },
+  hero:    { e: '⚡', bg: 'sea',  deco: ['💥', '🏙️', '⚡'], zones: ['eyes', 'cheeks', 'nose', 'mouth', 'neck'], extra: ['nose', 'mouth'],
+             sig: { eyes: 'mask-red', cheeks: 'bolt', neck: 'cape', sparkle: 'stars' } },
+  jungle:  { e: '🐯', bg: 'leaf', deco: ['🌴', '🐒', '🌿'], zones: ['cheeks', 'nose', 'eyes', 'mouth', 'top'], extra: ['eyes', 'mouth'],
+             sig: { cheeks: 'stripes', nose: 'whiskers', top: 'leaves', sparkle: 'flowers' } },
+  royal:   { e: '👑', bg: 'grape', deco: ['🏰', '✨', '💎'], zones: ['cheeks', 'eyes', 'mouth', 'neck', 'top'], extra: ['cheeks', 'eyes'],
+             sig: { cheeks: 'gem', eyes: 'lashes', mouth: 'lips-plum', neck: 'pearls', top: 'crown', sparkle: 'gold' } },
+  beach:   { e: '🏖️', bg: 'sea-soft', deco: ['☀️', '🌊', '🐚'], zones: ['cheeks', 'eyes', 'nose', 'neck', 'top'], extra: ['cheeks', 'neck'],
+             sig: { cheeks: 'shell', eyes: 'shades', nose: 'cream', neck: 'lei', top: 'sunhat', sparkle: 'hearts' } },
+  space:   { e: '🚀', bg: 'night', deco: ['🌙', '🛸', '⭐'], zones: ['cheeks', 'eyes', 'nose', 'mouth', 'top'], extra: ['nose', 'mouth'],
+             sig: { cheeks: 'moon', eyes: 'goggles', top: 'antennae', sparkle: 'dust' } },
+  rainbow: { e: '🌈', bg: 'rainbow', deco: ['🌈', '🎤', '✨'], zones: ['cheeks', 'eyes', 'nose', 'mouth', 'top'], extra: ['nose'],
+             sig: { cheeks: 'rainbow', eyes: 'shadow-grape', top: 'horn', sparkle: 'rainbow-dust' } },   // the capstone show
+};
+// the 35 v1 presents in v1's order (GIFTS, then DECOR, then a medal per party over v1's MENU, twice round), frozen: an old
+// save's `done` counts these. Written out by hand, so a reordered GIFTS_V1 / DECOR / MENU_V1 in the game is caught.
+const V1_KEYS = ['party:hero', 'helper:poodle', 'party:jungle', 'tier:1', 'party:royal', 'helper:parrot', 'party:beach', 'tier:2',
+  'party:space', 'helper:radio', 'party:rainbow', 'tier:3', 'helper:booth',
+  'decor:🧸', 'decor:🌵', 'decor:🎈', 'decor:🌻', 'decor:🎐', 'decor:🧁',
+  'medal:party:1', 'medal:circus:1', 'medal:hero:1', 'medal:jungle:1', 'medal:royal:1', 'medal:beach:1', 'medal:space:1', 'medal:rainbow:1',
+  'medal:party:2', 'medal:circus:2', 'medal:hero:2', 'medal:jungle:2', 'medal:royal:2', 'medal:beach:2', 'medal:space:2', 'medal:rainbow:2'];
+// a whole v2 salon: all twelve parties, five helpers, tier 3 (48: every medal too)
+const WHOLE = { v: 2, legacy: 0, done: 18 };
 
 const api = (page, k) => page.evaluate((k) => MG.current.api[k], k);
 /** Run fn(api, arg) in the page. */
@@ -128,7 +169,7 @@ function followHand(page, max = 500) {
       if (n.closest('.mk-board.is-done')) bad.push('a done board');
       if (n.closest('.mk-mirror, .mk-wall, .mk-next, .mk-book')) bad.push(n.className);
       if (n.classList.contains('mk-item')) {
-        const s = +n.closest('.mk-board').dataset.side, b = a.boards[s], sig = a.PARTIES[a.party].sig[a.zone];
+        const s = +n.closest('.mk-board').dataset.side, b = a.boards[s], sig = b.theme;   // (the signature, or once the party is known a themed item)
         const ok = a.zone === 'wash' || (b.item ? n.dataset.id === b.item : (sig && b.tray.includes(sig) ? n.dataset.id === sig : n === n.parentNode.children[1]));
         if (!ok) bad.push('a tray item that is not the signature or the chosen one: ' + n.dataset.id);
       }
@@ -199,7 +240,7 @@ function twoPlayers(page, party, her, his) {
         for (const s of [0, 1]) {
           const bd = a.boards[s], mine = s === a.aSide;
           if (bd.done || c.time < next[s]) continue;
-          const sig = a.PARTIES[a.party].sig[a.zone];
+          const sig = bd.theme;
           const want = bd.item || (sig && bd.tray.includes(sig) ? sig : bd.tray[mine ? 0 : 1]);
           touch(document.querySelector(`.g-makeup .mk-board[data-side="${s}"] .mk-item[data-id="${want}"]`));
           next[s] = c.time + (mine ? her : his);
@@ -304,57 +345,144 @@ h.run(ID, async (t) => {
 
   // --- 1. the rules and the data
   if (part(1)) {
-    const r = await page.evaluate(() => {
+    const r = await page.evaluate(([OLD, V1_KEYS, OLD_PARTIES]) => {
       const a = MG.current.api, out = [];
-      const fresh = { v: 1, done: 0, played: {}, looks: [], seen: [], photos: [] };
+      const fresh = { v: 2, done: 0, legacy: 0, played: {}, looks: [], seen: [], photos: [] };
       const eq = (x, y) => JSON.stringify(x) === JSON.stringify(y);
-      [null, 'x', [1, 2, 3], { done: 'abc' }].forEach((v) => { if (!eq(a.cleanMakeup(v), fresh)) out.push('fresh from ' + JSON.stringify(v)); });
+      [null, 'x', [1, 2, 3], { done: 'abc' }, { v: 1, done: 0 }].forEach((v) => { if (!eq(a.cleanMakeup(v), fresh)) out.push('fresh from ' + JSON.stringify(v)); });
       const junkPhoto = (re) => ({ p: 'party', l: { e: '🐰', z: { cheeks: 'crown', top: 'cone', wash: 'sponge', pose: 'ears' }, x: ['clown', 'tiger'], o: 'moon' }, r: { e: re, z: {} } });
       const junk = { done: 5, played: { disco: 3, hero: 'x', party: 99999 }, looks: ['clown', 'clown', 'ninja', 7], seen: ['stamp', 'fly', 'stamp'], photos: [junkPhoto('🦖'), 'junk'] };
       const c = a.cleanMakeup(junk);
-      if (!eq(c.played, { party: 999 }) || !eq(c.looks, ['clown']) || !eq(c.seen, ['stamp']) || c.photos.length !== 0) out.push('junk cleaned: ' + JSON.stringify(c));
+      if (!eq(c.played, { party: 999 }) || !eq(c.looks, ['clown']) || !eq(c.seen, ['stamp']) || c.photos.length !== 0 || c.legacy !== 5) out.push('junk cleaned: ' + JSON.stringify(c));
       const c2 = a.cleanMakeup(Object.assign({}, junk, { photos: [junkPhoto('🐻')] }));
       const ph = c2.photos[0];
       if (!ph || !eq(ph.l.z, { top: 'cone' }) || !eq(ph.l.x, ['clown']) || ph.l.o !== null || ph.r.e !== '🐻') out.push('photo cleaned: ' + JSON.stringify(c2.photos));
       if (a.cleanMakeup({ done: 0, played: { jungle: 2 } }).played.jungle) out.push('an unearned party is dropped');
       const good = { p: 'circus', l: { e: '🐰', z: { nose: 'clown' }, x: [], o: 'wave' }, r: { e: '🐻', z: {}, x: [], o: 'kiss' } };
       if (a.cleanMakeup({ done: 3, photos: Array(12).fill(good) }).photos.length !== 8) out.push('12 photos are cut to 8');
-      // unlocks and gifts
-      const u0 = a.unlocks(0), u1 = a.unlocks(1), u13 = a.unlocks(13);
-      if (!eq(u0.parties, ['party', 'circus']) || u0.next !== 'hero') out.push('unlocks(0)');
-      const newItems = u1.items.filter((id) => !u0.items.includes(id));
-      if (!eq(u1.parties, ['party', 'circus', 'hero']) || !eq(newItems.sort(), ['bolt', 'cape', 'mask-blue', 'mask-red'])) out.push('unlocks(1): ' + newItems);
-      if (u13.parties.length !== 8 || Object.keys(u13.helpers).length !== 4 || u13.tier !== 3 || u13.next !== null) out.push('unlocks(13)');
-      if (a.unlocks(19).decor.length !== 6) out.push('unlocks(19) decor');
-      if (!a.MENU.every((id) => a.unlocks(35).medals[id] === 2)) out.push('unlocks(35) medals');
-      const kinds = [...Array(36).keys()].map((i) => a.giftFor(i).kind);
-      const want = ['party', 'helper', 'party', 'tier', 'party', 'helper', 'party', 'tier', 'party', 'helper', 'party', 'tier', 'helper'].concat(Array(6).fill('decor'), Array(16).fill('medal'), ['thanks']);
-      if (!eq(kinds, want)) out.push('gift kinds: ' + kinds);
-      if (a.giftFor(500).kind !== 'thanks') out.push('giftFor(500)');
+      // a real-shaped v1 salon (8 photos over all 8 old parties and all 3 old poses, 6 looks, played, seen) loads unchanged
+      const OLDP = ['party', 'circus', 'hero', 'jungle', 'royal', 'beach', 'space', 'rainbow'], POS3 = ['wave', 'kiss', 'ears'];
+      const v1 = (done) => ({ v: 1, done, played: { party: 3, circus: 2, hero: 1, rainbow: 1 }, looks: ['clown', 'tiger', 'hero', 'royal', 'spy', 'alien'], seen: ['foam', 'stamp', 'glasses'],
+        photos: OLDP.map((p, i) => ({ p, l: { e: '🐰', z: { cheeks: 'star', top: ['wig', 'crown', 'cone'][i % 3], sparkle: 'gold' }, x: i % 2 ? ['clown'] : [], o: POS3[i % 3] }, r: { e: '🐻', z: { eyes: 'specs', mouth: 'lips-red' }, x: [], o: POS3[(i + 1) % 3] } })) });
+      [13, 35].forEach((d) => {
+        const raw = v1(d), k = a.cleanMakeup(raw);
+        if (!eq([k.v, k.done, k.legacy, k.played, k.looks, k.seen, k.photos], [2, d, d, raw.played, raw.looks, raw.seen, raw.photos])) out.push('a v1 salon at ' + d + ' loads unchanged: ' + JSON.stringify(k).slice(0, 300));
+        if (!eq(a.cleanMakeup(k), k)) out.push('cleanMakeup is idempotent on v2 (' + d + ')');
+      });
+      if (!eq(a.cleanMakeup({ v: 2, done: 15, legacy: 13 }).legacy, 13) || a.cleanMakeup({ v: 2, done: 15 }).legacy !== 0) out.push('a v2 save keeps its own legacy count');
+      // the presents: a new salon's list, then (spec 6.3) the worked examples
+      const kindsOf = (L, from, to) => [...Array(to - from).keys()].map((i) => a.giftFor(from + i, L).kind);
+      const want = ['party', 'helper', 'party', 'tier', 'party', 'party', 'helper', 'party', 'party', 'tier', 'party', 'helper', 'party', 'party', 'helper', 'party', 'tier', 'helper'].concat(Array(6).fill('decor'), Array(24).fill('medal'), ['thanks']);
+      if (!eq(kindsOf(0, 0, 49), want)) out.push('gift kinds: ' + kindsOf(0, 0, 49));
+      if (a.giftFor(500, 0).kind !== 'thanks' || a.giftFor(500, 13).kind !== 'thanks') out.push('giftFor(500)');
+      if (a.LIST !== 48 || a.V1_LEN !== 35) out.push('LIST 48, V1_LEN 35');
+      const sh = (g) => g.kind === 'party' ? g.id.toUpperCase() : g.kind === 'medal' ? g.id + g.k : g.kind === 'tier' ? 'tier' + g.n : g.kind === 'bag' ? 'BAG' : g.kind === 'decor' ? g.e : g.kind === 'thanks' ? 'thanks' : g.id;
+      const row = (L, from, n) => [...Array(n).keys()].map((i) => sh(a.giftFor(from + i, L))).join(' ');
+      const ROWS = [
+        [0, 0, 18, 'SEA poodle JUNGLE tier1 CANDY HERO parrot ROYAL DINO tier2 BEACH cicak GARDEN SPACE radio RAINBOW tier3 booth'],
+        [13, 13, 7, 'BAG SEA CANDY DINO cicak GARDEN 🧸'],
+        [35, 35, 15, 'BAG SEA CANDY DINO cicak GARDEN sea1 candy1 dino1 garden1 sea2 candy2 dino2 garden2 thanks'],
+        [50, 50, 15, 'BAG SEA CANDY DINO cicak GARDEN sea1 candy1 dino1 garden1 sea2 candy2 dino2 garden2 thanks'],
+      ];
+      ROWS.forEach(([L, from, n, s]) => { if (row(L, from, n) !== s) out.push(`presents after v1 ${L}: ${row(L, from, n)}`); });
+      if (row(13, 19, 1) !== '🧸' || kindsOf(13, 25, 49).some((k) => k !== 'medal') || a.giftFor(49, 13).kind !== 'thanks') out.push('v1 13: decor, then all 24 medals, then thanks');
+      const u00 = a.unlocks(0, 0), u11 = a.unlocks(1, 1), u01 = a.unlocks(0, 1), u10 = a.unlocks(1, 0), u13 = a.unlocks(13, 13);
+      if (!eq(u00.parties, ['party', 'circus']) || u00.next !== 'sea' || u00.nextBag || !u00.base2) out.push('unlocks(0, 0)');
+      const newOf = (x, y) => x.items.filter((id) => !y.items.includes(id)).sort();
+      if (!eq(u11.parties, ['party', 'circus', 'hero']) || !eq(newOf(u11, u01), ['bolt', 'cape', 'mask-blue', 'mask-red']) || !u11.nextBag || u11.next !== 'sea' || u11.base2) out.push('unlocks(1, 1)');
+      if (!eq(u10.parties, ['party', 'circus', 'sea']) || !eq(newOf(u10, u00), ['fish', 'hair-sea', 'paint-scales', 'shadow-teal', 'shells'])) out.push('unlocks(1, 0): ' + newOf(u10, u00));
+      if (u13.parties.length !== 8 || Object.keys(u13.helpers).length !== 4 || u13.tier !== 3 || u13.next !== 'sea' || !u13.nextBag) out.push('unlocks(13, 13)');
+      if (a.unlocks(19, 19).decor.length !== 6) out.push('unlocks(19, 19) decor');
+      if (!a.MENU_V1.every((id) => a.unlocks(35, 35).medals[id] === 2)) out.push('unlocks(35, 35) medals');
+      const u18 = a.unlocks(18, 0);
+      if (u18.parties.length !== 12 || Object.keys(u18.helpers).length !== 5 || u18.tier !== 3 || u18.next !== null) out.push('unlocks(18, 0): the whole v2 salon');
+      if (!a.MENU.every((id) => a.unlocks(48, 0).medals[id] === 2)) out.push('unlocks(48, 0) medals');
+      if (!eq(a.unlocks(15, 13).parties.slice(-1), ['sea'])) out.push('unlocks(15, 13): the sea after the bag');
+      // Appendix C: for every v1 count 0-60, every v2 present comes once, the bag iff there was one, nothing v1 gave is lost or
+      // taken away, and a salon that had all eight parties gets the four new ones within its next six presents
+      const key = (g) => g.kind + ':' + (g.kind === 'tier' ? g.n : g.kind === 'decor' ? g.e : g.kind === 'medal' ? g.id + ':' + g.k : (g.id || ''));
+      // the frozen v1 list: the game's giftV1 gives exactly V1_KEYS, then thanks; v1's medal order is v1's menu
+      const OLD_MENU = Object.keys(OLD_PARTIES);
+      if (!eq(a.MENU_V1, OLD_MENU) || !eq(a.MENU.slice(0, 8), OLD_MENU)) out.push('MENU_V1 and the first eight cards are v1\'s menu');
+      if (a.V1_LEN !== V1_KEYS.length) out.push('V1_LEN is ' + a.V1_LEN);
+      V1_KEYS.forEach((k, i) => { if (key(a.giftV1(i)) !== k) out.push(`v1 present ${i}: ${key(a.giftV1(i))}, not ${k}`); });
+      if (a.giftV1(35).kind !== 'thanks' || a.giftV1(60).kind !== 'thanks') out.push('v1 present 35 on: thanks');
+      // the eight v1 parties keep their emoji, background, decorations, zones, extra zones and signature looks
+      OLD_MENU.forEach((id) => ['e', 'bg', 'deco', 'zones', 'extra', 'sig'].forEach((f) => {
+        if (JSON.stringify(a.PARTIES[id][f]) !== JSON.stringify(OLD_PARTIES[id][f])) out.push(`v1 party ${id}.${f}: ${JSON.stringify(a.PARTIES[id][f])}`);
+      }));
+      // what v1 had given after `done` presents, from the frozen V1_KEYS (not from the game's own giftV1)
+      const unlocksV1 = (done) => {
+        const have = { party: 1, circus: 1 }, u = { helpers: {}, tier: 0, decor: [], medals: {} };
+        for (let i = 0; i < done && i < V1_KEYS.length; i++) {
+          const [kind, x] = V1_KEYS[i].split(':');
+          if (kind === 'party') have[x] = 1; else if (kind === 'helper') u.helpers[x] = true; else if (kind === 'tier') u.tier = Math.max(u.tier, +x);
+          else if (kind === 'decor' && !u.decor.includes(x)) u.decor.push(x); else if (kind === 'medal') u.medals[x] = (u.medals[x] || 0) + 1;
+        }
+        u.parties = OLD_MENU.filter((id) => have[id]);
+        return u;
+      };
+      const LISTK = [...Array(48).keys()].map((i) => key(a.giftFor(i, 0)));
+      for (let L = 0; L <= 60; L++) {
+        const got = {}, had = {};
+        for (let i = L; i < L + 80; i++) { const g = a.giftFor(i, L); if (g.kind !== 'thanks') got[key(g)] = (got[key(g)] || 0) + 1; }
+        for (let i = 0; i < Math.min(L, V1_KEYS.length); i++) had[V1_KEYS[i]] = true;
+        LISTK.forEach((k) => { if ((got[k] || 0) !== (had[k] ? 0 : 1)) out.push(`v1 ${L}: ${k} comes ${got[k] || 0} times`); });
+        if ((got['bag:'] || 0) !== (L > 0 ? 1 : 0) || (L > 0 && a.giftFor(L, L).kind !== 'bag')) out.push(`v1 ${L}: the bag once iff L > 0, first`);
+        for (let d = 0; d <= L; d++) {
+          const x = a.unlocks(d, L), y = unlocksV1(d);
+          ['parties', 'helpers', 'tier', 'decor', 'medals'].forEach((f) => { if (!eq(x[f], y[f])) out.push(`v1 ${L} at ${d}: ${f}`); });
+          if (x.base2 !== (L === 0)) out.push(`v1 ${L} at ${d}: base2`);
+        }
+        let prev = a.unlocks(L, L);
+        for (let d = L + 1; d < L + 60; d++) {
+          const u = a.unlocks(d, L);
+          if (!prev.parties.every((p) => u.parties.includes(p)) || !Object.keys(prev.helpers).every((x) => u.helpers[x]) || u.tier < prev.tier || u.decor.length < prev.decor.length
+            || !Object.keys(prev.medals).every((m) => u.medals[m] >= prev.medals[m]) || !u.base2 || !prev.items.every((id) => u.items.includes(id))) { out.push(`v1 ${L} at ${d}: something taken away`); break; }
+          prev = u;
+        }
+        if (L >= 13) ['sea', 'candy', 'dino', 'garden'].forEach((p) => { if (![1, 2, 3, 4, 5].some((k) => a.giftFor(L + k, L).id === p)) out.push(`v1 ${L}: ${p} soon`); });
+      }
+      // the pools: every zone has at least 6 everyday items; an old salon before its bag has exactly the 59 old items, each
+      // with its old zone and kind; the bag brings every v2 item
+      const ids = Object.keys(a.ITEMS), byZone = (items) => { const o = {}; items.forEach((id) => { const z = a.ITEMS[id].z; o[z] = (o[z] || 0) + 1; }); return o; };
+      const z0 = byZone(u00.items);
+      a.ZONES.filter((z) => z !== 'wash').forEach((z) => { if (!(z0[z] >= 6)) out.push(`unlocks(0, 0): ${z} has ${z0[z]} (at least 6)`); });
+      const old = OLD.map((s) => s.split(':')[0]);
+      if (!eq(u13.items, old)) out.push('unlocks(13, 13).items is exactly the 59 old items');
+      OLD.forEach((s) => { const [id, z, k] = s.split(':'); if (!a.ITEMS[id] || a.ITEMS[id].z !== z || a.ITEMS[id].k !== k) out.push(`old item ${id} keeps its zone and kind`); });
+      const v2 = ids.filter((id) => a.ITEMS[id].v2);
+      if (!eq(newOf(a.unlocks(14, 13), u13), v2.slice().sort()) || v2.length !== 32) out.push('the bag brings every v2 everyday item: ' + v2.length);
+      if (ids.length !== 112) out.push('112 items: ' + ids.length);
       // the data rules (spec 4.5)
-      const ids = Object.keys(a.ITEMS);
       ids.forEach((id) => {
         const it = a.ITEMS[id];
         if (!a.ZONES.includes(it.z) || !a.KINDS[it.k]) out.push(id + ': zone and kind');
         if (it.party && !a.PARTIES[it.party]) out.push(id + ': party');
       });
-      const MID = ['cheeks', 'eyes', 'nose', 'mouth', 'neck', 'top'];
+      const MID = ['cheeks', 'eyes', 'nose', 'mouth', 'neck', 'paws', 'top'];
+      const atOf = (pid) => a.START.includes(pid) ? 0 : [...Array(a.LIST).keys()].find((i) => a.giftFor(i, 0).id === pid) + 1;
+      if (a.MENU.length !== 12 || !eq(a.MENU.slice(0, 8), a.MENU_V1)) out.push('MENU: the old eight, then the new four');
       a.MENU.forEach((pid) => {
         const P = a.PARTIES[pid];
         if (P.zones.length < 4 || P.zones.length > 5 || new Set(P.zones).size !== P.zones.length || !P.zones.every((z) => MID.includes(z))) out.push(pid + ': 4-5 zones');
         if (!P.extra.length || !P.extra.every((z) => P.zones.includes(z)) || P.zones.length - P.extra.length < 3) out.push(pid + ': extra');
-        const at = a.START.includes(pid) ? 0 : [...Array(13).keys()].find((i) => a.giftFor(i).id === pid) + 1;
-        const pool = a.unlocks(at).items;
+        const pool = a.unlocks(atOf(pid), 0).items, poolZ = (z) => pool.filter((id) => a.ITEMS[id].z === z);
         Object.keys(P.sig).forEach((z) => { const id = P.sig[z]; if (!a.ITEMS[id] || a.ITEMS[id].z !== z || !pool.includes(id)) out.push(pid + ': sig ' + z); });
-        P.zones.concat(['sparkle', 'pose']).forEach((z) => { if (pool.filter((id) => a.ITEMS[id].z === z).length < 3) out.push(pid + ': 3 items in ' + z + ' when it unlocks'); });
+        P.zones.concat(['sparkle', 'pose']).forEach((z) => { if (poolZ(z).length < 3) out.push(pid + ': 3 items in ' + z + ' when it unlocks'); });
+        if (!P.guest || !P.guest.length || !P.guest.every((z) => MID.includes(z) && !P.zones.includes(z))) out.push(pid + ': guest zones are new to it');
+        if (P.pal && (!P.zones.includes(P.pal) || poolZ(P.pal).filter((id) => a.ITEMS[id].k === a.ITEMS[P.sig[P.pal]].k).length < 3)) out.push(pid + ': her colour step has 3 of a kind');
+        Object.keys(P.alt || {}).forEach((z) => P.alt[z].forEach((id) => { if (!a.ITEMS[id] || a.ITEMS[id].z !== z || id === P.sig[z]) out.push(`${pid}: alt ${z} ${id}`); }));
         ['full', 'short'].forEach((len) => {
           const zs = a.zonesFor(P, len);
           if (zs.slice(-2).join() !== 'sparkle,pose' || zs.indexOf('wash') > 0 || (len === 'short') === zs.includes('wash') || zs.length > 8) out.push(pid + ': zones ' + len);
         });
       });
+      if (Object.keys(a.LOOK_OF).sort().join() !== a.MENU.filter((p) => p !== 'beach' && p !== 'rainbow').sort().join()) out.push('LOOK_OF covers 10 parties: ' + JSON.stringify(a.LOOK_OF));
+      if (a.LOOKS.length !== 12 || new Set(a.LOOKS.map((L) => L.id)).size !== 12 || a.LOOKS.filter((L) => L.explore).map((L) => L.id).join() !== 'spy,bunny') out.push('12 looks; spy and bunny are found by exploring');
       a.LOOKS.forEach((L) => {
         L.need.forEach(([z, list]) => { if (!list.every((id) => a.ITEMS[id] && a.ITEMS[id].z === z)) out.push(L.id + ': needs'); });
-        if (L.id === 'spy') return;
+        if (L.explore) return;
         const by = a.MENU.find((pid) => { const P = a.PARTIES[pid]; return L.need.every(([z, list]) => list.includes(P.sig[z]) && P.zones.includes(z) && !P.extra.includes(z)); });
         if (!by) out.push(L.id + ': two signature items of one party, both in Short');
       });
@@ -366,7 +494,7 @@ h.run(ID, async (t) => {
       }))));
       // every dab visibly changes the face: at least 9em of new pieces (a named stage; past the named slots, a big sparkle
       // that pops in, the ones before it settled small); every fixed dab is a named stage
-      Object.keys(a.ITEMS).forEach((id) => {
+      ids.forEach((id) => {
         const it = a.ITEMS[id], K = a.KINDS[it.k];
         if (it.k === 'pose') return;
         if (K.fixed && K.named < Math.max(...K.fixed)) out.push(`${it.k}: every fixed dab has a look of its own`);
@@ -382,24 +510,55 @@ h.run(ID, async (t) => {
       });
       if (!eq(Object.keys(a.ANIMALS).sort(), MG.AVATARS.slice().sort())) out.push('ANIMALS = MG.AVATARS');
       for (let n = 2; n <= 6; n++) { let last = 0; for (let k = 1; k < n; k++) { const f = a.foamed(k, n); if (f < last) out.push('foamed falls'); last = f; } if (a.foamed(n - 1, n) !== 3) out.push('foamed reaches 3 at n-1, n=' + n); }
-      // trays: 200 seeds x every party x zone
+      // the guest step (zonesFor with a stub rnd): the same length, a change only at the last extra, never in Short
       let seed = 1;
-      const rnd = { shuffle: (arr) => { const o = arr.slice(); for (let i = o.length - 1; i > 0; i--) { seed = (seed * 16807) % 2147483647; const j = seed % (i + 1); [o[i], o[j]] = [o[j], o[i]]; } return o; } };
+      const next = () => { seed = (seed * 16807) % 2147483647; return seed; };
+      const rnd = { shuffle: (arr) => { const o = arr.slice(); for (let i = o.length - 1; i > 0; i--) { const j = next() % (i + 1); [o[i], o[j]] = [o[j], o[i]]; } return o; }, pick: (arr) => arr[next() % arr.length] };
+      const legacyPool = a.unlocks(5, 5).items;
+      a.MENU.forEach((pid) => {
+        const P = a.PARTIES[pid], f0 = a.zonesFor(P, 'full'), x = P.extra[P.extra.length - 1];
+        for (let s = 0; s < 20; s++) {
+          const f1 = a.zonesFor(P, 'full', rnd);
+          if (f1.length !== f0.length || f1.some((z, i) => z !== f0[i] && f0[i] !== x) || !P.guest.includes(f1[f0.indexOf(x)])) out.push(pid + ': a guest step replaces the last extra');
+          if (!eq(a.zonesFor(P, 'short', rnd), a.zonesFor(P, 'short'))) out.push(pid + ': Short has no guest');
+          if (a.MENU_V1.includes(pid) && a.zonesFor(P, 'full', rnd, (z) => legacyPool.filter((id) => a.ITEMS[id].z === z).length >= 3).includes('paws')) out.push(pid + ': no paws before the bag');
+        }
+      });
+      // trays: 200 seeds x every party x zone
+      const lb = a.unlocks(5, 5).items, poses = (items) => items.filter((id) => a.ITEMS[id].z === 'pose');
       for (let s = 0; s < 200; s++) {
         a.MENU.forEach((pid) => {
-          const P = a.PARTIES[pid], at = a.START.includes(pid) ? 0 : [...Array(13).keys()].find((i) => a.giftFor(i).id === pid) + 1, items = a.unlocks(at + (s % 3) * 4).items;
-          a.zonesFor(P, 'full').forEach((z) => [false, true].forEach((isB) => {
+          const P = a.PARTIES[pid], items = a.unlocks(atOf(pid) + (s % 3) * 4, 0).items;
+          a.zonesFor(P, 'full').concat(P.guest).forEach((z) => [false, true].forEach((isB) => {
             const pool = items.filter((id) => a.ITEMS[id].z === z), tr = a.trayFor(z, P, isB, pool, rnd);
             if (z === 'wash') { if (!eq(tr, ['sponge'])) out.push('wash tray'); return; }
-            if (z === 'pose') { if (!eq(tr.slice().sort(), a.POSES.slice().sort())) out.push('pose tray'); return; }
             if (tr.length !== 3 || new Set(tr).size !== 3 || !tr.every((id) => pool.includes(id))) out.push(`${pid}/${z}: 3 distinct unlocked items`);
             if (P.sig[z] && pool.includes(P.sig[z]) && !tr.includes(P.sig[z])) out.push(`${pid}/${z}: the signature`);
             if (isB && pool.some((id) => a.ITEMS[id].silly) && !tr.some((id) => a.ITEMS[id].silly)) out.push(`${pid}/${z}: something silly for the grown-up`);
+            if (!isB && P.pal === z && !tr.every((id) => a.ITEMS[id].k === a.ITEMS[P.sig[z]].k)) out.push(`${pid}/${z}: her colour step is three of one thing`);
           }));
+          // the themed rotation: off, always the signature; on, every unlocked candidate comes up
+          Object.keys(P.sig).forEach((z) => {
+            const pool = items.filter((id) => a.ITEMS[id].z === z);
+            if (a.themeFor(z, P, pool, false, rnd) !== (pool.includes(P.sig[z]) ? P.sig[z] : null)) out.push(`${pid}/${z}: no rotation, the signature`);
+          });
         });
       }
+      a.MENU.forEach((pid) => {
+        const P = a.PARTIES[pid], items = a.unlocks(18, 0).items;
+        Object.keys(P.sig).forEach((z) => {
+          const pool = items.filter((id) => a.ITEMS[id].z === z), cand = [P.sig[z]].concat((P.alt || {})[z] || []).filter((id) => pool.includes(id)), got = new Set();
+          for (let s = 0; s < 200; s++) { const th = a.themeFor(z, P, pool, true, rnd); got.add(th); const tr = a.trayFor(z, P, false, pool, rnd, th); if (!tr.includes(th)) out.push(`${pid}/${z}: the theme is in her tray`); }
+          if (!cand.every((id) => got.has(id)) || [...got].some((id) => !cand.includes(id))) out.push(`${pid}/${z}: rotation covers ${cand} (got ${[...got]})`);
+        });
+      });
+      [[a.unlocks(0, 0).items, 6], [lb, 3]].forEach(([items, n]) => { for (let s = 0; s < 200; s++) [false, true].forEach((isB) => {
+        const pool = poses(items), tr = a.trayFor('pose', a.PARTIES.party, isB, pool, rnd, null);
+        if (pool.length !== n || tr.length !== 3 || new Set(tr).size !== 3 || !tr.every((id) => pool.includes(id)) || (isB && !tr.some((id) => a.ITEMS[id].silly))) out.push(`pose tray (${n} poses): ${tr}`);
+        if (n === 3 && !eq(tr.slice().sort(), ['ears', 'kiss', 'wave'])) out.push('before the bag: the 3 old poses');
+      }); });
       return [...new Set(out)];
-    });
+    }, [OLD_ITEMS, V1_KEYS, OLD_PARTIES]);
     assert.deepStrictEqual(r, [], 'every rule and data check holds');
     // the emoji audit: every pictograph in the game's source is in Appendix A (Unicode 11 or older)
     const src = fs.readFileSync(path.join(h.ROOT, 'js', 'games', 'makeup.js'), 'utf8').replace(/\u{FE0F}/gu, '');
@@ -411,10 +570,11 @@ h.run(ID, async (t) => {
   // --- 2. a full round with real taps
   if (part(2)) {
     await openMakeup(page);
-    assert.deepStrictEqual(await page.evaluate(() => [document.querySelectorAll('.g-makeup .mk-card').length, !document.querySelector('.g-makeup .mk-next').hidden, document.querySelectorAll('.g-makeup .mk-lookslot').length]), [2, true, 6], 'two cards, the next present and the look book');
+    assert.deepStrictEqual(await page.evaluate(() => [document.querySelectorAll('.g-makeup .mk-card').length, !document.querySelector('.g-makeup .mk-next').hidden, document.querySelectorAll('.g-makeup .mk-lookslot').length]), [2, true, 12], 'two cards, the next present and the twelve-look book');
     await page.waitForFunction(() => MG.current.api.hinted && MG.current.api.hinted.dataset.id === 'party', null, { timeout: 1500 });
     await tap(page, '.g-makeup .mk-next', 60);
     assert.strictEqual(await api(page, 'state'), 'menu', 'the next card is not a button');
+    await A(page, (a) => a.surprise({ noGuest: true }));
     await tap(page, '.g-makeup .mk-card[data-id="party"]', 0);
     assert.deepStrictEqual([await api(page, 'state'), await api(page, 'mud')], ['deal', [3, 3]], 'the friends arrive muddy');
     await stateIs(page, 'zone');
@@ -427,6 +587,7 @@ h.run(ID, async (t) => {
       await gameWait(page, 0.32);
       if (z === 'pose') assert.ok(await page.locator('.g-makeup .mk-spare.is-settled').count() >= 2, 'help Off: past the named slots (the cheeks, at least) the dabs made big sparkles, now settled');
       for (const s of [0, 1]) {
+        if (z === 'pose') assert.ok(await A(page, (a, s) => a.setTray(s, ['wave', 'kiss', 'ears']), s));
         const b0 = (await boards(page))[s];
         const id = z === 'pose' ? (s === 0 ? 'ears' : 'kiss') : b0.tray[0];
         chosen[s][z] = id;
@@ -444,6 +605,11 @@ h.run(ID, async (t) => {
           if (z === 'wash' && b.k === b.n) assert.deepStrictEqual((await api(page, 'mud'))[s], 0, 'the mud is gone at the rinse');
           else assert.ok(c > count, `${z}: the layer grows on every dab (${count} -> ${c})`);
           count = c;
+          if (z === 'mouth' && s === 0 && k === 1) {   // her colour step: the brush tip takes the colour she picked
+            const tint = await page.evaluate(() => { const n = document.querySelector('.g-makeup .mk-board[data-side="0"] .mk-brush'); return n.classList.contains('is-tint') && n.style.getPropertyValue('--tint'); });
+            assert.strictEqual(tint, await A(page, (a, id) => a.ITEMS[id].c, id), 'her brush takes the colour of the lipstick she chose');
+            assert.ok(b0.tray.every((x) => x.startsWith('lips')), 'and her colour step was three lipsticks: ' + b0.tray);
+          }
           if (!b.done) {   // a tap inside the gap is refused: nothing changes
             await tap(page, sel, 0);
             b = (await boards(page))[s];
@@ -458,6 +624,7 @@ h.run(ID, async (t) => {
         await page.waitForFunction((zi) => MG.current.api.zoneIndex === zi + 1, zi, { timeout: 5000 });
         assert.strictEqual(await page.locator('.g-makeup .mk-spare:not(.is-settled)').count(), 0, 'the last step\'s big spare sparkles settle small');
         assert.strictEqual(await page.locator('.g-makeup .mk-pip.is-done').count(), zi + 1, 'the pips get a tick one by one');
+        assert.strictEqual(await page.locator('.g-makeup .mk-brush.is-tint').count(), 0, 'a new step: the brushes are their own colours again');
       }
     }
     await stateIs(page, 'finale');
@@ -474,12 +641,27 @@ h.run(ID, async (t) => {
     const menu = await page.evaluate(() => ({
       party: document.querySelectorAll('.g-makeup .mk-card[data-id="party"] .mk-card__stars .mg-sticker').length,
       circus: !!document.querySelector('.g-makeup .mk-card[data-id="circus"] .mk-card__new'),
-      hero: !!document.querySelector('.g-makeup .mk-card[data-id="hero"] .mk-card__new'),
+      sea: !!document.querySelector('.g-makeup .mk-card[data-id="sea"] .mk-card__new'),
       next: document.querySelector('.g-makeup .mk-next .mk-next__sil').textContent,
       gift: !!document.querySelector('.g-makeup .mk-next .mk-next__tag'),
       photos: document.querySelectorAll('.g-makeup .mk-polaroid:not(.is-empty)').length,
     }));
-    assert.deepStrictEqual(menu, { party: 1, circus: true, hero: true, next: '🐯', gift: true, photos: 1 }, 'reopened: a star for the party, new circus and hero, the jungle next, one photo on the wall');
+    assert.deepStrictEqual(menu, { party: 1, circus: true, sea: true, next: '🐯', gift: true, photos: 1 }, 'reopened: a star for the party, new circus and sea, the jungle next, one photo on the wall');
+    // nail polish in the dinosaur's paws step: a dab a tap, the paws rise on the first, three nails on each paw
+    await openMakeup(page, { kit: WHOLE });
+    await A(page, (a) => a.surprise({ noGuest: true }));
+    await startAt(page, 'dino', 'paws');
+    assert.ok(await A(page, (a) => a.setTray(0, ['nails-pink', 'nails-red', 'claws'])));
+    const pawsNow = () => page.evaluate(() => { const q = (x) => document.querySelectorAll('.g-makeup .mk-board[data-side="0"] .mk-layer[data-zone="paws"] ' + x).length; return [q('.mk-at'), q('.mk-at.is-rise')]; });
+    for (let k = 1; k <= 3; k++) {
+      await tap(page, ITEM(0, 'nails-pink'), 0);
+      assert.strictEqual((await boards(page))[0].k, k, `paws: one tap, one dab (${k})`);
+      const [n, rise] = await pawsNow();
+      if (k === 1) assert.deepStrictEqual([n, rise], [4, 4], 'dab 1: the left paw rises with three painted nails');
+      if (k === 2) assert.deepStrictEqual([n, rise], [8, 4], 'dab 2: the right paw, three nails too');
+      if (k === 3) assert.strictEqual(n, 10, 'dab 3: sparkles on both');
+      await gameWait(page, 0.27);
+    }
     lap(2);
   }
 
@@ -516,12 +698,16 @@ h.run(ID, async (t) => {
     lap(3);
   }
 
-  // --- 4. following only the hand: every party, five secret looks
+  // --- 4. following only the hand: every party (the old eight in Full, the new four in Short), ten secret looks
   if (part(4)) {
     await openMakeup(page, { scale: 8 });
-    const played = [];
-    for (let round = 0; round < 8; round++) {
-      if (round === 1) assert.ok(await A(page, (a) => a.setKit({ done: 13, played: { party: 1 }, looks: a.kit.looks, seen: a.kit.seen })), 'the whole salon');
+    const played = [], NEW = ['sea', 'candy', 'dino', 'garden'];
+    for (let round = 0; round < 12; round++) {
+      if (round === 1) assert.ok(await A(page, (a, W) => a.setKit(Object.assign({}, W, { played: { party: 1 }, looks: a.kit.looks, seen: a.kit.seen })), WHOLE), 'the whole salon');
+      if (round >= 1) {   // (the length follows the card the hand will choose)
+        const next = await page.evaluate(() => { MG.current.api.hintNext(); return MG.current.api.hinted.dataset.id; });
+        if (NEW.includes(next)) await openMakeup(page, { keep: true, scale: 8, length: 'short' });
+      }
       const r = await followHand(page, 800);
       assert.ok(r.over, `round ${round + 1} reaches the win by following the hand only (${r.steps} steps)`);
       assert.deepStrictEqual(r.bad, [], 'the hand never points at a done board, a mirror, the wall, the next card, the look book or an item off its path');
@@ -530,9 +716,10 @@ h.run(ID, async (t) => {
       await t.waitForWin(page, 8000);
       await openMakeup(page, { keep: true, scale: 8 });
     }
-    assert.deepStrictEqual(played.slice().sort(), ['beach', 'circus', 'hero', 'jungle', 'party', 'rainbow', 'royal', 'space'], 'every party is played once: ' + played);
+    assert.deepStrictEqual(played.slice().sort(), ['beach', 'candy', 'circus', 'dino', 'garden', 'hero', 'jungle', 'party', 'rainbow', 'royal', 'sea', 'space'], 'every party is played once: ' + played);
     const looks = (await api(page, 'kit')).looks;
-    assert.ok(['clown', 'tiger', 'hero', 'royal', 'alien'].every((l) => looks.includes(l)), 'the hand finds five of the six secret looks: ' + looks);
+    const WANT = ['clown', 'tiger', 'hero', 'royal', 'alien', 'birthday', 'mermaid', 'lolly', 'rawr', 'fairy'];
+    assert.ok(WANT.every((l) => looks.includes(l)), 'the hand finds every party\'s own secret look: ' + looks);
     lap(4);
   }
 
@@ -628,6 +815,7 @@ h.run(ID, async (t) => {
   if (part(7)) {
     await openMakeup(page, { kit: { done: 1 } });
     await page.evaluate((KEY) => { window.__writes = 0; const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === KEY) window.__writes++; return set.call(this, k, v); }; }, KEY);
+    await A(page, (a) => a.surprise({ noGuest: true }));   // (a guest neck step could make the hero look first)
     await startAt(page, 'circus', 'nose');
     await finishBoard(page, 1, 'clown');
     await finishBoard(page, 0);
@@ -654,6 +842,7 @@ h.run(ID, async (t) => {
     await t.waitForWin(page, 8000);
     // spy: specs and a moustache, found by exploring
     await openMakeup(page);
+    await A(page, (a) => a.surprise({ noGuest: true }));
     await startAt(page, 'party', 'eyes');
     assert.ok(await A(page, (a) => a.setTray(0, ['specs', 'lashes', 'googly'])));
     await finishBoard(page, 0, 'specs');
@@ -664,6 +853,30 @@ h.run(ID, async (t) => {
     await tap(page, ITEM(0, 'stache'), 0);
     assert.deepStrictEqual((await boards(page))[0].found, ['spy'], 'specs and a moustache: the spy');
     assert.ok((await saved(page)).looks.includes('spy'));
+    // bunny: a kitty nose and bunny teeth, found by exploring
+    await openMakeup(page);
+    await A(page, (a) => a.surprise({ noGuest: true }));
+    await startAt(page, 'circus', 'nose');
+    assert.ok(await A(page, (a) => a.setTray(0, ['kitty', 'clown', 'button'])));
+    await finishBoard(page, 0, 'kitty');
+    await finishBoard(page, 1);
+    await handUntil(page, (a) => a.state === 'zone' && a.zone === 'mouth');
+    await gameWait(page, 0.35);
+    assert.ok(await A(page, (a) => a.setTray(0, ['teeth', 'lips-red', 'smile'])));
+    await tap(page, ITEM(0, 'teeth'), 0);
+    assert.deepStrictEqual((await boards(page))[0].found, ['bunny'], 'a kitty nose and bunny teeth: the bunny');
+    assert.ok(await page.evaluate(() => !document.querySelector('.g-makeup .mk-board[data-side="0"] .mk-model').classList.contains('has-lips')), 'the teeth keep the smile line');
+    // rawr: the roar and the spikes; the stomp shakes both mirrors
+    await openMakeup(page, { kit: WHOLE, length: 'short' });
+    await startAt(page, 'dino', 'mouth');
+    await finishBoard(page, 0, 'roar');
+    await finishBoard(page, 1);
+    await handUntil(page, (a) => a.state === 'zone' && a.zone === 'top');
+    await gameWait(page, 0.35);
+    await tap(page, ITEM(0, 'spikes'), 0);
+    assert.deepStrictEqual((await boards(page))[0].found, ['rawr'], 'a roar and dino spikes: rawr');
+    await gameWait(page, 0.3);
+    assert.ok(await page.evaluate(() => [...document.querySelectorAll('.g-makeup .mk-sway')].every((n) => n.getAnimations().length > 0)), 'and both mirrors shake');
     lap(7);
   }
 
@@ -690,6 +903,7 @@ h.run(ID, async (t) => {
     // poses: ears on board 0, a kiss on board 1
     await page.waitForFunction(() => MG.current.api.state === 'zone' && MG.current.api.zone === 'pose', null, { timeout: 5000 });
     await gameWait(page, 0.35);
+    for (const sd of [0, 1]) assert.ok(await A(page, (a, sd) => a.setTray(sd, ['wave', 'kiss', 'ears']), sd));
     await tap(page, ITEM(0, 'ears'), 0);
     await tap(page, ITEM(1, 'kiss'), 0);
     const tF = await page.evaluate(() => MG.current.ctx.time);      // (the second pose starts the finale in that tap)
@@ -727,29 +941,128 @@ h.run(ID, async (t) => {
     assert.strictEqual((await api(page, 'marks'))[0].kiss, Math.min(3, k0 + 1), 'a lips tickle sends a kiss to the stylist');
     for (let i = 0; i < 4; i++) { await gameWait(page, 0.32); await tap(page, `${B(0)} .mk-mirror`, 0); }
     assert.strictEqual((await api(page, 'marks'))[0].kiss, 3, 'up to three kisses');
+    // the v2 gags: tickling a done friend wearing each one runs it and leaves its pieces as they were
+    await openMakeup(page, { length: 'short' });
+    await startAt(page, 'party');
+    await finishBoard(page, 0);
+    for (const [z, id] of [['nose', 'snout'], ['nose', 'bee-nose'], ['mouth', 'teeth'], ['mouth', 'roar'], ['paws', 'claws'], ['paws', 'hand-heart'], ['top', 'bunches-pink'],
+      ['top', 'hair-sea'], ['top', 'spikes'], ['neck', 'ear-cherry'], ['neck', 'wings'], ['eyes', 'heart-specs']]) {
+      assert.ok(await A(page, (a, [z, id]) => a.wear(0, z, id), [z, id]), 'wear ' + id);
+      const n0 = await pieces(page, 0, z);
+      await gameWait(page, 0.32);
+      await tap(page, `${B(0)} .mk-mirror`, 0);
+      await page.waitForTimeout(100);
+      assert.strictEqual(await pieces(page, 0, z), n0, `the ${id} gag leaves its ${n0} pieces`);
+      await A(page, (a, z) => a.wear(0, z, null), z);
+    }
+    // a soap-bubble glitter sneezes too (a sparkle flies: the bubbles have no emoji)
+    await openMakeup(page, { length: 'short' });
+    await startAt(page, 'party', 'sparkle');
+    assert.ok(await A(page, (a) => a.setTray(0, ['bubbles', 'gold', 'hearts'])));
+    await tap(page, ITEM(0, 'bubbles'), 0); await gameWait(page, 0.27);
+    await A(page, (a) => a.surprise({ sneeze: true }));
+    await tap(page, `${B(0)} .mk-mirror`, 0);
+    assert.ok((await boards(page))[0].sneezed, 'the bubbles sneeze');
+    await page.waitForFunction(() => document.querySelectorAll('.g-makeup .mk-puff .mg-sticker').length === 3, null, { timeout: 2000 });
+    // the new poses: a hug (board 1) and peekaboo (board 0)
+    const toPose = async (pty, kit) => {
+      await openMakeup(page, { length: 'short', dabs: 'few', kit });
+      await page.evaluate(() => { MG.timeScale = 8; });
+      await startAt(page, pty, 'pose');
+      await page.evaluate(() => { MG.timeScale = 1; });
+    };
+    await toPose('party');
+    assert.ok(await A(page, (a) => a.setTray(0, ['peek', 'wave', 'kiss'])) && await A(page, (a) => a.setTray(1, ['hug', 'wave', 'kiss'])));
+    await tap(page, ITEM(0, 'peek'), 0);
+    assert.strictEqual(await page.locator('.g-makeup .mk-board[data-side="0"] .mk-peek').count(), 2, 'peekaboo: two hands over the eyes in the mirror');
+    // the "boo!": at 1.3s the hands have slid apart, still inside the glass and clear of both eyes (the hand's em is its own
+    // 17-model-em font-size, so a slide in em goes 17 times as far as the model's em)
+    const boo = await page.evaluate(() => {
+      const bd = document.querySelector('.g-makeup .mk-board[data-side="0"]'), hands = [...bd.querySelectorAll('.mk-pc.mk-peek')];
+      const R = (n) => { const r = n.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; };
+      const meet = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+      // the anchor's pop-in and the tap's giggle wiggle (420ms) are long over by the time the hands move (0.8s in)
+      [...hands.map((n) => n.parentElement), ...bd.querySelectorAll('.mk-model, .mk-sway')].forEach((n) => n.getAnimations().forEach((an) => an.finish()));
+      const at = (ms) => { hands.forEach((n) => n.getAnimations().forEach((an) => { an.pause(); an.currentTime = ms; })); return hands.map(R); };
+      const g = R(bd.querySelector('.mk-glass')), eyes = [...bd.querySelectorAll('.mk-eye')].map(R);
+      const cover = at(0), open = at(1300);
+      hands.forEach((n) => n.getAnimations().forEach((an) => an.finish()));
+      const px = (x) => JSON.stringify(x, (k, v) => typeof v === 'number' ? Math.round(v) : v);
+      return {
+        why: px({ g, eyes, cover, open, sway: [...bd.querySelectorAll('.mk-sway, .mk-model')].map((n) => getComputedStyle(n).transform) }),
+        anims: hands.map((n) => n.getAnimations().length),
+        covered: cover.every((hr) => eyes.some((e) => meet(hr, e))),
+        inGlass: open.map((hr) => hr.l >= g.l && hr.r <= g.r && hr.t >= g.t && hr.b <= g.b),
+        clear: open.map((hr) => !eyes.some((e) => meet(hr, e))),
+        apart: (cover[0].l + cover[0].r) / 2 - (open[0].l + open[0].r) / 2 > 0.1 * (g.r - g.l) && (open[1].l + open[1].r) / 2 - (cover[1].l + cover[1].r) / 2 > 0.1 * (g.r - g.l),
+      };
+    });
+    const booWhy = boo.why; delete boo.why;
+    assert.deepStrictEqual(boo, { anims: [1, 1], covered: true, inGlass: [true, true], clear: [true, true], apart: true }, 'peekaboo: the hands slide apart beside the face (inside the glass, eyes uncovered) and back ' + booWhy);
+    await tap(page, ITEM(1, 'hug'), 0);
+    await page.waitForSelector('.g-makeup .mk-frame.is-posed', { timeout: 4000 });
+    const hug = await page.evaluate(() => ({
+      hug: document.querySelector('.g-makeup .mk-frame').classList.contains('is-hug'),
+      heart: document.querySelectorAll('.g-makeup .mk-fshot .mk-fheart').length,
+      paw: document.querySelectorAll('.g-makeup .mk-fslot[data-side="r"] .mk-hugpaw').length + ':' + document.querySelectorAll('.g-makeup .mk-fslot[data-side="l"] .mk-hugpaw').length,
+      peek: [...document.querySelectorAll('.g-makeup .mk-fslot[data-side="r"] .mk-posed')].filter((n) => n.textContent.includes('✋')).map((n) => n.querySelector('.mk-pc').classList.contains('mk-peek')),
+      bubs: [...document.querySelectorAll('.g-makeup .mk-fbub')].map((n) => n.textContent),
+    }));
+    assert.deepStrictEqual(hug, { hug: true, heart: 1, paw: '1:0', peek: [false, false], bubs: ['😮', '😍'] }, 'a hug: the friends lean together with a heart, the hugger\'s paw on the other; peekaboo with open hands; each reacts to the other\'s pose');
+    const ph2 = (await saved(page)).photos[0];
+    assert.deepStrictEqual([ph2.l.o, ph2.r.o], ['hug', 'peek'], 'the saved photo: the hug on the left friend (made up on board 1), the peekaboo on the right');
+    await t.waitForWin(page, 8000);
+    // the cicak scuttles along a mirror while the friends admire each other, and is gone again
+    await openMakeup(page, { length: 'short', kit: WHOLE });
+    await startAt(page, 'party');
+    await finishBoard(page, 0);
+    await A(page, (a) => a.surprise({ cicak: true }));
+    await finishBoard(page, 1);
+    await page.waitForFunction(() => MG.current.api.state === 'admire' && document.querySelectorAll('.g-makeup .mk-glass .mk-cicak').length === 1, null, { timeout: 2000 });
+    assert.strictEqual(await page.evaluate(() => getComputedStyle(document.querySelector('.g-makeup .mk-cicak')).pointerEvents), 'none', 'the cicak is not a target');
+    await gameWait(page, 1.2);
+    assert.strictEqual(await page.locator('.g-makeup .mk-cicak').count(), 0, 'and gone 1.2s later');
     lap(8);
   }
 
-  // --- 9. every size: menu, a cheeks zone, the capstone with a full wall, the finale photo and the present
+  // --- 9. every size: the twelve-card menu, a cheeks zone, a garden paws zone, the capstone with a full wall, the hug photo and
+  // the 👝 present
   if (part(9)) {
+    const ALL_LOOKS = ['clown', 'tiger', 'hero', 'royal', 'spy', 'alien', 'birthday', 'mermaid', 'lolly', 'rawr', 'fairy', 'bunny'];
     const FULLWALL = (() => {
-      const ph = (p, i) => ({ p, l: { e: '🐰', z: { cheeks: 'star', nose: 'clown', top: ['wig', 'crown', 'duck', 'cone'][i % 4], sparkle: 'stars' }, x: i % 2 ? ['clown'] : [], o: 'ears' }, r: { e: '🐻', z: { eyes: 'specs', mouth: 'lips-red', neck: 'bowtie', top: 'tophat' }, x: [], o: 'kiss' } });
-      return { done: 40, looks: ['clown', 'tiger', 'hero', 'royal', 'spy', 'alien'], played: { party: 2 }, photos: ['party', 'circus', 'hero', 'jungle', 'royal', 'beach', 'space', 'rainbow'].map(ph) };
+      const POS = ['hug', 'peek', 'hooray', 'ears', 'kiss', 'wave'];
+      const L = [{ cheeks: 'paint-scales', top: 'hair-sea', paws: 'nails-pink', sparkle: 'fish' }, { cheeks: 'paint-swirl', mouth: 'lips-rainbow', neck: 'beads', top: 'cupcake' },
+        { cheeks: 'paint-spots', mouth: 'roar', paws: 'claws', top: 'spikes' }, { cheeks: 'paint-wings', neck: 'wings', paws: 'hand-ladybug', top: 'daisies', sparkle: 'petals' },
+        { cheeks: 'star', nose: 'clown', top: 'cone', sparkle: 'stars' }, { cheeks: 'dots', nose: 'snout', top: 'wig' }, { eyes: 'mask-red', neck: 'cape' }, { cheeks: 'rainbow', top: 'horn', sparkle: 'bubbles' }];
+      const ph = (p, i) => ({ p, l: { e: '🐰', z: L[i], x: i % 2 ? ['mermaid'] : [], o: POS[i % 6] }, r: { e: '🐻', z: { eyes: 'heart-specs', mouth: 'teeth', neck: 'ear-cherry', top: 'bunches-pink' }, x: [], o: POS[(i + 1) % 6] } });
+      return { v: 2, legacy: 0, done: 48, looks: ALL_LOOKS, played: { party: 2 }, photos: ['sea', 'candy', 'dino', 'garden', 'party', 'circus', 'hero', 'rainbow'].map(ph) };
     })();
-    const runs = [['small'], ['phone'], ['phoneWide', 'dark'], ['phoneWide'], ['smallWide'], ['tabletTall', 'rm'], ['tabletTall'], ['tablet', 'dark'], ['tablet']];
+    const runs = [['small'], ['small', 'dark'], ['phone'], ['phoneWide', 'dark'], ['phoneWide'], ['smallWide'], ['tabletTall', 'rm'], ['tablet']];
     for (const [vp, mode] of runs) {
       const label = `@${vp}${mode ? ' ' + mode : ''}`, tag = `${vp}${mode ? '-' + mode : ''}`;
       const p = await newPage(t, { viewport: vp === 'smallWide' ? SMALL_WIDE : vp, dark: mode === 'dark', reducedMotion: mode === 'rm' });
-      await openMakeup(p, { kit: { done: 13, looks: FULLWALL.looks } });
+      await openMakeup(p, { kit: Object.assign({}, WHOLE, { looks: ALL_LOOKS }) });
       await layoutChecks(t, p, 'menu ' + label);
-      assert.strictEqual(await p.locator('.g-makeup .mk-card').count(), 8);
-      if (!mode) await t.shot(p, `${ID}-${vp}-menu.png`);
-      await openMakeup(p, { length: 'short' });
-      await startAt(p, 'party');
+      assert.deepStrictEqual(await p.evaluate(() => [document.querySelectorAll('.g-makeup .mk-card').length, document.querySelectorAll('.g-makeup .mk-lookslot').length]), [12, 12], 'twelve cards and twelve looks ' + label);
+      if (/^(smallWide|tablet)$/.test(vp)) assert.strictEqual(await p.evaluate(() => document.querySelector('.g-makeup').dataset.book), 'side', 'the look book stands at the side ' + label);
+      await t.shot(p, `${ID}-${tag}-menu.png`);
+      if (mode !== 'dark') {
+        await openMakeup(p, { length: 'short' });
+        await startAt(p, 'party');
+        for (const s of [0, 1]) await tap(p, ITEM(s, (await boards(p))[s].tray[0]), 0);
+        await p.waitForTimeout(250);
+        await layoutChecks(t, p, 'zone ' + label);
+        if (!mode) await t.shot(p, `${ID}-${vp}-zone.png`);
+      }
+      // the garden's nail-polish step (the paws zone)
+      await openMakeup(p, { kit: WHOLE, dabs: 'few', scale: 8 });
+      await A(p, (a) => a.surprise({ noGuest: true }));
+      await startAt(p, 'garden', 'paws');
+      await p.evaluate(() => { MG.timeScale = 1; });
       for (const s of [0, 1]) await tap(p, ITEM(s, (await boards(p))[s].tray[0]), 0);
       await p.waitForTimeout(250);
-      await layoutChecks(t, p, 'zone ' + label);
-      if (!mode) await t.shot(p, `${ID}-${vp}-zone.png`);
+      await layoutChecks(t, p, 'paws zone ' + label);
+      await t.shot(p, `${ID}-${tag}-paws.png`);
       if (!mode && /Wide$|^tablet$/.test(vp)) {
         // landscape, tier 3 (the marquee and its two animals) in a Short round: one row of big pips, all on the sign
         await openMakeup(p, { length: 'short', kit: FULLWALL });
@@ -761,26 +1074,31 @@ h.run(ID, async (t) => {
         await t.shot(p, `${ID}-${vp}-short3.png`);
       }
       await openMakeup(p, { kit: FULLWALL });
+      assert.strictEqual((await api(p, 'kit')).photos.length, 8, 'the full wall loads every photo (new parties, kinds and poses too)');
       await startAt(p, 'rainbow');
       assert.strictEqual(await p.locator('.g-makeup .mk-pip').count(), 8, 'the capstone has 8 pips');
       for (const s of [0, 1]) await tap(p, `${B(s)} .mk-mirror`, 0);
       await p.waitForTimeout(300);
       await layoutChecks(t, p, 'capstone ' + label, { wall: /^tablet/.test(vp) ? 4 : 3 });   // (8 photos saved)
-      if (!mode) await t.shot(p, `${ID}-${vp}-wall.png`);
-      else await t.shot(p, `${ID}-${tag}-wall.png`);
+      await t.shot(p, `${ID}-${tag}-wall.png`);
+      // an old salon before its bag: a hug (and a hooray) photo, then the 👝 present
       await openMakeup(p, { length: 'short', dabs: 'few', kit: { done: 3 } });
       await p.evaluate(() => { MG.timeScale = 8; });
-      await startAt(p, 'party');
-      await handUntil(p, (a) => a.state === 'finale');
+      await startAt(p, 'party', 'pose');
+      assert.ok(await A(p, (a) => a.setTray(0, ['hooray', 'kiss', 'ears'])) && await A(p, (a) => a.setTray(1, ['hug', 'wave', 'kiss'])));
+      await tap(p, ITEM(0, 'hooray'), 0);
+      await tap(p, ITEM(1, 'hug'), 0);
       await p.evaluate(() => { MG.timeScale = 0.5; });
-      await p.waitForSelector('.g-makeup .mk-frame.is-posed', { timeout: 6000 });
+      await p.waitForSelector('.g-makeup .mk-frame.is-posed.is-hug', { timeout: 6000 });
+      if (vp === 'small' && !mode) assert.ok(await p.evaluate(() => [...document.querySelectorAll('.mg-particle--emoji')].filter((n) => n.textContent === '🎉').length >= 9), 'hooray: a 🎉 burst from that friend (on top of the party\'s own three)');
       await p.evaluate(() => { MG.timeScale = 0.08; });   // (the photo holds 1.2s before it flies to the wall: slow the clock for the checks)
       await p.waitForTimeout(350);
-      await layoutChecks(t, p, 'photo ' + label);
+      await layoutChecks(t, p, 'hug photo ' + label);
       await t.shot(p, `${ID}-${tag}-photo.png`);
       await p.evaluate(() => { MG.timeScale = 1; });
       await p.waitForSelector('.g-makeup .mk-gift.is-open', { timeout: 4000 });
-      await p.waitForTimeout(500);
+      assert.strictEqual(await p.evaluate(() => document.querySelector('.g-makeup .mk-gift__in').textContent), '👝', 'the present is the bag');
+      await p.waitForTimeout(250);
       await layoutChecks(t, p, 'gift ' + label);
       await t.shot(p, `${ID}-${tag}-gift.png`);
       await t.waitForWin(p, 6000);
@@ -792,18 +1110,24 @@ h.run(ID, async (t) => {
   // --- 10. the face geometry: every animal, a full look, at 95px and 320px
   if (part(10)) {
     await openMakeup(page);
-    for (const M of [95, 320]) {
-      const r = await page.evaluate((M) => {
+    // the v1 look, then the three v2 looks of spec part 10 (every new kind, variant and pose)
+    const FACE_LOOKS = [
+      [{ z: { cheeks: 'star', eyes: 'specs', nose: 'clown', mouth: 'lips-red', neck: 'bowtie', top: 'cone', sparkle: 'gold' }, o: 'ears' }, { kissed: true, eared: true }],
+      [{ z: { cheeks: 'paint-wings', eyes: 'heart-specs', nose: 'snout', mouth: 'teeth', neck: 'ear-cherry', paws: 'nails-rainbow', top: 'bunches-pink', sparkle: 'bubbles' }, o: 'hug' }, { hugged: '#B07A4A' }],
+      [{ z: { cheeks: 'paint-scales', eyes: 'star-specs', nose: 'kitty', mouth: 'roar', neck: 'wings', paws: 'claws', top: 'hair-sea', sparkle: 'fish' }, o: 'peek' }, {}],
+      [{ z: { cheeks: 'paint-swirl', mouth: 'lips-rainbow', neck: 'beads', paws: 'hand-star', top: 'spikes' }, o: 'hooray' }, {}],
+    ];
+    for (const M of [95, 320]) for (let li = 0; li < FACE_LOOKS.length; li++) {
+      const r = await page.evaluate(([M, look, fo]) => {
         const a = MG.current.api, root = document.querySelector('#mg-game'), out = [];
         const box = document.createElement('div');
         box.style.cssText = 'position:absolute;inset:0;z-index:50;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;padding:8px;overflow:hidden;background:var(--mk-wall)';
         root.appendChild(box);
-        const look = { z: { cheeks: 'star', eyes: 'specs', nose: 'clown', mouth: 'lips-red', neck: 'bowtie', top: 'cone', sparkle: 'gold' }, o: 'ears' };
         MG.AVATARS.forEach((e) => {
           const mir = document.createElement('div');
           mir.className = 'mk-testmirror';
           mir.style.cssText = `box-sizing:border-box;width:${M + 12}px;height:${Math.ceil(M * 1.2) + 18}px;display:flex;align-items:flex-end;justify-content:center;background:var(--mk-glass);border:6px solid var(--p0);border-radius:12px;overflow:hidden`;
-          const f = a.renderFace(e, look, M, 'var(--p1)', { side: 'l', kissed: true, eared: true });
+          const f = a.renderFace(e, look, M, 'var(--p1)', Object.assign({ side: 'l' }, fo));
           f.dataset.e = e;
           mir.appendChild(f);
           box.appendChild(mir);
@@ -830,9 +1154,9 @@ h.run(ID, async (t) => {
           return bad.length ? e + ': ' + bad.slice(0, 4).join('; ') : null;
         }).filter(Boolean);
         return res;
-      }, M);
-      assert.deepStrictEqual(r, [], `every animal's parts and pieces stay in place at ${M}px`);
-      await t.shot(page, `${ID}-faces-${M}.png`);
+      }, [M, FACE_LOOKS[li][0], FACE_LOOKS[li][1]]);
+      assert.deepStrictEqual(r, [], `every animal's parts and pieces stay in place at ${M}px (look ${li + 1})`);
+      await t.shot(page, `${ID}-faces-${M}-${li + 1}.png`);
       await page.evaluate(() => { const n = document.querySelector('#mg-game > div[style*="z-index:50"]'); if (n) n.remove(); });
     }
     lap(10);
@@ -879,11 +1203,12 @@ h.run(ID, async (t) => {
     await ready(page);
     const k = await api(page, 'kit');
     assert.deepStrictEqual([k.done, k.looks, k.seen.includes('stamp'), k.photos.length], [2, ['spy'], true, 1], 'left mid-round: back to the menu, nothing earned is lost');
-    for (const [bad, cards] of [['"nonsense"', 2], ['{"done":"x"}', 2], ['[1,2,3]', 2], [JSON.stringify({ done: 5, played: { disco: 3, hero: 'x', party: 99999 }, looks: ['clown', 'clown', 'ninja', 7], seen: ['stamp', 'fly', 'stamp'], photos: [{ p: 'party', l: { e: '🐰', z: { top: 'cone' }, x: [], o: 'moon' }, r: { e: '🐻', z: {} } }, 'junk'] }), 5]]) {
+    for (const [bad, cards] of [['"nonsense"', 2], ['{"done":"x"}', 2], ['{"v":2,"done":"x"}', 2], ['{"v":2,"done":20,"legacy":99}', 8], ['{"legacy":-3}', 2], ['[1,2,3]', 2], [JSON.stringify({ done: 5, played: { disco: 3, hero: 'x', party: 99999 }, looks: ['clown', 'clown', 'ninja', 7], seen: ['stamp', 'fly', 'stamp'], photos: [{ p: 'party', l: { e: '🐰', z: { top: 'cone' }, x: [], o: 'moon' }, r: { e: '🐻', z: {} } }, 'junk'] }), 5]]) {
       await openMakeup(page, { kit: bad });
       assert.strictEqual(await page.locator('.g-makeup .mk-card').count(), cards, `a damaged save opens the menu (${bad})`);
       const pol = await page.locator('.g-makeup .mk-polaroid').count();
       assert.ok(pol >= 1, 'and draws the photo wall');
+      if (/legacy.:99/.test(bad)) assert.deepStrictEqual([(await api(page, 'kit')).legacy, (await saved(page)).legacy], [20, 20], 'a legacy count past done clamps to done');
     }
     // a late salon's menu: on every card the medals, the play stars and the corner stickers keep apart, and no sticker is a star
     for (const first of [1, 2, 3]) {
@@ -974,21 +1299,116 @@ h.run(ID, async (t) => {
     lap(14);
   }
 
+  // --- 14b. an old (v1) salon moves to v2: its eight cards stay, the 👝 bag comes first, then the new parties
+  if (part('14b')) {
+    const OLDP = ['party', 'circus', 'hero', 'jungle', 'royal', 'beach', 'space', 'rainbow'];
+    const photos = OLDP.map((p, i) => ({ p, l: { e: '🐰', z: { cheeks: 'star', top: 'cone' }, x: [], o: ['wave', 'kiss', 'ears'][i % 3] }, r: { e: '🐻', z: { nose: 'clown' }, x: [], o: 'wave' } }));
+    const looks = ['clown', 'tiger', 'hero', 'royal', 'spy', 'alien'];
+    await openMakeup(page, { length: 'short', kit: { v: 1, done: 13, looks, photos } });
+    const m0 = await page.evaluate(() => ({ cards: [...document.querySelectorAll('.g-makeup .mk-card')].map((n) => n.dataset.id).join(), sil: document.querySelector('.g-makeup .mk-next .mk-next__sil').textContent, tag: document.querySelector('.g-makeup .mk-next .mk-next__tag').textContent }));
+    assert.deepStrictEqual(m0, { cards: OLDP.join(), sil: '🐠', tag: '👝' }, 'an old salon: its eight cards in place, the sea next, the bag first');
+    await page.evaluate(() => { window.__fan = 0; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.classList && n.classList.contains('mk-flyer') && n.querySelector('.mk-ico, .mk-ico-e')) window.__fan++; }))).observe(document.querySelector('.g-makeup'), { childList: true }); });
+    const r = await followHand(page, 600);
+    assert.ok(r.over, 'a Short round');
+    await page.waitForSelector('.g-makeup .mk-gift.is-open', { timeout: 6000 });
+    await page.waitForTimeout(150);
+    const flyers = await page.evaluate(() => window.__fan);
+    assert.deepStrictEqual([await page.evaluate(() => document.querySelector('.g-makeup .mk-gift__in').textContent), flyers], ['👝', 6], 'the present is the bag, and six new things fly out of it');
+    const sv = await saved(page);
+    assert.deepStrictEqual([sv.v, sv.done, sv.legacy, sv.looks, sv.photos.length, sv.photos.slice(1).map((p) => p.p).join()], [2, 14, 13, looks, 8, OLDP.slice(0, 7).join()], 'saved as v2 (done 14, legacy 13), every look and photo still there');
+    await t.waitForWin(page, 8000);
+    await openMakeup(page, { keep: true, length: 'short' });
+    assert.strictEqual(await page.evaluate(() => document.querySelector('.g-makeup .mk-next .mk-next__tag').textContent), '🎁', 'then the sea comes as a present');
+    await A(page, (a) => a.start('party'));
+    await stateIs(page, 'zone');
+    const fresh = await page.evaluate(() => [...document.querySelectorAll('.g-makeup .mk-item .mk-item__new')].map((n) => n.closest('.mk-item').dataset.id));
+    const v2 = await A(page, (a) => Object.keys(a.ITEMS).filter((id) => a.ITEMS[id].v2));
+    assert.ok(await A(page, (a) => a.fresh.length === 32), 'the bag brought the 32 everyday items');
+    const trays = (await boards(page)).flatMap((b) => b.tray);
+    assert.ok(trays.filter((id) => v2.includes(id)).every((id) => fresh.includes(id)), 'every new everyday item in the trays has its sparkle: ' + fresh);
+    // (a v2 item in her or his first tray: deal again until one comes, as a family would see it most rounds)
+    for (let i = 0; i < 12 && !fresh.length; i++) {
+      await openMakeup(page, { keep: true, length: 'short' });
+      await A(page, (a) => a.start('party'));
+      await stateIs(page, 'zone');
+      fresh.push(...await page.evaluate(() => [...document.querySelectorAll('.g-makeup .mk-item .mk-item__new')].map((n) => n.closest('.mk-item').dataset.id)));
+    }
+    assert.ok(fresh.length && fresh.every((id) => v2.includes(id)), 'the next round\'s trays show v2 items with a sparkle: ' + fresh);
+    await followHand(page, 600);
+    await t.waitForWin(page, 8000);
+    await openMakeup(page, { keep: true, length: 'short' });
+    assert.ok(await page.locator('.g-makeup .mk-card[data-id="sea"]').count() === 1, 'the round after the bag brings the sea card');
+    lap('14b');
+  }
+
   // --- 15. how long a round lasts with two real players: her a tap every 2s, his every 1s (help Some, the default)
   if (part(15)) {
     const p = await newPage(t, { help: 1 });
     const len = { full: [], short: [] };
-    for (const L of ['full', 'short', 'full', 'short']) {     // (two of each: the random trays move a round by a few seconds)
-      await openMakeup(p, { length: L, scale: 12 });
+    for (const L of ['full', 'short']) {     // (the random trays move a round by a few seconds: Full is judged over all five Full rounds below)
+      await openMakeup(p, { length: L, scale: 16 });
       len[L].push((await twoPlayers(p, 'party', 2, 1)).len);
       await t.waitForWin(p, 8000);
     }
+    // the four new parties: Full 50-65s, Short 32-40s
+    const fresh = {};
+    for (const pty of ['sea', 'candy', 'dino', 'garden']) for (const L of ['full', 'short']) {
+      await openMakeup(p, { length: L, scale: 16, kit: WHOLE });
+      const n = (await twoPlayers(p, pty, 2, 1)).len;
+      fresh[pty + ' ' + L] = n;
+      len[L].push(n);
+      await t.waitForWin(p, 8000);
+      if (L === 'full') assert.ok(n >= 50 && n <= 65, `${pty} Full with real taps: ${n}s (50-65)`);
+      else assert.ok(n >= 32 && n <= 40, `${pty} Short with real taps: ${n}s (32-40)`);
+    }
     const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length, full = avg(len.full), short = avg(len.short);
-    if (process.env.MG_MK_TIME) console.log(`  round lengths: ${JSON.stringify(len)}`);
     // (every step but the pose is three taps for her: measured, Full about 58s and Short about 36s with the overlay)
     assert.ok(full >= 55 && Math.max(...len.full) <= 180, `a Full round with real taps lasts about a minute: ${len.full}s (8 steps)`);
     assert.ok(short < full * 0.75, `Short is clearly shorter: ${len.short}s against ${len.full}s`);
+    if (process.env.MG_MK_TIME) console.log(`  round lengths: ${JSON.stringify(len)} ${JSON.stringify(fresh)}`);
     await p.close();
     lap(15);
+  }
+
+  // --- 16. the themed rotation: a party played with its look found deals its themed items; before that, its signature
+  if (part(16)) {
+    // (20 deals in all: two boards a round)
+    for (const [played, looks, want, n] of [[1, ['birthday'], 'rotates', 10], [0, [], 'star', 5], [1, [], 'star', 5]]) {
+      const themes = new Set();
+      await openMakeup(page, { length: 'short', kit: { v: 2, legacy: 0, done: 18, played: played ? { party: played } : {}, looks } });
+      for (let i = 0; i < n; i++) {
+        if (i) await openMakeup(page, { keep: true, length: 'short' });
+        await A(page, (a) => a.start('party'));
+        await stateIs(page, 'zone');
+        (await boards(page)).forEach((b) => { themes.add(b.theme); if (!b.tray.includes(b.theme)) themes.add('not in tray'); });
+      }
+      if (want === 'rotates') assert.ok(themes.size >= 2 && [...themes].every((x) => ['star', 'heart', 'strawberry', 'paint-star'].includes(x)), 'known: the cheeks rotate through the party\'s themed items: ' + [...themes]);
+      else assert.deepStrictEqual([...themes], ['star'], `played ${played}, look ${looks.length ? 'found' : 'not found'}: always the signature`);
+    }
+    lap(16);
+  }
+
+  // --- 17. the guest step: in Full it takes the last extra's place (never one step more); an old salon gets no paws before its bag
+  if (part(17)) {
+    await openMakeup(page, { kit: WHOLE });
+    const seen = new Set();
+    for (let i = 0; i < 4; i++) {
+      if (i) await openMakeup(page, { keep: true });
+      await A(page, (a) => { a.surprise({ guest: true }); a.start('party'); });
+      await stateIs(page, 'zone');
+      const zs = await api(page, 'zones');
+      assert.ok(['paws', 'nose'].includes(zs[4]) && zs.filter((z, j) => j !== 4).join() === 'wash,cheeks,eyes,mouth,top,sparkle,pose', 'a guest step in place of the neck: ' + zs);
+      seen.add(zs[4]);
+      assert.strictEqual(await page.locator('.g-makeup .mk-pip').count(), 8, 'still eight steps');
+    }
+    await openMakeup(page, { kit: { done: 5 } });
+    for (let i = 0; i < 5; i++) {
+      if (i) await openMakeup(page, { keep: true });
+      await A(page, (a, id) => { a.surprise({ guest: true }); a.start(id); }, ['party', 'circus', 'hero', 'jungle', 'royal'][i % 5]);
+      await stateIs(page, 'zone');
+      const zs = await api(page, 'zones');
+      assert.ok(!zs.includes('paws') && zs.length === 8, 'before the bag no nail polish: ' + zs);
+    }
+    lap(17);
   }
 });

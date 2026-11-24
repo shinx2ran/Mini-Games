@@ -803,3 +803,134 @@
   .g-makeup .mk-tray.is-away { transform: none; }
 }
 @keyframes mk-fadein { from { opacity: 0; } }
+
+/* ================================================================ v2: new parties, kinds, poses and icons */
+
+/* ---- scene tokens for the four new backdrops (light, then dark the house way) */
+.g-makeup { --mk-deep: #8FD8F8; --mk-sand: #F6D98A; --mk-meadow: #C8EFA8; --mk-volc: #9A6A44; --mk-candy: #FFD6E8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .g-makeup { --mk-deep: #1D4E73; --mk-sand: #7C6634; --mk-meadow: #2F5A3A; --mk-volc: #5E4330; --mk-candy: #5A2A48; } }
+:root[data-theme="dark"] .g-makeup { --mk-deep: #1D4E73; --mk-sand: #7C6634; --mk-meadow: #2F5A3A; --mk-volc: #5E4330; --mk-candy: #5A2A48; }
+
+/* ---- backdrops (bgEl appends BGBITS[bg] as <i class="mk-bit"> at fixed left/top %; the bottom-right corner stays clear for medals) */
+.g-makeup .mk-bg[data-bg="deep"] { background: linear-gradient(to bottom, var(--mk-deep) 0 78%, var(--mk-sand) 78% 100%); }   /* hard stop: sea over sand */
+.g-makeup .mk-bg[data-bg="meadow"] { background: var(--mk-meadow); }
+.g-makeup .mk-bg[data-bg="volcano"] { background: var(--leaf-soft); }
+.g-makeup .mk-bg[data-bg="volcano"]::before { content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 52%; background: var(--mk-volc); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
+.g-makeup .mk-bg[data-bg="volcano"]::after { content: ""; position: absolute; left: 41%; width: 18%; bottom: 46%; height: 10%; background: #FF8A3D; border-radius: 50% 50% 20% 20%; }
+.g-makeup .mk-bg[data-bg="candy"] { background-color: var(--mk-candy); background-image: radial-gradient(circle, #FFFFFF 0 16%, transparent 17%); background-size: 25% 25%; }
+.g-makeup .mk-bit { position: absolute; box-sizing: border-box; border-radius: 50%; pointer-events: none; }
+.g-makeup .mk-bg[data-bg="deep"] .mk-bit { border: max(1.5px, 0.006em) solid rgba(255, 255, 255, 0.85); }          /* bubble rings */
+.g-makeup .mk-bg[data-bg="meadow"] .mk-bit { background: #FFFFFF; border: max(1px, 0.004em) solid var(--line); }       /* daisies */
+.g-makeup .mk-bg[data-bg="meadow"] .mk-bit::after { content: ""; position: absolute; left: 32%; top: 32%; width: 36%; height: 36%; border-radius: 50%; background: var(--sun); }
+
+/* ---- the new pieces */
+.g-makeup .mk-star5 { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.g-makeup .mk-vine { border-left: 2.4em solid var(--c); border-radius: 50%; }
+.g-makeup .mk-swirl { background: var(--c); background-image: repeating-conic-gradient(var(--c) 0 30deg, #FFFFFF 0 60deg); }   /* old WebViews: a plain disc */
+.g-makeup .mk-hearts svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.g-makeup .mk-hearts path { fill: #FF5D8F; fill-opacity: 0.45; stroke: #E0245E; stroke-width: 2.4; stroke-linejoin: round; }
+.g-makeup .mk-hearts rect { fill: #E0245E; }
+.g-makeup .mk-ball.is-snout { border-radius: 50%; }
+.g-makeup .mk-ball.is-snout b { position: absolute; top: 34%; width: 16%; height: 30%; border-radius: 50%; background: #7A2E4A; }
+.g-makeup .mk-ball.is-snout b:first-child { left: 26%; }
+.g-makeup .mk-ball.is-snout b:last-child { right: 26%; }
+.g-makeup .mk-hoop { border: 1.1em solid #FFC933; box-shadow: 0 0 0 1px var(--line); }
+.g-makeup .mk-dangle { transform-origin: 50% 0; }
+.g-makeup .mk-soap { background: rgba(127, 219, 255, 0.35); }
+.g-makeup .mk-soap::after { content: ""; position: absolute; left: 22%; top: 18%; width: 30%; height: 30%; border-radius: 50%; background: #FFFFFF; }
+.g-makeup .mk-wing path { fill: var(--c); stroke: var(--line); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+/* peekaboo in the mirror: the hands cover the eyes, then slide apart ("boo!") and back, once */
+.g-makeup .mk-pc.mk-peek { animation: mk-peek 1.2s ease-in-out 0.8s 1 both; }
+.g-makeup .mk-pc.mk-peek.is-r { animation-name: mk-peek-r; }
+/* (the hand's em is its own 17-model-em font-size: 1.1em is about 19 model em, so the hands land beside the face, at about x 17
+   and 83 like the photo's open hands, inside the glass and clear of both eyes) */
+@keyframes mk-peek { 0%, 100% { translate: 0 0; } 30%, 70% { translate: -1.1em 0; } }
+@keyframes mk-peek-r { 0%, 100% { translate: 0 0; } 30%, 70% { translate: 1.1em 0; } }
+.g-makeup .mk-model.is-still .mk-peek { animation: none; }
+/* the cicak (house gecko) scuttles along the top of the glass (like the ufo: decoration, then removed) */
+.g-makeup .mk-cicak { position: absolute; left: 0; top: 3%; z-index: 3; font-size: max(18px, calc(var(--m) * 0.16)); line-height: 1; pointer-events: none; animation: mk-cicak 1s linear forwards; }
+.g-makeup .mk-cicak.is-still { left: 70%; animation: none; }
+@keyframes mk-cicak { from { transform: translateX(-120%); } to { transform: translateX(calc(var(--m) * 1.4)); } }
+/* her colour step: the brush tip takes the colour she picked */
+.g-makeup .mk-brush.is-tint i { background: var(--tint); }
+/* a tray item new since the last present: a small twinkle in its corner */
+.g-makeup .mk-item__new { position: absolute; right: 4%; top: 4%; font-size: 0.28em; line-height: 1; pointer-events: none; }
+/* the photo: a hug leans the two friends together (the booth's own lean is the same) */
+.g-makeup .mk-frame.is-posed.is-hug .mk-fslot[data-side="l"] { transform: translateX(7%) rotate(5deg); }
+.g-makeup .mk-frame.is-posed.is-hug .mk-fslot[data-side="r"] { transform: translateX(-7%) rotate(-5deg); }
+.g-makeup .mk-fheart { position: absolute; left: 50%; top: 18%; z-index: 2; font-size: calc(var(--m2) * 0.2); transform: translate(-50%, -50%); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .g-makeup .mk-frame.is-posed.is-hug .mk-fslot { transform: none; }
+  .g-makeup .mk-pc.mk-peek { animation: none; }
+  .g-makeup .mk-cicak { animation: none; left: 70%; }
+}
+
+/* ---- the menu: 12 look slots wrap to two rows on narrow phones, or stand at the side (2 wide) in landscape */
+.g-makeup .mk-book { flex-wrap: wrap; width: var(--book-w); row-gap: 6px; }
+.g-makeup[data-book="side"] .mk-menu { flex-direction: row; }
+
+/* ---- tray icons for the new kinds (a 1em box; outlines as today) */
+.g-makeup .mk-ico-in { position: absolute; left: 50%; top: 50%; font-size: 0.56em; line-height: 1; transform: translate(-50%, -50%); }
+/* face paint: a face-coloured disc with the design's motif */
+.g-makeup .mk-ico--paint > i { left: 4%; top: 4%; width: 92%; height: 92%; border-radius: 50%; background: #F8E3C4; }
+/* nail polish: a bottle in the colour, a dark cap, a white shine */
+.g-makeup .mk-ico--nails > i:nth-child(1) { left: 20%; top: 42%; width: 60%; height: 54%; border-radius: 0.12em; background: var(--c); }
+.g-makeup .mk-ico--nails > i:nth-child(2) { left: 34%; top: 6%; width: 32%; height: 40%; border-radius: 0.06em; background: #2A2356; }
+.g-makeup .mk-ico--nails > i:nth-child(3) { left: 30%; top: 52%; width: 10%; height: 30%; border: 0; border-radius: 1em; background: #FFFFFF; }
+.g-makeup .mk-ico--nails.is-rainbow > i:nth-child(1) { background: linear-gradient(to bottom, #FF5D8F 0 33%, #FFC933 33% 66%, #2FB4F5 66% 100%); }
+.g-makeup .mk-ico--nails.is-claws > i:nth-child(1) { left: 8%; top: 40%; width: 84%; height: 56%; border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; background: #E3B07A; }
+.g-makeup .mk-ico--nails.is-claws > i:nth-child(2), .g-makeup .mk-ico--nails.is-claws > i:nth-child(3) { top: 8%; width: 24%; height: 38%; border: 0; border-radius: 0; background: var(--line); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.g-makeup .mk-ico--nails.is-claws > i:nth-child(2) { left: 22%; }
+.g-makeup .mk-ico--nails.is-claws > i:nth-child(3) { left: 54%; }
+/* hair: a fringe arc and two bunches (long: two long locks) */
+.g-makeup .mk-ico--hair > i:nth-child(1) { left: 16%; top: 10%; width: 68%; height: 34%; border-radius: 50% 50% 30% 30% / 100% 100% 40% 40%; background: var(--c); z-index: 1; }
+.g-makeup .mk-ico--hair > i:nth-child(2), .g-makeup .mk-ico--hair > i:nth-child(3) { top: 30%; width: 30%; height: 54%; border-radius: 50%; background: var(--c); }
+.g-makeup .mk-ico--hair > i:nth-child(2) { left: 2%; transform: rotate(16deg); }
+.g-makeup .mk-ico--hair > i:nth-child(3) { right: 2%; transform: rotate(-16deg); }
+.g-makeup .mk-ico--hair.is-long > i:nth-child(2), .g-makeup .mk-ico--hair.is-long > i:nth-child(3) { top: 24%; width: 24%; height: 74%; border-radius: 50% / 30% 30% 70% 70%; transform: none; }
+/* earring: a gold hook above the dangling emoji */
+.g-makeup .mk-ico--earring > i { left: 36%; top: 0; width: 28%; height: 28%; border-radius: 50%; border: 0.07em solid #FFC933; box-shadow: 0 0 0 1px var(--line); }
+.g-makeup .mk-ico--earring > .mk-ico-in { top: 62%; font-size: 0.62em; }
+/* heart glasses, pig snout, kitty nose */
+.g-makeup .mk-ico--hearts svg { position: absolute; left: 0; top: 22%; width: 100%; height: 56%; overflow: visible; }
+.g-makeup .mk-ico--hearts path { fill: #FF5D8F; fill-opacity: 0.6; stroke: #E0245E; stroke-width: 2.4; stroke-linejoin: round; }
+.g-makeup .mk-ico--hearts rect { fill: #E0245E; }
+.g-makeup .mk-ico--ball.is-snout > i:nth-child(1) { top: 20%; height: 60%; }
+.g-makeup .mk-ico--ball.is-snout > i:nth-child(1)::after { display: none; }
+.g-makeup .mk-ico--ball.is-snout > i:nth-child(2), .g-makeup .mk-ico--ball.is-snout > i:nth-child(3) { top: 38%; width: 14%; height: 24%; border: 0; border-radius: 50%; background: #7A2E4A; }
+.g-makeup .mk-ico--ball.is-snout > i::after { display: none; }
+.g-makeup .mk-ico--ball.is-snout > i:nth-child(2) { left: 32%; }
+.g-makeup .mk-ico--ball.is-snout > i:nth-child(3) { left: 54%; }
+.g-makeup .mk-ico--whisk.is-kitty > i:nth-child(7) { left: 36%; top: 40%; width: 28%; height: 20%; border-width: max(1.5px, 0.04em); border-radius: 45% 45% 50% 50% / 35% 35% 65% 65%; background: var(--c); }
+/* roar: a dark open mouth with two white teeth, on a soft orange disc (reads in dark mode) */
+.g-makeup .mk-ico--smile.is-roar { border: max(2px, 0.05em) solid var(--line); border-radius: 50%; background: var(--tangerine-soft); box-sizing: border-box; }
+.g-makeup .mk-ico--smile.is-roar > i { left: 12%; top: 22%; width: 76%; height: 54%; border-radius: 45% 45% 50% 50% / 35% 35% 65% 65%; background: var(--c); border-width: max(2px, 0.05em); border-color: var(--line); }
+.g-makeup .mk-ico--smile.is-roar > i::before, .g-makeup .mk-ico--smile.is-roar > i::after { content: ""; position: absolute; top: 0; width: 22%; height: 40%; background: #FFFFFF; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.g-makeup .mk-ico--smile.is-roar > i::before { left: 16%; }
+.g-makeup .mk-ico--smile.is-roar > i::after { right: 16%; }
+/* rainbow lipstick: the bullet in five bands */
+.g-makeup .mk-ico--lips.is-rainbow > i:nth-child(2) { background: linear-gradient(to right, #FF5D8F 0 20%, #FFC933 20% 40%, #4CCB6B 40% 60%, #2FB4F5 60% 80%, #9B6BFF 80% 100%); }
+/* rainbow beads */
+.g-makeup .mk-ico--ring.is-beads > i:nth-child(6n+1) { background: #FF5D8F; }
+.g-makeup .mk-ico--ring.is-beads > i:nth-child(6n+2) { background: #FF8A3D; }
+.g-makeup .mk-ico--ring.is-beads > i:nth-child(6n+3) { background: #FFC933; }
+.g-makeup .mk-ico--ring.is-beads > i:nth-child(6n+4) { background: #4CCB6B; }
+.g-makeup .mk-ico--ring.is-beads > i:nth-child(6n+5) { background: #2FB4F5; }
+.g-makeup .mk-ico--ring.is-beads > i:nth-child(6n+6) { background: #9B6BFF; }
+/* dino spikes: three outlined green triangles */
+.g-makeup .mk-ico--spikes > i { bottom: 8%; border: 0; background: var(--line); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.g-makeup .mk-ico--spikes > i::after { content: ""; position: absolute; left: 14%; right: 14%; top: 22%; bottom: 6%; background: var(--c); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.g-makeup .mk-ico--spikes > i:nth-child(1) { left: 28%; width: 44%; height: 76%; }
+.g-makeup .mk-ico--spikes > i:nth-child(2) { left: 2%; width: 34%; height: 52%; }
+.g-makeup .mk-ico--spikes > i:nth-child(3) { right: 2%; width: 34%; height: 52%; }
+/* soap bubbles: three rings on the glitter disc */
+.g-makeup .mk-ico--glitter.is-bubble > i { border-width: 1.5px; border-radius: 50%; background: rgba(127, 219, 255, 0.45); }
+.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(1) { left: 14%; top: 18%; width: 42%; height: 42%; }
+.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(2) { left: 54%; top: 30%; width: 30%; height: 30%; }
+.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(3) { left: 30%; top: 60%; width: 24%; height: 24%; }
+/* fairy wings: four lilac lobes (each lobe's left/top set, or the cape rule's leak in) */
+.g-makeup .mk-ico--cape.is-wings > i { width: 42%; height: 46%; border-radius: 50%; background: var(--c); }
+.g-makeup .mk-ico--cape.is-wings > i:nth-child(1) { left: 4%; top: 6%; transform: rotate(-25deg); }
+.g-makeup .mk-ico--cape.is-wings > i:nth-child(2) { left: 54%; top: 6%; transform: rotate(25deg); }
+.g-makeup .mk-ico--cape.is-wings > i:nth-child(3) { left: 12%; top: 56%; width: 32%; height: 36%; }
+.g-makeup .mk-ico--cape.is-wings > i:nth-child(4) { left: 56%; top: 56%; width: 32%; height: 36%; }

@@ -121,14 +121,85 @@
     // pose: every party's last zone
     'wave':         { z: 'pose', k: 'pose', e: '👋', r: 'giggle' },
     'kiss':         { z: 'pose', k: 'pose', e: '😘', r: 'kiss' },
-    'ears':         { z: 'pose', k: 'pose', e: '✌️', r: 'silly' },
+    'ears':         { z: 'pose', k: 'pose', e: '✌️', r: 'silly', silly: true },
+    // ---- v2 everyday (base) items: a new salon has them from the start; an old salon gets them in the 👝 bag (v2: true).
+    // v: a variant of its kind; ic: the tray icon's emoji for an item drawn in CSS
+    // cheeks
+    'strawberry':     { z: 'cheeks', k: 'stamp', e: '🍓', r: 'love', v2: true },
+    'paint-star':     { z: 'cheeks', k: 'paint', v: 'star', ic: '🌟', r: 'wow', v2: true },
+    'paint-vine':     { z: 'cheeks', k: 'paint', v: 'vine', ic: '🌿', r: 'love', v2: true },
+    'blush-lilac':    { z: 'cheeks', k: 'blush', c: '#C79BFF', r: 'shy', v2: true },
+    // eyes
+    'shadow-pink':    { z: 'eyes', k: 'shadow', c: '#FF5D8F', r: 'wow', v2: true },
+    'heart-specs':    { z: 'eyes', k: 'glasses', v: 'hearts', r: 'love', v2: true },
+    'star-specs':     { z: 'eyes', k: 'glasses', v: 'stars', e: '🌟', r: 'star', v2: true },
+    // nose
+    'star-nose':      { z: 'nose', k: 'tip', e: '⭐', r: 'star', v2: true },
+    'snout':          { z: 'nose', k: 'ball', v: 'snout', c: '#FF9FBF', r: 'oink', silly: true, v2: true },
+    'kitty':          { z: 'nose', k: 'whisk', v: 'kitty', c: '#FF8FB1', r: 'purr', v2: true },
+    'ball-sun':       { z: 'nose', k: 'ball', c: '#FFC933', r: 'clown', silly: true, v2: true },
+    // mouth
+    'lips-coral':     { z: 'mouth', k: 'lips', c: '#FF8A3D', r: 'kiss', v2: true },
+    'lips-grape':     { z: 'mouth', k: 'lips', c: '#9B6BFF', r: 'kiss', v2: true },
+    'teeth':          { z: 'mouth', k: 'smile', v: 'teeth', ic: '🦷', r: 'munch', silly: true, v2: true },
+    // neck
+    'ear-cherry':     { z: 'neck', k: 'earring', e: '🍒', r: 'love', v2: true },
+    'ear-star':       { z: 'neck', k: 'earring', e: '🌟', r: 'star', v2: true },
+    'beads':          { z: 'neck', k: 'ring', ring: 'beads', r: 'giggle', v2: true },
+    // paws (the new zone: the friend lifts its paws in front of the bib)
+    'nails-pink':     { z: 'paws', k: 'nails', c: '#FF8FB1', r: 'shy', v2: true },
+    'nails-red':      { z: 'paws', k: 'nails', c: '#E0245E', r: 'love', v2: true },
+    'nails-sea':      { z: 'paws', k: 'nails', c: '#2FB4F5', r: 'wow', v2: true },
+    'nails-rainbow':  { z: 'paws', k: 'nails', c: 'rainbow', r: 'silly', silly: true, v2: true },
+    'hand-heart':     { z: 'paws', k: 'stamp', e: '❤️', r: 'love', v2: true },
+    'hand-star':      { z: 'paws', k: 'stamp', e: '⭐', r: 'giggle', v2: true },
+    // top
+    'bunches-pink':   { z: 'top', k: 'hair', v: 'bunches', c: '#FF8FB1', r: 'love', v2: true },
+    'bunches-blue':   { z: 'top', k: 'hair', v: 'bunches', c: '#2FB4F5', r: 'love', v2: true },
+    'cap':            { z: 'top', k: 'wear', e: '🧢', r: 'cool', v2: true },
+    // sparkle
+    'confetti':       { z: 'sparkle', k: 'glitter', e: '🎊', r: 'party', v2: true },
+    'bubbles':        { z: 'sparkle', k: 'glitter', v: 'bubble', r: 'wow', v2: true },
+    'clovers':        { z: 'sparkle', k: 'glitter', e: '🍀', r: 'wow', v2: true },
+    // pose
+    'hug':            { z: 'pose', k: 'pose', e: '🤗', r: 'love', v2: true },
+    'peek':           { z: 'pose', k: 'pose', e: '✋', r: 'giggle', silly: true, v2: true },
+    'hooray':         { z: 'pose', k: 'pose', e: '🙌', r: 'party', v2: true },
+    // ---- sea 🐠
+    'paint-scales':   { z: 'cheeks', k: 'paint', v: 'scales', ic: '🐠', r: 'wow', party: 'sea' },
+    'shadow-teal':    { z: 'eyes', k: 'shadow', c: '#2EC4B6', r: 'wow', party: 'sea' },
+    'hair-sea':       { z: 'top', k: 'hair', v: 'long', c: '#2EC4B6', r: 'love', party: 'sea' },
+    'shells':         { z: 'neck', k: 'ring', e: '🐚', r: 'giggle', party: 'sea' },
+    'fish':           { z: 'sparkle', k: 'glitter', e: '🐟', r: 'giggle', party: 'sea' },
+    // ---- candy 🍭 (the sweets party)
+    'paint-swirl':    { z: 'cheeks', k: 'paint', v: 'swirl', ic: '🍭', r: 'giggle', party: 'candy' },
+    'cherry-nose':    { z: 'nose', k: 'tip', e: '🍒', r: 'love', party: 'candy' },
+    'lips-rainbow':   { z: 'mouth', k: 'lips', c: 'rainbow', r: 'kiss', party: 'candy' },   // (c: LIPS_RAINBOW, below)
+    'cupcake':        { z: 'top', k: 'wear', e: '🧁', r: 'giggle', silly: true, party: 'candy' },
+    'candies':        { z: 'sparkle', k: 'glitter', e: '🍬', r: 'giggle', party: 'candy' },
+    // ---- dino 🦖
+    'paint-spots':    { z: 'cheeks', k: 'paint', v: 'spots', ic: '🦖', r: 'roar', party: 'dino' },
+    'roar':           { z: 'mouth', k: 'smile', v: 'roar', c: '#3A2A20', r: 'roar', silly: true, party: 'dino' },
+    'claws':          { z: 'paws', k: 'nails', v: 'claws', c: '#FFF4D6', r: 'roar', silly: true, party: 'dino' },
+    'spikes':         { z: 'top', k: 'ring', ring: 'spike', c: '#4CCB6B', r: 'roar', party: 'dino' },
+    'dinos':          { z: 'sparkle', k: 'glitter', e: '🦕', r: 'giggle', party: 'dino' },
+    // ---- garden 🦋 (the butterfly garden)
+    'paint-wings':    { z: 'cheeks', k: 'paint', v: 'wings', ic: '🦋', r: 'love', party: 'garden' },
+    'bee-nose':       { z: 'nose', k: 'tip', e: '🐝', r: 'buzz', silly: true, party: 'garden' },
+    'wings':          { z: 'neck', k: 'cape', v: 'wings', c: '#CDB0FF', r: 'wow', party: 'garden' },
+    'hand-ladybug':   { z: 'paws', k: 'stamp', e: '🐞', r: 'giggle', party: 'garden' },
+    'daisies':        { z: 'top', k: 'ring', e: '🌼', r: 'love', party: 'garden' },
+    'petals':         { z: 'sparkle', k: 'glitter', e: '🌸', r: 'love', party: 'garden' },
   };
+  // rainbow lips: hard stops (a pattern of five bands, not a gradient)
+  var LIPS_RAINBOW = 'repeating-linear-gradient(90deg, #FF5D8F 0 3.6em, #FFC933 0 7.2em, #4CCB6B 0 10.8em, #2FB4F5 0 14.4em, #9B6BFF 0 18em)';
+  ITEMS['lips-rainbow'].c = LIPS_RAINBOW;
   var ITEM_IDS = Object.keys(ITEMS);
-  var ZONES = ['wash', 'cheeks', 'eyes', 'nose', 'mouth', 'neck', 'top', 'sparkle', 'pose'];
-  var PIP = { wash: '🧼', cheeks: '🌸', eyes: '👀', nose: '👃', mouth: '👄', neck: '🎀', top: '🎩', sparkle: '✨', pose: '📸' };
-  var POSES = ['wave', 'kiss', 'ears'];
+  var ZONES = ['wash', 'cheeks', 'eyes', 'nose', 'mouth', 'neck', 'paws', 'top', 'sparkle', 'pose'];
+  var PIP = { wash: '🧼', cheeks: '🌸', eyes: '👀', nose: '👃', mouth: '👄', neck: '🎀', paws: '💅', top: '🎩', sparkle: '✨', pose: '📸' };
+  var POSES = ['wave', 'kiss', 'ears', 'hug', 'peek', 'hooray'];
   // the zones a photo remembers (the wash leaves nothing; the pose is `o`)
-  var LOOK_ZONES = ['cheeks', 'eyes', 'nose', 'mouth', 'neck', 'top', 'sparkle'];
+  var LOOK_ZONES = ['cheeks', 'eyes', 'nose', 'mouth', 'neck', 'paws', 'top', 'sparkle'];
 
   /* ---------------------------------------------------------- the parties */
 
@@ -149,26 +220,72 @@
                sig: { cheeks: 'moon', eyes: 'goggles', top: 'antennae', sparkle: 'dust' } },
     rainbow: { e: '🌈', bg: 'rainbow', deco: ['🌈', '🎤', '✨'], zones: ['cheeks', 'eyes', 'nose', 'mouth', 'top'], extra: ['nose'],
                sig: { cheeks: 'rainbow', eyes: 'shadow-grape', top: 'horn', sparkle: 'rainbow-dust' } },   // the capstone show
+    // the four v2 parties (the old eight never change their e/bg/deco/zones/extra/sig; all twelve gain pal, guest, alt below)
+    sea:     { e: '🐠', bg: 'deep', deco: ['🐬', '🦀', '🐳'], zones: ['cheeks', 'eyes', 'top', 'neck', 'mouth'], extra: ['eyes', 'mouth'],
+               sig: { cheeks: 'paint-scales', eyes: 'shadow-teal', top: 'hair-sea', neck: 'shells', mouth: 'lips-coral', sparkle: 'fish' } },
+    candy:   { e: '🍭', bg: 'candy', deco: ['🍬', '🧁', '🍩'], zones: ['cheeks', 'nose', 'mouth', 'neck', 'top'], extra: ['nose', 'neck'],
+               sig: { cheeks: 'paint-swirl', nose: 'cherry-nose', mouth: 'lips-rainbow', neck: 'beads', top: 'cupcake', sparkle: 'candies' } },
+    dino:    { e: '🦖', bg: 'volcano', deco: ['🌋', '🥚', '🌴'], zones: ['cheeks', 'eyes', 'mouth', 'paws', 'top'], extra: ['paws', 'eyes'],
+               sig: { cheeks: 'paint-spots', eyes: 'googly', mouth: 'roar', paws: 'claws', top: 'spikes', sparkle: 'dinos' } },
+    garden:  { e: '🦋', bg: 'meadow', deco: ['🌷', '🐝', '🌼'], zones: ['cheeks', 'nose', 'neck', 'paws', 'top'], extra: ['paws', 'nose'],
+               sig: { cheeks: 'paint-wings', nose: 'bee-nose', neck: 'wings', paws: 'hand-ladybug', top: 'daisies', sparkle: 'petals' } },
   };
-  var MENU = ['party', 'circus', 'hero', 'jungle', 'royal', 'beach', 'space', 'rainbow'];
+  // pal: her colour step (her tray is three of the signature's kind); guest: the zones a guest step may bring (Full, 1 round
+  // in 2, in place of the LAST extra); alt: the themed items the hand may point at instead of the signature once the party
+  // is known (an alt that belongs to another party is used only when it is unlocked)
+  var PARTY_MORE = {
+    party:   { pal: 'mouth',  guest: ['paws', 'nose'],  alt: { cheeks: ['heart', 'strawberry', 'paint-star'], eyes: ['heart-specs', 'star-specs'], mouth: ['lips-pink', 'lips-coral'], neck: ['beads', 'bowtie'], top: ['bunches-pink', 'cap'], sparkle: ['confetti', 'hearts'] } },
+    circus:  { pal: 'nose',   guest: ['paws', 'neck'],  alt: { cheeks: ['star', 'strawberry'], nose: ['snout', 'ball-sun'], mouth: ['teeth'], top: ['duck', 'bunches-blue'], sparkle: ['confetti'] } },
+    hero:    {                guest: ['top', 'paws'],   alt: { eyes: ['mask-blue', 'star-specs'], cheeks: ['star', 'paint-star'], neck: ['bowtie'], sparkle: ['gold'] } },
+    jungle:  {                guest: ['paws', 'neck'],  alt: { cheeks: ['paws'], nose: ['kitty'], top: ['flower'], sparkle: ['clovers'] } },
+    royal:   { pal: 'mouth',  guest: ['paws', 'nose'],  alt: { cheeks: ['heart', 'blush-lilac'], eyes: ['shadow-gold', 'heart-specs'], mouth: ['lips-red', 'lips-grape'], neck: ['ear-star', 'beads'], top: ['bow'], sparkle: ['stars'] } },
+    beach:   { pal: 'eyes',   guest: ['paws', 'mouth'], alt: { cheeks: ['strawberry'], eyes: ['heart-specs', 'star-specs'], nose: ['star-nose'], neck: ['ear-cherry', 'beads'], top: ['cap', 'flower'], sparkle: ['bubbles'] } },
+    space:   { pal: 'eyes',   guest: ['neck', 'paws'],  alt: { cheeks: ['star', 'paint-star'], eyes: ['star-specs'], top: ['cone'], sparkle: ['stars'] } },
+    rainbow: { pal: 'eyes',   guest: ['paws', 'neck'],  alt: { cheeks: ['dots'], eyes: ['shadow-sea', 'shadow-pink'], top: ['wig', 'bunches-blue'], sparkle: ['confetti'] } },
+    sea:     { pal: 'cheeks', guest: ['paws', 'nose'],  alt: { cheeks: ['shell'], eyes: ['shadow-sea'], top: ['flower'], neck: ['pearls', 'ear-star'], mouth: ['lips-pink'], sparkle: ['bubbles'] } },
+    candy:   { pal: 'mouth',  guest: ['paws', 'eyes'],  alt: { cheeks: ['dots', 'strawberry'], nose: ['heart-nose', 'button'], mouth: ['lips-pink'], neck: ['ear-cherry'], top: ['bunches-pink'], sparkle: ['confetti'] } },
+    dino:    { pal: 'paws',   guest: ['nose', 'neck'],  alt: { cheeks: ['paws'], eyes: ['goggles'], mouth: ['teeth'], paws: ['nails-rainbow'], top: ['cap'], sparkle: ['stars'] } },
+    garden:  { pal: 'paws',   guest: ['eyes'],          alt: { cheeks: ['paint-vine', 'blush-pink'], nose: ['kitty'], neck: ['ear-cherry'], paws: ['nails-pink'], top: ['flower', 'bunches-pink'], sparkle: ['hearts'] } },
+  };
+  Object.keys(PARTY_MORE).forEach(function (id) { var m = PARTY_MORE[id]; if (m.pal) PARTIES[id].pal = m.pal; PARTIES[id].guest = m.guest; PARTIES[id].alt = m.alt; });
+  var MENU_V1 = ['party', 'circus', 'hero', 'jungle', 'royal', 'beach', 'space', 'rainbow'];   // the v1 medal order. NEVER edit
+  var MENU = MENU_V1.concat(['sea', 'candy', 'dino', 'garden']);   // appended: an old salon's eight cards never move
   var START = ['party', 'circus'];
   // names live only here and in aria-labels (nothing on screen is words)
-  var NAMES = { party: 'Party', circus: 'Circus', hero: 'Superhero', jungle: 'Jungle', royal: 'Royal ball', beach: 'Beach', space: 'Space', rainbow: 'Rainbow show' };
+  var NAMES = { party: 'Party', circus: 'Circus', hero: 'Superhero', jungle: 'Jungle', royal: 'Royal ball', beach: 'Beach', space: 'Space', rainbow: 'Rainbow show',
+    sea: 'Sea party', candy: 'Sweets party', dino: 'Dinosaur', garden: 'Butterfly garden' };
 
-  // the six secret looks: two items worn together
+  // the twelve secret looks: two items worn together (the book shows them in this order; explore: found by exploring)
   var LOOKS = [
     { id: 'clown', e: '🤡', need: [['nose', ['clown']], ['top', ['wig']]] },                    // circus
     { id: 'tiger', e: '🐯', need: [['cheeks', ['stripes']], ['nose', ['whiskers']]] },          // jungle
     { id: 'hero',  e: '🦸', need: [['eyes', ['mask-red', 'mask-blue']], ['neck', ['cape']]] },  // hero
     { id: 'royal', e: '👑', need: [['top', ['crown']], ['neck', ['pearls']]] },                 // royal
-    { id: 'spy',   e: '🕵️', need: [['eyes', ['specs', 'shades']], ['mouth', ['stache']]] },     // found by exploring
+    { id: 'spy',   e: '🕵️', explore: true, need: [['eyes', ['specs', 'shades']], ['mouth', ['stache']]] },   // found by exploring
     { id: 'alien', e: '👽', need: [['top', ['antennae']], ['eyes', ['goggles']]] },             // space
+    { id: 'birthday', e: '🥳', need: [['top', ['cone']], ['cheeks', ['star']]] },               // party (her very first round)
+    { id: 'mermaid',  e: '🧜', need: [['cheeks', ['paint-scales']], ['top', ['hair-sea']]] },   // sea
+    { id: 'lolly',    e: '🍭', need: [['cheeks', ['paint-swirl']], ['top', ['cupcake']]] },     // candy
+    { id: 'rawr',     e: '🦖', need: [['mouth', ['roar']], ['top', ['spikes']]] },              // dino
+    { id: 'fairy',    e: '🧚', need: [['cheeks', ['paint-wings']], ['neck', ['wings']]] },      // garden
+    { id: 'bunny',    e: '🥕', explore: true, need: [['mouth', ['teeth']], ['nose', ['button', 'kitty']]] },   // found by exploring
   ];
   var LOOK_IDS = LOOKS.map(function (l) { return l.id; });
+  // each party's own look: the first non-explore look whose every need is that party's signature in a Short zone
+  var LOOK_OF = {};
+  MENU.forEach(function (pid) {
+    var P = PARTIES[pid];
+    LOOKS.some(function (L) {
+      var ok = !L.explore && L.need.every(function (nd) { return nd[1].indexOf(P.sig[nd[0]]) >= 0 && P.zones.indexOf(nd[0]) >= 0 && P.extra.indexOf(nd[0]) < 0; });
+      if (ok) LOOK_OF[pid] = L.id;
+      return ok;
+    });
+  });
 
   /* ---------------------------------------------------------- presents */
 
-  var GIFTS = [
+  // the v1 presents, in the order a v1 salon got them. NEVER edit: an old save's count means these.
+  var GIFTS_V1 = [
     { kind: 'party',  id: 'hero' },                    // 0
     { kind: 'helper', id: 'poodle', e: '🐩' },         // 1
     { kind: 'party',  id: 'jungle' },                  // 2
@@ -183,10 +300,20 @@
     { kind: 'tier',   n: 3, e: '⭐' },                 // 11 the marquee with both animals
     { kind: 'helper', id: 'booth', e: '📸' },          // 12
   ];
-  var DECOR = ['🧸', '🌵', '🎈', '🌻', '🎐', '🧁'];     // 13-18, on the wall
-  var MEDALS = 2;                                       // 19-34: a medal per party in MENU order, twice round
-  var HELPERS = { poodle: '🐩', parrot: '🦜', radio: '📻', booth: '📸' };
-  var HELPER_IDS = ['poodle', 'parrot', 'radio', 'booth'];
+  var DECOR = ['🧸', '🌵', '🎈', '🌻', '🎐', '🧁'];     // v1 13-18, on the wall. NEVER edit
+  var MEDALS = 2;                                       // v1 19-34: a medal per party in MENU_V1 order, twice round
+  // v2, for new salons (and, after the 👝 bag, what an old salon has not had yet). Frozen once shipped.
+  var GIFTS = [
+    { kind: 'party', id: 'sea' },    { kind: 'helper', id: 'poodle', e: '🐩' }, { kind: 'party', id: 'jungle' }, { kind: 'tier', n: 1, e: '💡' },
+    { kind: 'party', id: 'candy' },  { kind: 'party', id: 'hero' },   { kind: 'helper', id: 'parrot', e: '🦜' }, { kind: 'party', id: 'royal' },
+    { kind: 'party', id: 'dino' },   { kind: 'tier', n: 2, e: '💐' }, { kind: 'party', id: 'beach' }, { kind: 'helper', id: 'cicak', e: '🦎' },
+    { kind: 'party', id: 'garden' }, { kind: 'party', id: 'space' },  { kind: 'helper', id: 'radio', e: '📻' }, { kind: 'party', id: 'rainbow' },
+    { kind: 'tier', n: 3, e: '⭐' }, { kind: 'helper', id: 'booth', e: '📸' },
+  ];
+  var BAG = { kind: 'bag', e: '👝' };                   // an old salon's first v2 present: the new everyday things fly out
+  var THANKS = { kind: 'thanks', e: '⭐' };
+  var HELPERS = { poodle: '🐩', parrot: '🦜', radio: '📻', booth: '📸', cicak: '🦎' };
+  var HELPER_IDS = ['poodle', 'parrot', 'radio', 'booth'];   // the wall row (the cicak lives on the mirrors, never here)
 
   /* ---------------------------------------------------------- the kinds */
 
@@ -222,7 +349,12 @@
     antennae: { fixed: [3, 3], named: 3 },
     glitter:  { fixed: [3, 3], named: 3 },
     pose:     { fixed: [1, 1], named: 1 },
+    paint:    { n: 4, plus: 1, clip: true, named: 3 },   // face paint, drawn in the skin (clipped by the head), under the eyes
+    nails:    { n: 4, plus: 1, named: 3 },               // the paws zone: polish (or claws)
+    hair:     { n: 4, plus: 1, named: 3 },               // pigtails (bunches) or long mermaid hair
+    earring:  { fixed: [3, 3], named: 3 },               // the neck zone: a pair of dangly earrings
   };
+  var NEW_KINDS = ['paint', 'nails', 'hair', 'earring'];   // v2: her first one of each gets a burst
   var DABS = { few: -1, normal: 0, lots: 1 };
   var MAX_DABS = [5, 6];   // [hers, his]: about five taps a step at most for her; his one more stays even at Lots
   var GAP = 0.16, SWITCH_GAP = 0.25, TICKLE_GAP = 0.3, CHEER_GAP = 0.15;
@@ -241,6 +373,7 @@
     neck: [[32, 106], [68, 106], [42, 114], [58, 114], [26, 112], [74, 112]],
     top: [[30, 30], [70, 30], [40, 22], [60, 22], [24, 40], [76, 40]],
     sparkle: [[34, 40], [66, 40], [50, 30], [28, 70], [72, 70], [50, 96]],
+    paws: [[22, 96], [78, 96], [36, 114], [64, 114], [12, 102], [88, 102]],
     pose: [[30, 30], [70, 30], [50, 24], [24, 60], [76, 60], [50, 96]],
   };
   var SPARE_BIG = 12;   // em: about 11px on the smallest phone
@@ -252,27 +385,54 @@
   var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
   var plain = function (o) { return !!o && typeof o === 'object' && !Array.isArray(o); };
 
-  /** The present for finishing makeover number i (0 = the first). */
-  function giftFor(i) {
-    i = Math.max(0, Math.floor(Number(i)) || 0);
-    if (i < GIFTS.length) {
-      var g = GIFTS[i];
-      return g.kind === 'party' ? { kind: 'party', id: g.id, e: PARTIES[g.id].e } : g;
-    }
-    var k = i - GIFTS.length;
+  /* The presents. A v1 save counted `done` presents from the v1 list (GIFTS_V1, then DECOR, then medals over MENU_V1); it
+     keeps that count as `legacy`, and from there takes, in v2 order, everything of the v2 list (LIST) that v1 had not
+     given it, the 👝 bag first. A new salon (legacy 0) takes LIST from the start. Nothing given is ever taken away. */
+  var dress = function (g) { return g.kind === 'party' ? { kind: 'party', id: g.id, e: PARTIES[g.id].e } : g; };
+  var giftKey = function (g) { return g.kind + ':' + (g.kind === 'tier' ? g.n : g.kind === 'decor' ? g.e : g.kind === 'medal' ? g.id + ':' + g.k : (g.id || '')); };
+  /** The v1 present number i, exactly as v1 gave it. */
+  function giftV1(i) {
+    if (i < GIFTS_V1.length) return dress(GIFTS_V1[i]);
+    var k = i - GIFTS_V1.length;
     if (k < DECOR.length) return { kind: 'decor', e: DECOR[k] };
     k -= DECOR.length;
-    if (k < MENU.length * MEDALS) { var id = MENU[k % MENU.length]; return { kind: 'medal', id: id, k: Math.floor(k / MENU.length) + 1, e: PARTIES[id].e }; }
-    return { kind: 'thanks', e: '⭐' };
+    if (k < MENU_V1.length * MEDALS) { var id = MENU_V1[k % MENU_V1.length]; return { kind: 'medal', id: id, k: Math.floor(k / MENU_V1.length) + 1, e: PARTIES[id].e }; }
+    return THANKS;
+  }
+  var V1_LEN = GIFTS_V1.length + DECOR.length + MENU_V1.length * MEDALS;   // 35
+  // the v2 list: 18 presents, 6 decorations, 24 medals (12 parties, twice round) = 48; then thanks
+  var LIST = GIFTS.map(dress).concat(DECOR.map(function (e) { return { kind: 'decor', e: e }; }));
+  [1, 2].forEach(function (r) { MENU.forEach(function (id) { LIST.push({ kind: 'medal', id: id, k: r, e: PARTIES[id].e }); }); });
+  var rests = {};
+  /** What a save with `legacy` v1 presents still gets, in order: the bag first (if it had any), then what v1 never gave. */
+  function restAfter(legacy) {
+    var L = clamp(Math.floor(Number(legacy)) || 0, 0, V1_LEN);
+    if (!rests[L]) {
+      var had = {};
+      for (var i = 0; i < L; i++) had[giftKey(giftV1(i))] = true;
+      var rest = LIST.filter(function (g) { return !had[giftKey(g)]; });
+      rests[L] = L > 0 ? [BAG].concat(rest) : rest;
+    }
+    return rests[L];
+  }
+  /** The present for finishing makeover number i (0 = the first), for a salon whose first `legacy` came from v1. */
+  function giftFor(i, legacy) {
+    i = Math.max(0, Math.floor(Number(i)) || 0);
+    legacy = Math.max(0, Math.floor(Number(legacy)) || 0);
+    if (i < legacy) return giftV1(i);
+    return restAfter(legacy)[i - legacy] || THANKS;
   }
 
-  /** What `done` finished makeovers have unlocked. Worked out from the count, never stored. */
-  function unlocks(done) {
+  /** What `done` finished makeovers have unlocked (the first `legacy` of them v1 presents). Worked out, never stored. */
+  function unlocks(done, legacy) {
     done = Math.max(0, Math.floor(Number(done)) || 0);
-    var have = {}, order = START.slice(), u = { parties: [], items: [], helpers: {}, tier: 0, decor: [], medals: {}, next: null, order: order };
+    var L0 = Math.max(0, Math.floor(Number(legacy)) || 0);   // (base2 from the unclamped count: the bag is present number L0)
+    legacy = Math.min(done, L0);
+    var have = {}, order = START.slice(),
+      u = { parties: [], items: [], helpers: {}, tier: 0, decor: [], medals: {}, next: null, nextBag: false, base2: L0 === 0 || done > L0, order: order };
     START.forEach(function (id) { have[id] = true; });
-    for (var i = 0; i < done && i < GIFTS.length + DECOR.length + MENU.length * MEDALS; i++) {
-      var g = giftFor(i);
+    for (var i = 0; i < done; i++) {
+      var g = giftFor(i, legacy);
       if (g.kind === 'party') { if (!have[g.id]) order.push(g.id); have[g.id] = true; }
       else if (g.kind === 'helper') u.helpers[g.id] = true;
       else if (g.kind === 'tier') u.tier = Math.max(u.tier, g.n);
@@ -280,8 +440,9 @@
       else if (g.kind === 'medal') u.medals[g.id] = (u.medals[g.id] || 0) + 1;
     }
     u.parties = MENU.filter(function (id) { return have[id]; });
-    u.items = ITEM_IDS.filter(function (id) { return !ITEMS[id].party || have[ITEMS[id].party]; });
-    for (var j = done; j < GIFTS.length; j++) if (GIFTS[j].kind === 'party') { u.next = GIFTS[j].id; break; }
+    u.items = ITEM_IDS.filter(function (id) { var it = ITEMS[id]; return it.party ? !!have[it.party] : (!it.v2 || u.base2); });
+    u.nextBag = giftFor(done, legacy).kind === 'bag';
+    for (var j = done; j <= done + LIST.length; j++) { var n = giftFor(j, legacy); if (n.kind === 'thanks') break; if (n.kind === 'party') { u.next = n.id; break; } }
     return u;
   }
 
@@ -293,7 +454,9 @@
       v = Number(v);
       return isFinite(v) ? clamp(Math.floor(v), lo, hi) : 0;
     };
-    var done = num(raw.done, 0, 9999), u = unlocks(done), played = {}, looks = [], seen = [], photos = [];
+    // a v1 save (no `legacy`) counted v1 presents: all of them are legacy. v2 keeps its own count (never past done).
+    var done = num(raw.done, 0, 9999), v2 = raw.v === 2 || own(raw, 'legacy'), legacy = v2 ? num(raw.legacy, 0, done) : done;
+    var u = unlocks(done, legacy), played = {}, looks = [], seen = [], photos = [];
     if (plain(raw.played)) u.parties.forEach(function (id) { if (own(raw.played, id)) { var n = num(raw.played[id], 0, 999); if (n > 0) played[id] = n; } });
     if (Array.isArray(raw.looks)) raw.looks.forEach(function (v) { if (typeof v === 'string' && LOOK_IDS.indexOf(v) >= 0 && looks.indexOf(v) < 0) looks.push(v); });
     if (Array.isArray(raw.seen)) raw.seen.forEach(function (v) { if (typeof v === 'string' && own(KINDS, v) && seen.indexOf(v) < 0) seen.push(v); });
@@ -306,14 +469,14 @@
       });
       var x = [];
       if (Array.isArray(f.x)) f.x.forEach(function (id) { if (looks.indexOf(id) >= 0 && x.indexOf(id) < 0) x.push(id); });
-      return { e: f.e, z: z, x: x, o: POSES.indexOf(f.o) >= 0 ? f.o : null };
+      return { e: f.e, z: z, x: x, o: POSES.indexOf(f.o) >= 0 && u.items.indexOf(f.o) >= 0 ? f.o : null };
     };
     if (Array.isArray(raw.photos)) raw.photos.forEach(function (p) {
       if (photos.length >= 8 || !plain(p) || u.parties.indexOf(p.p) < 0) return;
       var l = face(p.l), r = face(p.r);
       if (l && r) photos.push({ p: p.p, l: l, r: r });
     });
-    return { v: 1, done: done, played: played, looks: looks, seen: seen, photos: photos };
+    return { v: 2, done: done, legacy: legacy, played: played, looks: looks, seen: seen, photos: photos };
   }
 
   /** Dabs a kind takes on a board: fixed kinds never change; others follow the Dabs option and the little player's help. */
@@ -328,19 +491,40 @@
    *  capstone 6); both end with sparkle and pose. Measured in game seconds, card tap to the party, help Some: with real taps
    *  (her one every 2s, his every 1s) Full about 57-58s, Short about 35-36s, the capstone about 58s (Short 43s);
    *  following only the ghost hand on a new salon, Full about 90s (96s at help Off), Short about 57s, the capstone about 98s. */
-  function zonesFor(party, length) {
+  function zonesFor(party, length, rnd, ok) {
     if (typeof party === 'string') party = PARTIES[party];
     var mid = party.zones.filter(function (z) { return length === 'full' || party.extra.indexOf(z) < 0; });
+    // a guest step (Full, given rnd) takes the place of the LAST extra: it never adds a step. ok(z): its pool can deal a tray
+    if (length === 'full' && rnd && party.guest) {
+      var gs = party.guest.filter(ok || function () { return true; });
+      var x = party.extra[party.extra.length - 1];
+      if (gs.length) { var g = rnd.pick(gs); mid = mid.map(function (z) { return z === x ? g : z; }); }
+    }
     return (length === 'full' ? ['wash'] : []).concat(mid, ['sparkle', 'pose']);
   }
 
-  /** A board's three tray items: the party's signature (when unlocked), something silly for the grown-up, the rest at random. */
-  function trayFor(zone, party, isB, pool, rnd) {
+  /** The item a board's hand leads to: the signature; once the party is known (rotate), one of its themed items at random. */
+  function themeFor(zone, party, pool, rotate, rnd) {
+    if (typeof party === 'string') party = PARTIES[party];
+    var sig = party.sig[zone] && pool.indexOf(party.sig[zone]) >= 0 ? party.sig[zone] : null;
+    if (!rotate) return sig;
+    var c = (sig ? [sig] : []).concat((party.alt && party.alt[zone]) || [])
+      .filter(function (id, i, a) { return pool.indexOf(id) >= 0 && a.indexOf(id) === i; });
+    return c.length ? rnd.pick(c) : null;
+  }
+
+  /** A board's three tray items: the theme (or the party's signature, when unlocked), something silly for the grown-up, the
+   *  rest at random. In her colour step (the party's `pal`) her tray is three of one thing, the theme among them. */
+  function trayFor(zone, party, isB, pool, rnd, theme) {
     if (typeof party === 'string') party = PARTIES[party];
     if (zone === 'wash') return ['sponge'];
-    if (zone === 'pose') return rnd.shuffle(POSES);
-    var sig = party.sig[zone] && pool.indexOf(party.sig[zone]) >= 0 ? party.sig[zone] : null;
+    var sig = theme !== undefined ? (theme && pool.indexOf(theme) >= 0 ? theme : null)
+      : (party.sig[zone] && pool.indexOf(party.sig[zone]) >= 0 ? party.sig[zone] : null);
     var rest = rnd.shuffle(pool.filter(function (id) { return id !== sig; }));
+    if (!isB && sig && party.pal === zone) {          // her colour step: three of one thing
+      var same = rest.filter(function (id) { return ITEMS[id].k === ITEMS[sig].k; });
+      if (same.length >= 2) return rnd.shuffle([sig].concat(same.slice(0, 2)));
+    }
     var out = sig ? [sig] : [];
     if (isB) {              // the grown-up always has something silly for her animal
       var silly = rest.filter(function (id) { return ITEMS[id].silly; })[0];
@@ -365,7 +549,7 @@
   function stk(e, cls) { return MG.ui.sticker(e, cls); }
 
   // the order of the zone layers above the face (glasses and masks sit above the nose; hats above everything worn)
-  var MODEL_ORDER = ['wash', 'cheeks', 'mouth', 'nose', 'eyes', 'neck', 'top', 'sparkle', 'pose'];
+  var MODEL_ORDER = ['wash', 'cheeks', 'mouth', 'nose', 'eyes', 'neck', 'paws', 'top', 'sparkle', 'pose'];
 
   /** The friend: built once per mirror per round (and once per photo). Returns the parts a renderer needs. */
   function buildModel(e, bib, size) {
@@ -455,6 +639,90 @@
     return [v * v * p0[0] + 2 * v * t * c[0] + t * t * p2[0], v * v * p0[1] + 2 * v * t * c[1] + t * t * p2[1]];
   }
 
+  // shared helpers for the v2 drawings
+  var mx = function (sg, x) { return sg < 0 ? x : 100 - x; };                    // x on the friend's left (sg -1), else mirrored
+  var rot = function (sg, a) { return 'rotate(' + (sg < 0 ? a : -a) + 'deg)'; };
+  var SVG_TRI = '<svg viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><polygon points="0.6,9.4 5,0.6 9.4,9.4"/></svg>';   // point up
+  var TRI_DN = '<svg viewBox="0 0 12 11" preserveAspectRatio="none" aria-hidden="true"><polygon points="0.6,0.6 11.4,0.6 6,10.4"/></svg>';
+  var TRI_UP = '<svg viewBox="0 0 12 11" preserveAspectRatio="none" aria-hidden="true"><polygon points="6,0.6 11.4,10.4 0.6,10.4"/></svg>';
+  /** A paw held up in front of the bib (side -1: the friend's left, on the viewer's left). */
+  function pawOf(sg, d) { return shp([mx(sg, 22), 111], 18, 14, { bg: 'var(--fur)', br: '50% 50% 45% 45% / 60% 60% 40% 40%', d: d, rise: true }); }
+  var NAILS = [[-5.5, -4.6], [0, -6.6], [5.5, -4.6]];
+  var HEART_D = function (x0) { return 'M' + (x0 + 12) + ' 20 C' + (x0 + 2) + ' 13 ' + x0 + ' 8 ' + (x0 + 3) + ' 4 C' + (x0 + 6) + ' 0.6 ' + (x0 + 10) + ' 1 ' + (x0 + 12) + ' 5 C' + (x0 + 14) + ' 1 ' + (x0 + 18) + ' 0.6 ' + (x0 + 21) + ' 4 C' + (x0 + 24) + ' 8 ' + (x0 + 22) + ' 13 ' + (x0 + 12) + ' 20 Z'; };
+  var HEARTS_SVG = '<svg viewBox="0 0 56 22" aria-hidden="true"><path d="' + HEART_D(2) + '"/><path d="' + HEART_D(30) + '"/><rect x="25" y="6.5" width="6" height="2.6"/></svg>';
+
+  /* the six face-paint designs (it.v), each 3 named looks: left half, right half, the finishing touch */
+  var PAINT = {
+    star: function (it, kk) {
+      var out = [];
+      if (kk >= 1) out.push(shp([37, 56.5], 30, 30, { bg: '#FFC933', ln: false, cls: 'mk-star5', d: 0 }));
+      if (kk >= 2) [[71, 74, 11], [79, 65, 8], [64, 84, 7]].forEach(function (p) { out.push(shp([p[0], p[1]], p[2], p[2], { bg: '#FF5D8F', ln: false, cls: 'mk-star5', d: 1 })); });
+      if (kk >= 3) [[37, 40], [55, 50], [49, 74], [25, 74], [19, 50]].forEach(function (p) { out.push(shp(p, 3.4, 3.4, { bg: '#FFFFFF', br: '50%', thin: true, d: 2 })); });
+      return out;
+    },
+    vine: function (it, kk) {
+      var out = [];
+      var side = function (sg, d) {
+        out.push(shp([mx(sg, 25), 62], 16, 34, { ln: false, cls: 'mk-vine', vars: { '--c': '#3FAE5A' }, t: sg < 0 ? null : 'scaleX(-1)', d: d }));
+        [[19, 55, -40], [19, 69, 40], [24, 79, 70]].forEach(function (q) { out.push(shp([mx(sg, q[0]), q[1]], 8, 4.5, { bg: '#4CCB6B', br: '50%', thin: true, t: rot(sg, q[2]), d: d })); });
+        out.push(emo([mx(sg, 27), 45], sg < 0 ? '🌼' : '🌸', 8, { d: d }));
+      };
+      if (kk >= 1) side(-1, 0);
+      if (kk >= 2) side(1, 1);
+      if (kk >= 3) [[42, 39, '🌸', 6], [50, 37, '🌼', 7], [58, 39, '🌸', 6]].forEach(function (p) { out.push(emo([p[0], p[1]], p[2], p[3], { d: 2 })); });
+      return out;
+    },
+    wings: function (it, kk) {   // butterfly wings round each eye, then the body, feelers and white dots
+      var out = [];
+      var side = function (sg, d) {
+        out.push(shp([mx(sg, 29), 50], 26, 20, { bg: '#9B6BFF', br: '50%', thin: true, t: rot(sg, -25), d: d }));
+        out.push(shp([mx(sg, 26), 48], 9, 7, { bg: '#FFC933', br: '50%', thin: true, t: rot(sg, -25), d: d }));
+        out.push(shp([mx(sg, 30), 70], 17, 13, { bg: '#FF8FB1', br: '50%', thin: true, t: rot(sg, 30), d: d }));
+      };
+      if (kk >= 1) side(-1, 0);
+      if (kk >= 2) side(1, 1);
+      if (kk >= 3) {
+        out.push(shp([50, 58], 4.5, 18, { bg: '#2A2356', br: '2em', ln: false, d: 2 }));
+        [-1, 1].forEach(function (sg) {
+          out.push(shp([50 + sg * 3, 44.5], 1.4, 9, { bg: '#2A2356', br: '1em', ln: false, t: 'rotate(' + (sg * 25) + 'deg)', d: 2 }));
+          out.push(shp([50 + sg * 5.2, 40.2], 3.2, 3.2, { bg: '#2A2356', br: '50%', ln: false, d: 2 }));
+        });
+        [[22, 46], [78, 46], [30, 71], [70, 71]].forEach(function (p) { out.push(shp(p, 3.2, 3.2, { bg: '#FFFFFF', br: '50%', thin: true, d: 2 })); });
+      }
+      return out;
+    },
+    scales: function (it, kk) {   // mermaid scales on each cheekbone, then a star and pearls
+      var out = [], C = ['#2EC4B6', '#7FDBFF', '#9B6BFF'];
+      var P = [[22, 60, 0], [30, 61, 1], [17, 66, 1], [25, 67, 2], [33, 67.5, 0], [21, 73, 2], [29, 73.5, 1]];
+      var side = function (sg, d) { P.forEach(function (p) { out.push(shp([mx(sg, p[0]), p[1]], 8, 6.5, { bg: C[p[2]], br: '0 0 50% 50% / 0 0 100% 100%', thin: true, d: d })); }); };
+      if (kk >= 1) side(-1, 0);
+      if (kk >= 2) side(1, 1);
+      if (kk >= 3) { out.push(emo([66, 42], '⭐', 9, { d: 2 })); [[24, 80], [30, 82.5], [76, 80], [70, 82.5]].forEach(function (p) { out.push(shp(p, 3.2, 3.2, { bg: '#FFFFFF', br: '50%', thin: true, d: 2 })); }); }
+      return out;
+    },
+    spots: function (it, kk) {   // dino spots
+      var out = [], G = '#3FAE5A';
+      var side = function (sg, d) { [[23, 69, 10], [32, 79, 6.5], [21, 81, 5.5]].forEach(function (p) { out.push(shp([mx(sg, p[0]), p[1]], p[2], p[2] * 0.85, { bg: G, br: '50%', thin: true, d: d })); }); };
+      if (kk >= 1) side(-1, 0);
+      if (kk >= 2) side(1, 1);
+      if (kk >= 3) [[40, 41, 6], [50, 37.5, 8], [60, 41, 6]].forEach(function (p) { out.push(shp([p[0], p[1]], p[2], p[2] * 0.85, { bg: G, br: '50%', thin: true, d: 2 })); });
+      return out;
+    },
+    swirl: function (it, kk) {   // a lollipop on each cheek, then sprinkles on the brow
+      var out = [];
+      var lolly = function (x, c, d) {
+        out.push(shp([x, 83], 2.4, 10, { bg: '#FFFFFF', thin: true, d: d }));
+        out.push(shp([x, 73], 15, 15, { br: '50%', thin: true, cls: 'mk-swirl', vars: { '--c': c }, d: d }));
+      };
+      if (kk >= 1) lolly(27, '#FF5D8F', 0);
+      if (kk >= 2) lolly(73, '#2FB4F5', 1);
+      if (kk >= 3) [[38, 41, 20], [44, 36, -30], [50, 42, 70], [56, 36, 10], [62, 41, -50], [45, 47, 80], [55, 47, -15]].forEach(function (p, i) {
+        out.push(shp([p[0], p[1]], 1.8, 4.6, { bg: RAINBOW[i % 6], br: '1em', ln: false, t: 'rotate(' + p[2] + 'deg)', d: 2 }));
+      });
+      return out;
+    },
+  };
+
   // one renderer per kind: the pieces after kk named dabs (k: the dabs made; o: {n, outer, c1, seed, glitter, foamAll})
   var DRAW = {
     foam: function (it, kk, o, k) {
@@ -485,6 +753,12 @@
     },
     stamp: function (it, kk) {
       var out = [];
+      if (it.z === 'paws') {   // a hand stamp: each paw rises with the stamp on it, then one more between them
+        if (kk >= 1) { out.push(pawOf(-1, 0)); out.push(emo([22, 112], it.e, 9, { d: 0, rise: true })); }
+        if (kk >= 2) { out.push(pawOf(1, 1)); out.push(emo([78, 112], it.e, 9, { d: 1, rise: true })); }
+        if (kk >= 3) out.push(emo([50, 114], it.e, 10, { d: 2 }));
+        return out;
+      }
       if (kk >= 1) out.push(emo(SLOTS.cheekL, it.e, 12, { t: 'rotate(12deg)', d: 0 }));
       if (kk >= 2) out.push(emo(SLOTS.cheekR, it.e, 12, { t: 'rotate(-12deg)', d: 1 }));
       if (kk >= 3) out.push(emo(SLOTS.brow, it.e, 11, { d: 2 }));
@@ -541,6 +815,23 @@
     },
     glasses: function (it, kk) {
       var out = [];
+      if (it.v === 'hearts') {   // heart sunglasses
+        out.push(shp([50, 58], 56, 22, { ln: false, cls: 'mk-hearts', html: HEARTS_SVG, d: 0, drop: true }));
+        if (kk >= 2) { [[33, 52], [61, 52]].forEach(function (p) { out.push(shp(p, 6, 2.4, { bg: '#FFFFFF', br: '2em', ln: false, t: 'rotate(-30deg)', d: 1 })); }); out.push(emo([50, 48], '✨', 8, { d: 1 })); }
+        if (kk >= 3) [[21, 48], [79, 48]].forEach(function (p) { out.push(emo(p, '💕', 10, { d: 2 })); });
+        return out;
+      }
+      if (it.v === 'stars') {    // big yellow star glasses
+        [37, 63].forEach(function (x) {
+          out.push(shp([x, 57.5], 25, 25, { bg: 'var(--line)', ln: false, cls: 'mk-star5', d: 0, drop: true }));
+          out.push(shp([x, 58.3], 20, 20, { bg: '#FFC933', ln: false, cls: 'mk-star5', d: 0, drop: true }));
+          out.push(shp([x, 59.2], 10.5, 10.5, { bg: 'rgba(230, 246, 255, 0.5)', ln: false, cls: 'mk-star5', d: 0, drop: true }));
+        });
+        out.push(shp([50, 57], 5, 2.6, { bg: '#FF8A3D', ln: false, d: 0, drop: true }));
+        if (kk >= 2) { [[32, 53], [58, 53]].forEach(function (p) { out.push(shp(p, 5, 2, { bg: '#FFFFFF', br: '2em', ln: false, t: 'rotate(-30deg)', d: 1 })); }); out.push(emo([50, 49], '✨', 9, { d: 1 })); }
+        if (kk >= 3) [[22, 47], [78, 47]].forEach(function (p) { out.push(emo(p, '✨', 10, { d: 2 })); });
+        return out;
+      }
       if (it.v === 'goggles') {
         out.push(shp([50, 58], 72, 2.6, { bg: '#5B6B7F', ln: false, d: 0, drop: true }));
         out.push(shp([50, 58], 56, 20, { bg: 'rgba(127, 219, 255, 0.55)', br: '10em', ln: false, cls: 'mk-goggle', d: 0, drop: true }));
@@ -570,6 +861,7 @@
       var s = [9, 12, 16][kk - 1], out = [shp(SLOTS.nose, s, s, { bg: it.c, br: '50%', cls: 'mk-ball', html: '<i></i>', d: kk - 1 })];
       if (kk === 2) out.push(emo([60, 65], '✨', 6, { d: 1 }));
       if (kk >= 3) [[35, 66], [65, 66]].forEach(function (p) { out.push(emo(p, '✨', 9, { d: 2 })); });   // bigger, with a boing
+      if (it.v === 'snout') { var sn = [9, 11, 13][kk - 1], p0 = out[0]; p0.at = [50, 71]; p0.w = sn * 1.35; p0.h = sn * 0.95; p0.cls = 'mk-ball is-snout'; p0.html = '<b></b><b></b>'; }   // a pig snout
       return out;
     },
     tip: function (it, kk) {
@@ -588,6 +880,7 @@
       if (kk >= 1) fan(SLOTS.whiskL, -1, 0);
       if (kk >= 2) fan(SLOTS.whiskR, 1, 1);
       if (kk >= 3) out.push(emo([50, 64], '✨', 7, { d: 2 }));
+      if (it.v === 'kitty' && kk >= 1) out.push(shp([50, 70.5], 13, 9.5, { bg: it.c, br: '45% 45% 50% 50% / 35% 35% 65% 65%', d: 0 }));   // and a pink kitty nose
       return out;
     },
     cream: function (it, kk) {
@@ -606,6 +899,22 @@
       return out;
     },
     smile: function (it, kk) {
+      if (it.v === 'teeth') {   // bunny teeth, then a carrot, then freckles (the smile line stays: see tidyFace)
+        var tt = [], big = kk >= 2, tw = big ? 7 : 5.4, th = big ? 10 : 7.5;
+        [-1, 1].forEach(function (sg) { tt.push(shp([50 + sg * (tw / 2 + 0.2), 81 + th / 2], tw, th, { bg: '#FFFFFF', br: '0 0 1.6em 1.6em', d: big ? 1 : 0 })); });
+        if (kk >= 2) tt.push(emo([68, 87], '🥕', 11, { t: 'rotate(-35deg)', d: 1 }));
+        if (kk >= 3) [-1, 1].forEach(function (sg) { [[24, 79], [29, 75], [30, 80.5]].forEach(function (p) { tt.push(shp([mx(sg, p[0]), p[1]], 2.8, 2.8, { bg: '#8A5A30', br: '50%', ln: false, d: 2 })); }); });
+        return tt;
+      }
+      if (it.v === 'roar') {    // a round open mouth, two top teeth, then a tongue and two bottom teeth (goofy, not scary)
+        var ro = [shp([50, 82], 22, 12, { bg: it.c, br: '45% 45% 50% 50% / 35% 35% 65% 65%', d: kk >= 2 ? 1 : 0 })];
+        if (kk >= 2) [44.5, 55.5].forEach(function (x) { ro.push(shp([x, 79.4], 5, 5.5, { ln: false, cls: 'mk-wing', vars: { '--c': '#FFFFFF' }, html: TRI_DN, d: 1 })); });
+        if (kk >= 3) {
+          ro.push(shp([50, 85], 10, 4.5, { bg: '#FF8FB1', br: '50% 50% 40% 40% / 70% 70% 30% 30%', ln: false, d: 2 }));
+          [42.5, 57.5].forEach(function (x) { ro.push(shp([x, 85.6], 4.5, 5, { ln: false, cls: 'mk-wing', vars: { '--c': '#FFFFFF' }, html: TRI_UP, d: 2 })); });
+        }
+        return ro;
+      }
       var out = [shp([50, 77], 30, 10, { ln: false, cls: 'mk-smile', vars: { '--c': it.c, '--sw': kk >= 2 ? '3.5em' : '2em' }, d: kk >= 2 ? 1 : 0 })];
       if (kk >= 2) [[35, 80], [65, 80]].forEach(function (p) { var s = kk >= 3 ? 8 : 4; out.push(shp(p, s, s, { bg: '#F0383B', br: '50%', ln: false, d: kk - 1 })); });
       if (kk >= 3) out.push(shp([50, 83.5], 9, 6, { bg: '#FF8FB1', br: '0 0 50% 50% / 0 0 100% 100%', d: 2 }));   // and a tongue out
@@ -634,6 +943,16 @@
     },
     cape: function (it, kk) {
       var out = [];
+      if (it.v === 'wings') {   // fairy wings behind the shoulders (the under layer)
+        var wing = function (sg, d) {
+          out.push(shp([mx(sg, 15), 92], 16, 26, { bg: it.c, br: '50%', thin: true, op: 0.92, l: 'under', t: rot(sg, -30), d: d, cls: 'mk-wingp' }));
+          out.push(shp([mx(sg, 14), 110], 12, 14, { bg: it.c, br: '50%', thin: true, op: 0.92, l: 'under', t: rot(sg, 35), d: d, cls: 'mk-wingp' }));
+        };
+        if (kk >= 1) wing(-1, 0);
+        if (kk >= 2) wing(1, 1);
+        if (kk >= 3) [[7, 86], [93, 86]].forEach(function (p) { out.push(emo(p, '✨', 8, { d: 2 })); });
+        return out;
+      }
       if (kk >= 1) out.push(shp([50, 105], 84, 30, { bg: it.c, br: '30em 30em 4em 4em', l: 'under', d: 0, cls: 'mk-cape' }));
       if (kk >= 2) out.push(emo([50, 108], it.e, 10, { d: 1 }));
       if (kk >= 3) [[27, 111], [73, 111]].forEach(function (p) { out.push(emo(p, it.e, 8, { d: 2 })); });
@@ -648,6 +967,24 @@
     },
     ring: function (it, kk) {
       var out = [], top = it.z === 'top', pearl = it.ring === 'pearl';
+      if (it.ring === 'beads') {   // a rainbow bead necklace, then a heart charm
+        var BP = [[32, 98], [50, 104], [68, 98]], bts = [[0, 1 / 6, 2 / 6], [3 / 6, 4 / 6, 5 / 6, 1]], bi = 0;
+        bts.forEach(function (row, d) { if (kk > d) row.forEach(function (t) { out.push(shp(arcAt(BP[0], BP[1], BP[2], t), 6.5, 6.5, { bg: RAINBOW[bi++ % 6], br: '50%', thin: true, d: d })); }); });
+        if (kk >= 3) out.push(emo([50, 110], '💖', 10, { d: 2 }));
+        return out;
+      }
+      if (it.ring === 'spike') {   // dino spikes along the top of the head, each turned to the arc
+        var A = [[24, 36], [50, 26], [76, 36]];
+        var spike = function (t, d, big) {
+          var p = arcAt(A[0], A[1], A[2], t), p1 = arcAt(A[0], A[1], A[2], t - 0.01), p2 = arcAt(A[0], A[1], A[2], t + 0.01);
+          var ang = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) * 180 / Math.PI;
+          return shp(p, big ? 15 : 11, big ? 18 : 13, { ln: false, cls: 'mk-wing', vars: { '--c': it.c }, html: SVG_TRI, ty: '-88%', to: '50% 88%', t: 'rotate(' + ang.toFixed(1) + 'deg)', d: d, drop: d === 0 });
+        };
+        if (kk >= 1) [0, 0.25].forEach(function (t) { out.push(spike(t, 0)); });
+        if (kk >= 2) [0.75, 1].forEach(function (t) { out.push(spike(t, 1)); });
+        if (kk >= 3) out.push(spike(0.5, 2, true));
+        return out;
+      }
       var P = top ? [[24, 36], [50, 26], [76, 36]] : [[32, 98], [50, 104], [68, 98]];
       var bead = function (t, d, big) {
         var p = arcAt(P[0], P[1], P[2], t);
@@ -692,14 +1029,72 @@
     },
     glitter: function (it, kk, o) {
       var out = [], ord = o.glitter || GLITTER_IDX;
+      if (it.v === 'bubble') {   // soap bubbles: CSS circles in place of the emoji, the same places and dabs
+        for (var bi = 0; bi < kk * 5 && bi < 15; bi++) { var bs = [7, 5, 6][bi % 3]; out.push(shp(GLITTER[ord[bi]], bs, bs, { br: '50%', thin: true, cls: 'mk-soap', d: Math.floor(bi / 5) })); }
+        return out;
+      }
       for (var i = 0; i < kk * 5 && i < 15; i++) out.push(emo(GLITTER[ord[i]], it.e, 6, { d: Math.floor(i / 5) }));   // (6em, not 8: fifteen of them must not hide the look)
       return out;
     },
     pose: function (it, kk, o) {
       var id = o.id;
+      // the v2 poses (o.photo: the still photo; peek there shows its "boo!", hands open beside the face)
+      if (id === 'hug') return [shp([16, 100], 16, 12, { bg: 'var(--fur)', br: '50%', t: 'rotate(40deg)', d: 0 }), shp([84, 100], 16, 12, { bg: 'var(--fur)', br: '50%', t: 'rotate(-40deg)', d: 0 }), emo([80, 26], '💞', 12, { d: 0 })];
+      if (id === 'peek') return o.photo
+        ? [emo([17, 62], '✋', 15, { t: 'rotate(-20deg)', d: 0 }), emo([83, 62], '✋', 15, { t: 'scaleX(-1) rotate(-20deg)', d: 0 })]
+        : [emo([36, 58], '✋', 17, { t: 'rotate(-10deg)', d: 0, cls: 'mk-peek' }), emo([64, 58], '✋', 17, { t: 'scaleX(-1) rotate(-10deg)', d: 0, cls: 'mk-peek is-r' })];
+      if (id === 'hooray') return [emo([50, 10], '🙌', 16, { d: 0 })];
       if (id === 'wave') return [emo(o.outer === 'r' ? [100 - SLOTS.side[0], SLOTS.side[1]] : SLOTS.side, '👋', 14, { d: 0, cls: 'mk-rock' })];
       if (id === 'kiss') return [shp(SLOTS.mouth, 6, 6, { bg: '#FF8FB1', br: '50%', d: 0 }), emo([80, 70], '💋', 10, { d: 0 })];
       return [emo(SLOTS.up, '✌️', 14, { d: 0 })];
+    },
+    paint: function (it, kk) { return PAINT[it.v](it, kk); },
+    nails: function (it, kk) {   // a paw rises in front of the bib with three painted nails (or ivory claws); then sparkles
+      var out = [];
+      var paw = function (sg, d) {
+        out.push(pawOf(sg, d));
+        NAILS.forEach(function (q, i) {
+          var at = [mx(sg, 22) + q[0], 111 + q[1]], c = it.c === 'rainbow' ? RAINBOW[(sg < 0 ? 0 : 3) + i] : it.c;
+          if (it.v === 'claws') out.push(shp([at[0], at[1] - 2], 4.6, 8, { ln: false, cls: 'mk-wing', vars: { '--c': c }, html: SVG_TRI, d: d, rise: true }));
+          else out.push(shp(at, 4.6, 6, { bg: c, br: '50% 50% 35% 35%', thin: true, d: d, rise: true }));
+        });
+      };
+      if (kk >= 1) paw(-1, 0);
+      if (kk >= 2) paw(1, 1);
+      if (kk >= 3) [[22, 97], [78, 97]].forEach(function (p) { out.push(emo(p, '✨', 8, { d: 2 })); });
+      return out;
+    },
+    hair: function (it, kk) {
+      var out = [], c = it.c;
+      if (it.v === 'long') {   // mermaid hair: long waves behind the head (the under layer), then a cap with a shell and a star
+        var wave = function (sg, d) { out.push(shp([mx(sg, 13), 74], 22, 54, { bg: c, br: '70% 30% 40% 60% / 30% 25% 75% 70%', t: sg < 0 ? null : 'scaleX(-1)', d: d, l: 'under' })); };
+        if (kk >= 1) wave(-1, 0);
+        if (kk >= 2) wave(1, 1);
+        if (kk >= 3) { out.push(shp([50, 34], 62, 14, { bg: c, br: '50% 50% 20% 20% / 90% 90% 10% 10%', d: 2 })); out.push(emo([30, 36], '🐚', 10, { d: 2 })); out.push(emo([70, 33], '⭐', 8, { d: 2 })); }
+        return out;
+      }
+      var bunch = function (sg, d) {   // pigtails: three puffs and a yellow hair tie each side, then a fringe and two bows
+        [[10.5, 64, 13], [13, 55, 14], [19, 48, 11]].forEach(function (q) { out.push(shp([mx(sg, q[0]), q[1]], q[2], q[2], { bg: c, br: '50%', d: d })); });
+        out.push(shp([mx(sg, 21.5), 44.5], 6, 6, { bg: '#FFC933', br: '50%', d: d }));
+      };
+      if (kk >= 1) bunch(-1, 0);
+      if (kk >= 2) bunch(1, 1);
+      if (kk >= 3) {
+        out.push(shp([50, 35], 58, 15, { bg: c, br: '50% 50% 30% 30% / 95% 95% 25% 25%', d: 2, cls: 'mk-fringe' }));
+        [[22, 41], [78, 41]].forEach(function (p) { out.push(emo(p, '🎀', 10, { d: 2 })); });
+      }
+      return out;
+    },
+    earring: function (it, kk) {   // a gold hook at the side of the head, the emoji dangling below it (swings)
+      var out = [];
+      var ear = function (sg, d) {
+        out.push(shp([mx(sg, 15.5), 72], 4, 4, { br: '50%', ln: false, cls: 'mk-hoop', d: d }));
+        out.push(emo([mx(sg, 14), 81], it.e, 10, { d: d, cls: 'mk-dangle' }));
+      };
+      if (kk >= 1) ear(-1, 0);
+      if (kk >= 2) ear(1, 1);
+      if (kk >= 3) [[9, 90], [91, 90]].forEach(function (p) { out.push(emo(p, '✨', 8, { d: 2 })); });
+      return out;
     },
   };
 
@@ -745,7 +1140,7 @@
   function tidyFace(F) {
     var mo = F.wear.mouth, po = F.wear.pose, ey = F.wear.eyes;
     var mk = mo && ITEMS[mo.id].k;
-    F.el.classList.toggle('has-lips', !!(mk === 'lips' || mk === 'smile' || (po && po.id === 'kiss')));
+    F.el.classList.toggle('has-lips', !!(mk === 'lips' || (mk === 'smile' && mo.id !== 'teeth') || (po && po.id === 'kiss')));   // (teeth keep the smile line)
     if (ey && ITEMS[ey.id].k === 'shadow') F.el.style.setProperty('--lid', ITEMS[ey.id].c);
     else F.el.style.removeProperty('--lid');
   }
@@ -774,6 +1169,9 @@
     var P = F.layers.pose, posed = function (n) { n.classList.add('mk-posed'); return n; };
     if (look.o === 'wave') P.model.appendChild(posed(pieceEl(emo(side === 'r' ? [100 - SLOTS.side[0], SLOTS.side[1]] : SLOTS.side, '👋', 14, { cls: 'mk-rock' }))));
     if (look.o === 'kiss') { P.model.appendChild(posed(pieceEl(shp(SLOTS.mouth, 6, 6, { bg: '#FF8FB1', br: '50%' })))); F.wear.pose = { id: 'kiss', k: 1 }; tidyFace(F); }
+    if (look.o === 'hug' || look.o === 'peek' || look.o === 'hooray') DRAW.pose(ITEMS[look.o], 1, { id: look.o, outer: side, photo: true }).forEach(function (p) { P.model.appendChild(posed(pieceEl(p))); });
+    // hugged: the other friend's paw on this one's near shoulder, in its fur
+    if (o.hugged) P.model.appendChild(posed(pieceEl(shp(near > 0 ? [88, 100] : [12, 100], 16, 16, { bg: o.hugged, br: '50%', cls: 'mk-hugpaw' }))));
     if (o.kissed) P.model.appendChild(posed(pieceEl(emo(near > 0 ? [74, 72] : [26, 72], '💋', 12, { t: 'rotate(' + (near > 0 ? 14 : -14) + 'deg)' }))));
     if (o.eared) P.under.appendChild(posed(pieceEl(emo(near > 0 ? [70, 15] : [30, 15], '✌️', 18, { t: 'rotate(' + (near > 0 ? 14 : -14) + 'deg)' }))));
     (look.x || []).forEach(function (id, i) {
@@ -785,9 +1183,31 @@
 
   /* ---------------------------------------------------------- tray icons */
 
+  /** The tray icon of a v2 kind or variant (a 1em box); null: an old item, drawn by iconFor's own code. */
+  function iconForNew(id) {
+    var it = ITEMS[id], k = it.k;
+    var box = function (cls, n) { var b = h('span', 'mk-ico ' + cls); if (it.c) b.style.setProperty('--c', it.c); for (var i = 0; i < (n || 0); i++) b.appendChild(h('i')); return b; };
+    if (k === 'paint') { var bp = box('mk-ico--paint', 1); bp.appendChild(stk(it.ic, 'mk-ico-in')); return bp; }   // a face-coloured disc with the design's motif
+    if (k === 'nails') return box('mk-ico--nails' + (it.c === 'rainbow' ? ' is-rainbow' : '') + (it.v === 'claws' ? ' is-claws' : ''), 3);   // a polish bottle (claws: three claws on a paw)
+    if (k === 'hair') return box('mk-ico--hair' + (it.v === 'long' ? ' is-long' : ''), 3);
+    if (k === 'earring') { var be = box('mk-ico--earring', 1); be.appendChild(stk(it.e, 'mk-ico-in')); return be; }   // a gold hook with the emoji below
+    if (k === 'glasses' && it.v === 'hearts') { var bh = box('mk-ico--hearts'); bh.innerHTML = HEARTS_SVG; return bh; }
+    if (k === 'ball' && it.v === 'snout') return box('mk-ico--ball is-snout', 3);
+    if (k === 'whisk' && it.v === 'kitty') return box('mk-ico--whisk is-kitty', 7);   // the 6 whiskers + a pink nose
+    if (k === 'smile' && it.v === 'teeth') return stk(it.ic, 'mk-ico-e');
+    if (k === 'smile' && it.v === 'roar') return box('mk-ico--smile is-roar', 1);
+    if (k === 'ring' && it.ring === 'beads') return box('mk-ico--ring is-beads', 7);
+    if (k === 'ring' && it.ring === 'spike') return box('mk-ico--spikes', 3);
+    if (k === 'glitter' && it.v === 'bubble') return box('mk-ico--glitter is-bubble', 3);
+    if (k === 'cape' && it.v === 'wings') return box('mk-ico--cape is-wings', 4);
+    if (k === 'lips' && it.c === LIPS_RAINBOW) return box('mk-ico--lips is-rainbow', 2);   // (the em-sized stripes are for the face; the icon has its own bands)
+    return null;
+  }
+
   /** What a tray button shows: the emoji for emoji items, else a little CSS picture of the thing (1em box). */
   function iconFor(id, c1) {
-    var it = ITEMS[id], k = it.k;
+    var it = ITEMS[id], k = it.k, nw = iconForNew(id);
+    if (nw) return nw;
     if (it.e && (k === 'foam' || k === 'stamp' || k === 'tip' || k === 'wear' || k === 'glasses' || k === 'pose' || k === 'ring')) return stk(it.e, 'mk-ico-e');
     var box = h('span', 'mk-ico mk-ico--' + k + (it.horn ? ' is-horn' : '') + (it.ring === 'pearl' ? ' is-pearl' : ''));
     if (it.c) box.style.setProperty('--c', it.c);
@@ -804,6 +1224,7 @@
     shy: ['😊', 'ooh'], giggle: ['😆', 'giggle'], wow: ['🤩', 'star'], love: ['😍', 'ooh'], cool: ['😎', 'cool'],
     silly: ['🤪', 'boing'], clown: ['🤡', 'honk'], kiss: ['😘', 'mwah'], roar: ['😁', 'growl'], purr: ['😸', 'purr'],
     party: ['🥳', 'horn'], alien: ['👽', 'beep'], star: ['🤩', 'star'], sneeze: ['🤧', 'sneeze'],
+    oink: ['🐷', 'oink'], munch: ['😋', 'munch'], buzz: ['🤪', 'buzz'],
   };
 
   /* ---------------------------------------------------------- the game */
@@ -813,7 +1234,7 @@
     name: 'Make-Up Mirrors',
     emoji: '💄',
     color: 'grape',
-    howTo: 'Give each other a makeover! In your mirror sits the OTHER player\'s animal. Tap something in your tray to put it on, and keep tapping it (or the face) to add more: wash, blush, eyes, noses, lips, hats, glitter, then a pose for the photo. The next step comes when you are both done; until then you can swap your choice as often as you like. Every photo goes on your wall, and every makeover brings a present: new parties, salon friends and six secret looks to discover.',
+    howTo: 'Give each other a makeover! In your mirror sits the OTHER player\'s animal. Tap something in your tray to put it on, and keep tapping it (or the face) to add more: wash, face paint, eyes, noses, lips, earrings, nail polish, hair, hats, glitter, then a pose for the photo. The next step comes when you are both done; until then you can swap your choice as often as you like. Every photo goes on your wall, and every makeover brings a present: new parties, salon friends and twelve secret looks to discover.',
     options: [
       { key: 'length', label: 'Makeover', default: 'full', choices: [
         { value: 'short', label: 'Short', emoji: '🐇' }, { value: 'full', label: 'Full', emoji: '💄' }] },
@@ -831,11 +1252,15 @@
       var bSide = 1 - aSide;
 
       var kit = cleanMakeup(ctx.load('makeup', null));
-      var u = unlocks(kit.done);
+      var u = unlocks(kit.done, kit.legacy);
       var state = 'menu', token = 0;
       var partyId = null, party = null, zones = [], zoneI = -1, zone = null;
       var events = [], lastTap = 0, menuTap = 0, lastHinted = null, wallAt = -1, wallC = 0, bookAt = -1;
-      var forced = {}, poodle = { wearing: null, catches: 0 }, parrotAt = -10, booth = false;
+      var forced = {}, poodle = { wearing: null, catches: 0 }, parrotAt = -10, booth = false, rotate = false;
+      // what the last present brought (a ✨ on its tray buttons this round): new since one makeover ago
+      var fresh = [];
+      function freshen() { var was = kit.done > 0 ? unlocks(kit.done - 1, kit.legacy).items : null; fresh = was ? u.items.filter(function (id) { return was.indexOf(id) < 0; }) : []; }
+      freshen();
 
       /* ---- sounds: the salon's own, built from tones and noise (soft) ---- */
 
@@ -870,6 +1295,15 @@
         giggle: function () { sfx.play('giggle'); },
         boing: function () { sfx.play('boing'); },
         star: function () { sfx.play('star'); },
+        // v2 (all soft)
+        oink: function () { [0, 0.12].forEach(function (d) { sfx.tone({ freq: 260, to: 200, dur: 0.09, type: 'triangle', gain: 0.12, delay: d }); }); sfx.noise({ freq: 500, q: 2, dur: 0.05, gain: 0.05 }); },
+        munch: function () { sfx.play('munch'); },
+        buzz: function () { for (var i = 0; i < 4; i++) sfx.tone({ freq: i % 2 ? 230 : 210, dur: 0.06, type: 'triangle', gain: 0.06, delay: i * 0.065 }); },
+        blow: function () { sfx.noise({ freq: 1200, to: 600, dur: 0.3, gain: 0.05 }); },
+        jingle2: function () { sfx.seq([88, 91], { step: 0.08, type: 'triangle', gain: 0.08 }); },
+        stomp: function () { sfx.tone({ freq: 110, to: 70, dur: 0.16, type: 'triangle', gain: 0.14 }); sfx.noise({ freq: 200, dur: 0.05, gain: 0.05 }); },
+        cek: function () { for (var i = 0; i < 3; i++) sfx.tone({ freq: 2600, dur: 0.025, type: 'sine', gain: 0.08, delay: i * 0.09 }); },
+        bubbly: function () { sfx.seq([72, 76, 79, 84, 88], { step: 0.06, type: 'sine', gain: 0.1 }); },
       };
 
       /** The sound of one dab of a kind (k: the dab just made). */
@@ -883,23 +1317,28 @@
           case 'stripes': S.growl(); break;
           case 'shadow': S.swish(); break;
           case 'lashes': S.ticks(); break;
-          case 'googly': case 'smile': sfx.play('boing'); break;
+          case 'googly': sfx.play('boing'); break;
+          case 'smile': if (it.v === 'roar') S.growl(); else if (it.v === 'teeth') S.munch(); else sfx.play('boing'); break;
           case 'glasses': if (k <= 1) sfx.play('drop'); else S.cool(); break;
           case 'mask': case 'cape': sfx.play('whoosh'); break;
-          case 'ball': if (id === 'button') S.squeak(); else S.honk(); break;
-          case 'tip': S.squeak(); break;
+          case 'ball': if (it.v === 'snout') S.oink(); else if (id === 'button') S.squeak(); else S.honk(); break;
+          case 'tip': if (it.e === '🐝') S.buzz(); else S.squeak(); break;
+          case 'paint': S.swish(); sfx.play('pop', { pitch: 600 + 90 * k }); break;
+          case 'nails': S.ticks(); if (k >= 3) ctx.after(250, S.blow); break;   // (dab 3: she blows them dry)
+          case 'hair': sfx.play('boing'); S.pops(700); break;
+          case 'earring': sfx.play('pop'); S.jingle2(); break;
           case 'whisk': S.purr(); break;
           case 'cream': S.squish(k); break;
           case 'lips': S.mwah(); break;
           case 'stache': S.twirl(); break;
           case 'bowtie': sfx.play('pop'); break;
           case 'wear': sfx.play(it.z === 'top' && k <= 1 ? 'boing' : 'drop'); break;
-          case 'ring': S.pops(500 + 60 * k); break;
+          case 'ring': if (it.ring === 'spike') S.stomp(); else S.pops(500 + 60 * k); break;
           case 'cone': if (it.horn) sfx.play('star'); else S.horn(); break;
           case 'wig': sfx.play('boing'); S.pops(700); break;
           case 'antennae': S.beep(); break;
           case 'glitter': S.spray(); sfx.scale(2 * k + 3); break;
-          case 'pose': if (id === 'wave') sfx.play('hop'); else if (id === 'kiss') S.mwah(); else sfx.play('giggle'); break;
+          case 'pose': if (id === 'wave') sfx.play('hop'); else if (id === 'kiss') S.mwah(); else if (id === 'hug') S.ooh(); else if (id === 'hooray') S.fanfare(); else sfx.play('giggle'); break;
           default: sfx.play('pop');
         }
       }
@@ -983,13 +1422,14 @@
         var mirror = el('div', { class: 'mk-mirror', role: 'button', tabindex: '0', 'aria-label': 'Your friend' }, glass, bulbs, sway, bubble, badges);
         var marksEl = el('span', { class: 'mk-marks' });
         var face = ctx.sticker(p.emoji, 'mk-sty-face');
-        var stylist = el('span', { class: 'mk-stylist' }, face, el('span', { class: 'mk-brush' }, el('i')), marksEl);
+        var brush = el('span', { class: 'mk-brush' }, el('i'));
+        var stylist = el('span', { class: 'mk-stylist' }, face, brush, marksEl);
         var wave = el('span', { class: 'mk-wave' }, ctx.sticker('👋'));
         var check = el('span', { class: 'mk-check' }, ctx.sticker('✔️'));
         var tray = el('div', { class: 'mk-tray' });
         var node = el('div', { class: 'mk-board', 'data-side': String(s), role: 'group', 'aria-label': 'Mirror' }, mirror, tray, stylist, wave, check);
         scene.appendChild(node);
-        return { side: s, el: node, F: F, sway: sway, mirror: mirror, glass: glass, bubble: bubble, badges: badges, stylist: stylist, face: face, marksEl: marksEl,
+        return { side: s, el: node, F: F, sway: sway, mirror: mirror, glass: glass, bubble: bubble, badges: badges, stylist: stylist, face: face, marksEl: marksEl, brush: brush, theme: null,
           wave: wave, check: check, trayEl: tray, items: [], tray: [], item: null, k: 0, n: 0, done: false, noPick: 0,
           nextAt: 0, busyUntil: 0, swapAt: -1, cheerAt: -1, tickAt: -1, tickleAt: -1, tickleI: 0, c: 0,
           look: {}, pose: null, found: [], sneezed: false, mud: 0, glitter: GLITTER_IDX, seed: [0.7, 3.6], reactAt: -1, bubbleGen: 0, glanceGen: 0, waveGen: 0, rinseGen: 0 };
@@ -1081,9 +1521,20 @@
         var chk = U.clamp(Math.round(sty * 0.62), 20, 36);
         var S = pf.S;
         // menu: the biggest square cards above the look-book row
-        var L = U.clamp(Math.round(Math.min(w, h2) * 0.1), 28, 60), n = menuCount(), W = w - 2 * P, H = h2 - 2 * P - L - G, card = 0, cols = 1;
-        for (var c = 1; c <= 5; c++) { var r = Math.ceil(n / c), z = Math.floor(Math.min((W - (c - 1) * G) / c, (H - (r - 1) * G) / r)); if (z > card) { card = z; cols = c; } }
+        // (twelve look slots: one row when they fit at 26px or more, else two rows)
+        var nl = LOOKS.length, L = U.clamp(Math.round(Math.min(w, h2) * 0.1), 28, 60), brows = 1;
+        if (nl * L + (nl - 1) * 6 > w - 2 * P) { var L1 = Math.floor((w - 2 * P - (nl - 1) * 6) / nl); if (L1 >= 26) L = L1; else { brows = 2; L = Math.min(L, Math.floor((w - 2 * P - (Math.ceil(nl / 2) - 1) * 6) / Math.ceil(nl / 2))); } }
+        root.style.setProperty('--book-w', (brows === 2 ? Math.ceil(nl / 2) * L + (Math.ceil(nl / 2) - 1) * 6 : nl * L + (nl - 1) * 6) + 'px');
+        var n = menuCount(), W = w - 2 * P, H = h2 - 2 * P - brows * L - (brows - 1) * 6 - G, card = 0, cols = 1;
+        for (var c = 1; c <= 6; c++) { var r = Math.ceil(n / c), z = Math.floor(Math.min((W - (c - 1) * G) / c, (H - (r - 1) * G) / r)); if (z > card) { card = z; cols = c; } }
         card = Math.min(200, card);
+        root.dataset.book = 'row';
+        if (!port) {   // landscape: the look book may stand at the side as 2 columns of 6, if the cards come out bigger
+          var Ls = Math.min(U.clamp(Math.round(Math.min(w, h2) * 0.1), 28, 60), Math.floor((h2 - 2 * P - 30) / 6)), Ws = W - (2 * Ls + 6) - G, Hs = h2 - 2 * P, cs = 0, cc = 1;
+          for (var c2 = 1; c2 <= 6; c2++) { var r2 = Math.ceil(n / c2), z2 = Math.floor(Math.min((Ws - (c2 - 1) * G) / c2, (Hs - (r2 - 1) * G) / r2)); if (z2 > cs) { cs = z2; cc = c2; } }
+          cs = Math.min(200, cs);
+          if (cs > card) { card = cs; cols = cc; L = Ls; root.dataset.book = 'side'; root.style.setProperty('--book-w', (2 * Ls + 6) + 'px'); }
+        }
         var rows = Math.ceil(n / cols), ni = u.parties.length;
         // the finale photo frame: two models side by side
         var PW = Math.min(w - 2 * P, 560), M2 = Math.floor(Math.min((PW - 48) / 2, (h2 - 2 * P - 48) / 1.2, 220));
@@ -1131,11 +1582,17 @@
 
       /* ---- the wall: pips, helpers, photos, decorations ---- */
 
-      /** A party's backdrop; deco: true for all three corner stickers, or how many (the menu card keeps its bottom row clear). */
+      // bits of the v2 backdrops: [left %, top %, size %] (bubble rings, daisies); the bottom-right corner stays clear for medals
+  var BGBITS = {
+    deep: [[12, 20, 8], [78, 30, 6], [60, 12, 5], [24, 55, 4]],
+    meadow: [[10, 18, 9], [84, 14, 9], [64, 34, 8], [18, 50, 8], [44, 12, 7], [86, 48, 7]],
+  };
+  /** A party's backdrop; deco: true for all three corner stickers, or how many (the menu card keeps its bottom row clear). */
       function bgEl(id, deco) {
         var P0 = PARTIES[id], n = el('span', { class: 'mk-bg', 'data-bg': P0.bg });
         if (P0.bg === 'night') for (var i = 0; i < 6; i++) n.appendChild(el('i', { class: 'mk-star', 'data-i': String(i) }));
         if (P0.bg === 'rainbow') for (var j = 0; j < 6; j++) n.appendChild(el('i', { class: 'mk-band', style: { background: RAINBOW[j], top: (j * 100 / 6) + '%' } }));
+        (BGBITS[P0.bg] || []).forEach(function (q) { n.appendChild(el('i', { class: 'mk-bit', style: { left: q[0] + '%', top: q[1] + '%', width: q[2] + '%', height: q[2] + '%' } })); });
         if (deco) P0.deco.slice(0, deco === true ? 3 : deco).forEach(function (e, k) { n.appendChild(el('span', { class: 'mk-deco', 'data-i': String(k) }, ctx.sticker(e))); });
         return n;
       }
@@ -1157,8 +1614,9 @@
       /** The two faces of a photo, each on its owner's side; l was made up on board 1, r on board 0. */
       function photoFaces(ph, size) {
         var col = function (e, fallback) { var i = players.map(function (p) { return p.emoji; }).indexOf(e); return i >= 0 ? 'var(--p' + i + ')' : fallback; };
-        var L = renderFace(ph.l.e, ph.l, size, col(ph.l.e, 'var(--p0)'), { side: 'l', nOf: nOfSide(1), c1: 'var(--p1)', kissed: ph.r.o === 'kiss', eared: ph.r.o === 'ears' });
-        var R = renderFace(ph.r.e, ph.r, size, col(ph.r.e, 'var(--p1)'), { side: 'r', nOf: nOfSide(0), c1: 'var(--p0)', kissed: ph.l.o === 'kiss', eared: ph.l.o === 'ears' });
+        var furOf = function (e) { return (ANIMALS[e] || ANIMALS[DEFAULT_ANIMAL]).fur; };
+        var L = renderFace(ph.l.e, ph.l, size, col(ph.l.e, 'var(--p0)'), { side: 'l', nOf: nOfSide(1), c1: 'var(--p1)', kissed: ph.r.o === 'kiss', eared: ph.r.o === 'ears', hugged: ph.r.o === 'hug' ? furOf(ph.r.e) : null });
+        var R = renderFace(ph.r.e, ph.r, size, col(ph.r.e, 'var(--p1)'), { side: 'r', nOf: nOfSide(0), c1: 'var(--p0)', kissed: ph.l.o === 'kiss', eared: ph.l.o === 'ears', hugged: ph.l.o === 'hug' ? furOf(ph.l.e) : null });
         return [L, R];
       }
       function polaroid(ph, i) {
@@ -1232,7 +1690,7 @@
         nextEl.hidden = !u.next;
         if (u.next) {
           nextEl.appendChild(el('span', { class: 'mk-next__sil' }, ctx.sticker(PARTIES[u.next].e)));
-          nextEl.appendChild(el('span', { class: 'mk-next__tag' }, ctx.sticker('🎁')));
+          nextEl.appendChild(el('span', { class: 'mk-next__tag' }, ctx.sticker(u.nextBag ? '👝' : '🎁')));   // (the bag comes first)
         }
         bookEl.textContent = '';
         LOOKS.forEach(function (L) {
@@ -1251,10 +1709,8 @@
 
       function hint(node, o) { lastHinted = node || null; ctx.hint(node || null, o); }
       function seen(kind) { return kit.seen.indexOf(kind) >= 0; }
-      function sigOf(b) {
-        var sig = party && party.sig[zone];
-        return sig && b.tray.indexOf(sig) >= 0 ? sig : null;
-      }
+      /** The item the hand leads to on board b: its theme (the signature, or once the party is known a themed item). */
+      function sigOf(b) { return b.theme && b.tray.indexOf(b.theme) >= 0 ? b.theme : null; }
       function itemBtn(b, id) { for (var i = 0; i < b.items.length; i++) if (b.items[i].dataset.id === id) return b.items[i]; return null; }
       /** Where the hand points on a board: always the button that moves it on by one dab. */
       function targetOf(b) {
@@ -1297,7 +1753,12 @@
         if (card) fx.pop(card);
         ctx.setTurn(null);
         hint(null);
-        partyId = id; party = PARTIES[id]; zones = zonesFor(party, LEN); zoneI = -1; zone = null;
+        partyId = id; party = PARTIES[id]; zoneI = -1; zone = null;
+        // in Full, 1 round in 2 a guest step (nails, a nose, the neck...) takes the last extra's place: never one step more
+        var guest = LEN === 'full' && !roll('noGuest', 0) && roll('guest', 0.5);
+        zones = zonesFor(party, LEN, guest ? util : null, function (z) { return poolOf(z).length >= 3; });
+        // once the party is known (played, and its own look found), each board's hand leads to one of its themed items
+        rotate = playedOf(id) >= 1 && (!LOOK_OF[id] || kit.looks.indexOf(LOOK_OF[id]) >= 0);
         poodle = { wearing: null, catches: 0 };
         menuEl.classList.add('is-leaving');
         later(300, function () { menuEl.hidden = true; });
@@ -1333,6 +1794,7 @@
         b.trayEl.textContent = '';
         b.items = b.tray.map(function (id) {
           var btn = el('button', { type: 'button', class: 'mk-item', 'data-id': id, 'aria-label': id }, iconFor(id, players[b.side].color));
+          if (fresh.indexOf(id) >= 0) btn.appendChild(el('span', { class: 'mk-item__new' }, ctx.sticker('✨')));   // new since the last present
           b.trayEl.appendChild(btn);
           return btn;
         });
@@ -1347,7 +1809,9 @@
         zoneI = i; zone = zones[i];
         boards.forEach(function (b) {
           b.item = null; b.k = 0; b.n = 0; b.done = false; b.noPick = 0;
-          b.tray = trayFor(zone, party, b.side === bSide, poolOf(zone), util);
+          b.theme = zone === 'wash' || zone === 'pose' ? null : themeFor(zone, party, poolOf(zone), rotate, util);
+          b.tray = trayFor(zone, party, b.side === bSide, poolOf(zone), util, b.theme);
+          tint(b, null);
           if (zone === 'wash') { b.item = 'sponge'; b.n = nOfBoard(b, 'foam'); }
           if (zone === 'pose') b.n = 1;
           b.busyUntil = ctx.time + 0.3;      // a moment to see the new step before a hammering finger can use it up
@@ -1440,10 +1904,18 @@
         if (old && b.k >= 1) castOff(b, old);
         b.item = id;
         markOn(b);
+        tint(b, id);
         b.n = nOfBoard(b, ITEMS[id].k);
         b.k = Math.min(b.k + 1, b.n);
         b.nextAt = ctx.time + SWITCH_GAP;
         progress(b, true, wasHinted);
+      }
+      /** Her colour step: her stylist's brush tip takes the colour she picked (id null: back to her own colour). */
+      function tint(b, id) {
+        var c = id && ITEMS[id].c;
+        var on = !!(id && party && party.pal === zone && b.side === aSide && typeof c === 'string' && c.charAt(0) === '#');
+        b.brush.classList.toggle('is-tint', on);
+        if (on) b.brush.style.setProperty('--tint', c); else b.brush.style.removeProperty('--tint');
       }
       /** The same item again (or the face): one more dab. */
       function dab(b, wasHinted) {
@@ -1477,6 +1949,8 @@
         // a bubble on the nose (sometimes, in the wash); a glitter sneeze (sometimes, once per board)
         if (it.k === 'foam' && b.k === 2 && b.k < b.n && roll('foamSneeze', 1 / 6)) foamSneeze(b);
         if (it.k === 'glitter' && b.k === 2 && !b.sneezed && roll('sneeze', 1 / 4)) glitterSneeze(b);
+        // peekaboo: the hands slide apart (css), and the friend giggles behind them
+        if (id === 'peek' && zone === 'pose') ctx.after(1100, function () { if (zone === 'pose' && b.item === 'peek') showBubble(b, '😆'); });
         checkLooks(b);
         events.push({ t: ctx.time, side: b.side, k: b.k });
         if (events.length > 200) events.shift();
@@ -1522,7 +1996,10 @@
         ctx.after(1000, function () { if (b.waveGen === wg) b.el.classList.remove('is-waving'); });
         var it = ITEMS[b.item];
         if (b.reactAt !== ctx.time) react(b, it.r, { id: b.item });
-        if (b.side === aSide && !seen(it.k)) { kit.seen.push(it.k); save(); }
+        if (b.side === aSide && !seen(it.k)) {
+          if (NEW_KINDS.indexOf(it.k) >= 0) { burstAt(b.F.el, { emoji: '✨', count: 10, distance: 80, size: 16 }); sfx.play('boost'); }   // her first face paint, nails, hair, earrings
+          kit.seen.push(it.k); save();
+        }
         if (boards[0].done && boards[1].done) {
           if (zoneI >= zones.length - 1) finale();
           else admire();
@@ -1536,6 +2013,7 @@
         castOff(b, b.item);
         b.item = id;
         markOn(b);
+        tint(b, id);
         b.n = nOfBoard(b, ITEMS[id].k);
         b.k = b.n;
         drawZone(b, true);
@@ -1561,8 +2039,9 @@
         var pd = helperEl('poodle'), slot = pd && pd.querySelector('.mk-pwear');
         if (!slot) return;
         slot.textContent = '';
-        slot.dataset.kind = ITEMS[id].e ? 'e' : 'css';
-        slot.appendChild(iconFor(id));
+        var ic = iconFor(id);
+        slot.dataset.kind = ic.classList.contains('mk-ico-e') ? 'e' : 'css';
+        slot.appendChild(ic);
       }
 
       /* ---- the friend's life: bubbles, glances, blinks, reactions ---- */
@@ -1686,9 +2165,9 @@
         S.sneeze();
         if (!RM) anim(b.F.el, BODY.sneeze[0], BODY.sneeze[1]);
         // half of this dab's sparkles puff across onto the other friend for a moment (decoration only, never its look)
-        var puff = el('span', { class: 'mk-puff' });
-        [[34, 46], [60, 40], [46, 60]].forEach(function (p) { puff.appendChild(pieceEl(emo(p, it.e, 8))); });
-        fly(it.e, b.F.el, o.F.el, { size: 22, ms: 500, done: function () {
+        var puff = el('span', { class: 'mk-puff' }), se = it.e || '✨';   // (soap bubbles have no emoji: a sparkle flies)
+        [[34, 46], [60, 40], [46, 60]].forEach(function (p) { puff.appendChild(pieceEl(emo(p, se, 8))); });
+        fly(se, b.F.el, o.F.el, { size: 22, ms: 500, done: function () {
           o.F.over.appendChild(puff);
           showBubble(o, '😮');
           ctx.after(2000, function () { puff.remove(); });
@@ -1719,6 +2198,15 @@
           else if (L.id === 'royal') { burstAt(F, { emoji: '✨', count: 8, distance: 70, size: 18 }); S.fanfare(); }
           else if (L.id === 'spy') { burstAt(F, { emoji: '🔍', count: 4, distance: 60, size: 18 }); S.sneaky(); }
           else if (L.id === 'alien') { ufo(b); S.beep(); ctx.after(250, S.beep); }
+          else if (L.id === 'birthday') { burstAt(F, { emoji: '🎉', count: 6, distance: 70, size: 18 }); S.horn(); }
+          else if (L.id === 'mermaid') { burstAt(F, { emoji: '🐟', count: 6, distance: 70, size: 18 }); S.bubbly(); }
+          else if (L.id === 'lolly') { burstAt(F, { emoji: '🍬', count: 6, distance: 70, size: 18 }); S.munch(); }
+          else if (L.id === 'rawr') {
+            burstAt(F, { emoji: '🦕', count: 6, distance: 70, size: 18 }); S.stomp(); ctx.after(200, S.growl);
+            if (!RM) boards.forEach(function (x) { fx.shake(x.sway); });   // the stomp shakes both mirrors
+          }
+          else if (L.id === 'fairy') { burstAt(F, { emoji: '🦋', count: 6, distance: 70, size: 18 }); sfx.play('star'); S.ooh(); }
+          else if (L.id === 'bunny') { burstAt(F, { emoji: '🥕', count: 6, distance: 70, size: 18 }); S.munch(); ctx.after(300, S.munch); }
           if (fresh) { sfx.play('boost'); var c = fx.centerOf(F); fx.burst(c.x, c.y, { count: 16, distance: 90 }); }
         });
         var badge = el('span', { class: 'mk-badge', 'data-id': L.id }, ctx.sticker(L.e));
@@ -1730,6 +2218,13 @@
         b.glass.appendChild(u0);
         ctx.after(RM ? 1400 : 1300, function () { u0.remove(); });
       }
+      /** The cicak (house gecko) scuttles along the top of a mirror, cek-cek-cek. Decoration: never a target. */
+      function cicak(b) {
+        var c0 = el('span', { class: 'mk-cicak' + (RM ? ' is-still' : '') }, ctx.sticker('🦎'));
+        b.glass.appendChild(c0);
+        S.cek();
+        ctx.after(1100, function () { c0.remove(); });
+      }
 
       /* ---- tickles: taps on a done friend (and face taps while they admire) ---- */
 
@@ -1737,7 +2232,16 @@
         if (ctx.time - b.tickleAt < TICKLE_GAP) { press(b.sway); return; }
         b.tickleAt = ctx.time;
         var L = b.look, kindOf = function (z) { return L[z] ? ITEMS[L[z]].k : null; }, gags = [];
-        if (kindOf('nose') === 'ball') gags.push('nose');
+        if (kindOf('nose') === 'ball') gags.push(L.nose === 'snout' ? 'snout' : 'nose');
+        if (L.nose === 'bee-nose') gags.push('bee');
+        if (L.mouth === 'teeth') gags.push('teeth');
+        if (L.mouth === 'roar') gags.push('roar');
+        if (L.paws) gags.push('paws');
+        if (kindOf('top') === 'hair') gags.push('hair');
+        if (L.top === 'spikes') gags.push('spikes');
+        if (kindOf('neck') === 'earring') gags.push('earring');
+        if (L.neck === 'wings') gags.push('wings');
+        if (L.eyes === 'heart-specs') gags.push('hearts');
         if (kindOf('eyes') === 'googly') gags.push('googly');
         if (kindOf('mouth') === 'stache') gags.push('stache');
         if (kindOf('mouth') === 'lips') gags.push('lips');
@@ -1755,6 +2259,20 @@
         else if (g === 'antennae') { S.beep(); jiggle('.mk-bob', [{ transform: 'translateY(0)' }, { transform: 'translateY(-3em)' }, { transform: 'translateY(0)' }], 300); react(b, 'alien', { quiet: true }); }
         else if (g === 'cape') { sfx.play('whoosh'); jiggle('.mk-cape', [{ transform: 'skewX(0)' }, { transform: 'skewX(-8deg)' }, { transform: 'skewX(6deg)' }, { transform: 'skewX(0)' }], 400); react(b, 'cool', { quiet: true }); }
         else if (g === 'cool') { S.cool(); react(b, 'cool', { quiet: true }); }
+        else if (g === 'snout') { S.oink(); jiggle('[data-zone="nose"] .mk-at', [{ transform: 'scale(1, 1)' }, { transform: 'scale(1.3, 0.7)' }, { transform: 'scale(1, 1)' }], 300); react(b, 'oink', { quiet: true }); }
+        else if (g === 'bee') { S.buzz(); jiggle('[data-zone="nose"] .mk-at', [{ transform: 'rotate(0)' }, { transform: 'rotate(-12deg)' }, { transform: 'rotate(12deg)' }, { transform: 'rotate(-8deg)' }, { transform: 'rotate(0)' }], 400); react(b, 'buzz', { quiet: true }); }
+        else if (g === 'teeth') { S.munch(); jiggle('[data-zone="mouth"] .mk-at', [{ transform: 'translateY(0)' }, { transform: 'translateY(-4em)' }, { transform: 'translateY(0)' }], 300); react(b, 'munch', { quiet: true }); }
+        else if (g === 'roar') { S.growl(); jiggle('[data-zone="mouth"] .mk-at', [{ transform: 'scale(1)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }], 400); react(b, 'roar', { quiet: true }); }
+        else if (g === 'spikes') { S.stomp(); jiggle('[data-zone="top"] .mk-at', [{ transform: 'translateY(0)' }, { transform: 'translateY(-4em)' }, { transform: 'translateY(0)' }], 300); react(b, 'roar', { quiet: true }); }
+        else if (g === 'paws') {
+          if (L.paws === 'claws') S.growl(); else S.ticks();
+          jiggle('[data-zone="paws"] .mk-at', [{ transform: 'rotate(0)' }, { transform: 'rotate(-10deg)' }, { transform: 'rotate(10deg)' }, { transform: 'rotate(0)' }], 300);
+          react(b, ITEMS[L.paws].r, { quiet: true, id: L.paws });
+        }
+        else if (g === 'hair') { sfx.play('boing'); jiggle('[data-zone="top"] .mk-at', [{ transform: 'translateY(0)' }, { transform: 'translateY(-3em)' }, { transform: 'translateY(0)' }], 360); react(b, ITEMS[L.top].r, { quiet: true, id: L.top }); }
+        else if (g === 'earring') { S.jingle2(); jiggle('.mk-dangle', [{ transform: 'rotate(0)' }, { transform: 'rotate(-18deg)' }, { transform: 'rotate(18deg)' }, { transform: 'rotate(0)' }], 500); react(b, ITEMS[L.neck].r, { quiet: true, id: L.neck }); }
+        else if (g === 'wings') { sfx.play('whoosh'); jiggle('.mk-wingp', [{ transform: 'scaleX(1)' }, { transform: 'scaleX(0.7)' }, { transform: 'scaleX(1)' }, { transform: 'scaleX(0.7)' }, { transform: 'scaleX(1)' }], 400); react(b, 'wow', { quiet: true }); }
+        else if (g === 'hearts') { S.ooh(); jiggle('[data-zone="eyes"] .mk-at', [{ transform: 'scale(1)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }], 400); react(b, 'love', { quiet: true }); }
         else {
           sfx.play('giggle');
           if (!RM) fx.wiggle(F);
@@ -1783,6 +2301,7 @@
           });
           if (u.tier >= 1) { scene.classList.remove('is-flash'); void scene.offsetWidth; scene.classList.add('is-flash'); }
           if (u.helpers.radio) { var radio = helperEl('radio'); if (radio && !RM) fx.bounce(radio); S.jingle(z); }
+          if (u.helpers.cicak && roll('cicak', 1 / 3)) cicak(boards[util.rand(2)]);
         });
         later(900, function () {
           var p = stripEl.querySelector('.mk-pip[data-i="' + z + '"]');
@@ -1805,8 +2324,8 @@
         kit.photos.unshift(photo);
         kit.photos = kit.photos.slice(0, 8);
         save();
-        var gift = giftFor(kit.done - 1), had = u;
-        u = unlocks(kit.done);
+        var gift = giftFor(kit.done - 1, kit.legacy), had = u;
+        u = unlocks(kit.done, kit.legacy);
         setState('finale');
         hint(null);
         booth = !!had.helpers.booth;
@@ -1850,7 +2369,7 @@
         var bulbs = el('span', { class: 'mk-flashbulbs' }, el('i', { class: 'mk-flashbulb' }), el('i', { class: 'mk-flashbulb' }), el('i', { class: 'mk-flashbulb' }));
         frameEl.appendChild(el('span', { class: 'mk-fshot' }, bgEl(photo.p, true), slots[0], slots[1], el('span', { class: 'mk-flash' })));
         frameEl.appendChild(bulbs);
-        frameEl.classList.remove('is-posed', 'is-out', 'is-booth', 'is-landed');
+        frameEl.classList.remove('is-posed', 'is-out', 'is-booth', 'is-landed', 'is-hug');
         return { F: f, slots: slots, bubs: bubs };
       }
       function swapHome(faces) {
@@ -1887,15 +2406,26 @@
         if (fl && fl.animate) fl.animate(RM ? [{ opacity: 0.4 }, { opacity: 0 }] : [{ opacity: 0.7 }, { opacity: 0 }], { duration: RM ? 150 : 300, fill: 'forwards' });
         S.shutter();
         frameEl.classList.add('is-posed');
+        var FACE = { hug: '😍', peek: '😮', hooray: '🥳', ears: '😝' };
         faces.bubs.forEach(function (b, i) {
-          var got = i === 0 ? photo.r.o : photo.l.o;
-          b.firstChild.textContent = got === 'ears' ? '😝' : '😁';
+          var got = i === 0 ? photo.r.o : photo.l.o;   // each friend's face is its reaction to the OTHER friend's pose
+          b.firstChild.textContent = FACE[got] || '😁';
           b.classList.add('is-on');
         });
         var shot = frameEl.querySelector('.mk-fshot');
         party.deco.forEach(function (e) { burstAt(shot, { emoji: e, count: 3, distance: 90, size: 20 }); });
-        if (photo.l.o === 'kiss' || photo.r.o === 'kiss') S.mwah();
-        if (photo.l.o === 'ears' || photo.r.o === 'ears') sfx.play('giggle');
+        var os = [photo.l.o, photo.r.o];
+        if (os.indexOf('kiss') >= 0) S.mwah();
+        if (os.indexOf('ears') >= 0 || os.indexOf('peek') >= 0) sfx.play('giggle');
+        if (os.indexOf('hug') >= 0) {   // a hug: the two friends lean together, a heart between them
+          frameEl.classList.add('is-hug');
+          if (shot) shot.appendChild(el('span', { class: 'mk-fheart' }, ctx.sticker('💞')));
+          S.ooh();
+        }
+        if (os.indexOf('hooray') >= 0) {
+          faces.slots.forEach(function (sl, i) { if (os[i] === 'hooray') burstAt(sl, { emoji: '🎉', count: 6, distance: 70, size: 18 }); });
+          S.fanfare();
+        }
       }
       function sillyShot(faces) {
         var fl = frameEl.querySelector('.mk-flash');
@@ -1943,10 +2473,26 @@
         if (gift.kind === 'helper' || gift.kind === 'decor' || gift.kind === 'tier') {
           buildWall(); fit();
           if (gift.kind === 'helper') { var hp = helperEl(gift.id); if (hp) fx.bounce(hp); }
+          if (gift.kind === 'helper' && gift.id === 'cicak') boards.forEach(cicak);   // (it lives on the mirrors)
         }
+        if (gift.kind === 'bag') bagFan();
         buildMenu();
       }
+      // the 👝 bag opens and the new everyday things fan out of it (decoration, done by +3.7s)
+      var BAG_FAN = ['paint-star', 'nails-pink', 'bunches-pink', 'heart-specs', 'ear-cherry', 'hug'];
+      function bagFan() {
+        // (0.9 of the box; on a short screen turned sideways, no further than keeps the top one on screen)
+        var gr = giftEl.getBoundingClientRect(), rr = root.getBoundingClientRect();
+        var R = Math.max(40, Math.min(0.9 * (giftEl.offsetWidth || 100), gr.top + gr.height / 2 - rr.top - 20));
+        BAG_FAN.forEach(function (id, i) {
+          ctx.after(60 * i, function () {
+            var a = (-150 + 24 * i) * Math.PI / 180;
+            fly(iconFor(id), giftEl, giftEl, { to: [R * Math.cos(a), R * Math.sin(a)], size: 26, ms: 450, endScale: 1 });
+          });
+        });
+      }
       function giftFace(g) {
+        if (g.kind === 'bag') return ctx.sticker('👝');
         if (g.kind === 'party') return el('span', { class: 'mk-minicard' }, bgEl(g.id, false), ctx.sticker(g.e), el('span', { class: 'mk-minicard__new' }, ctx.sticker('✨')));
         if (g.kind === 'medal') return el('span', { class: 'mk-medal' }, ctx.sticker(g.e), el('span', { class: 'mk-medal__m' }, ctx.sticker('🏅')));
         if (g.kind === 'tier' && g.n === 3) return el('span', { class: 'mk-signgift' }, ctx.sticker(players[0].emoji), ctx.sticker('⭐'), ctx.sticker(players[1].emoji));
@@ -1998,7 +2544,7 @@
       ctx.tap(wallEl, onWall);
 
       function save() {
-        try { ctx.save('makeup', { v: 1, done: kit.done, played: kit.played, looks: kit.looks, seen: kit.seen, photos: kit.photos }); } catch (e) { /* storage may be unavailable */ }
+        try { ctx.save('makeup', { v: 2, done: kit.done, legacy: kit.legacy, played: kit.played, looks: kit.looks, seen: kit.seen, photos: kit.photos }); } catch (e) { /* storage may be unavailable */ }
       }
 
       /* ---- the quiet ghost hand ---- */
@@ -2034,7 +2580,7 @@
         get boards() {
           return boards.map(function (b) {
             return { side: b.side, item: b.item, k: b.k, n: b.n, done: b.done, tray: b.tray.slice(), look: JSON.parse(JSON.stringify(b.look)), pose: b.pose,
-              found: b.found.slice(), noPick: b.noPick, sneezed: b.sneezed };
+              found: b.found.slice(), noPick: b.noPick, sneezed: b.sneezed, theme: b.theme };
           });
         },
         get kit() { return JSON.parse(JSON.stringify(kit)); },
@@ -2048,7 +2594,7 @@
         start: function (id) { pick(id, cardsEl.querySelector('.mk-card[data-id="' + id + '"]')); },
         setKit: function (raw) {
           if (state !== 'menu') return false;
-          kit = cleanMakeup(raw); u = unlocks(kit.done); save();
+          kit = cleanMakeup(raw); u = unlocks(kit.done, kit.legacy); freshen(); save();
           buildMenu(); buildWall(); fit();
           hint(null); menuTap = ctx.time;
           return true;
@@ -2061,15 +2607,26 @@
           buildTray(b);
           return true;
         },
-        /** Force the next surprise roll(s): {sneeze, foamSneeze}. */
+        /** Tests: dress zone z of the friend on board `side` in item id at its full dabs (null takes it off). Not a step. */
+        wear: function (side, z, id) {
+          var b = boards[side];
+          if ((state !== 'zone' && state !== 'admire') || !b || LOOK_ZONES.indexOf(z) < 0 || z === zone || (id && (!ITEMS[id] || ITEMS[id].z !== z))) return false;
+          if (id) { var n = nOfBoard(b, ITEMS[id].k); b.look[z] = id; renderLayer(b.F, z, id, n, { n: n, outer: b.side ? 'r' : 'l', c1: players[b.side].color, seed: b.seed, glitter: b.glitter }); }
+          else { delete b.look[z]; renderLayer(b.F, z, null, 0); }
+          return true;
+        },
+        /** Force the next surprise roll(s): {sneeze, foamSneeze, cicak, guest, noGuest}. */
         surprise: function (o) { Object.keys(o || {}).forEach(function (k) { if (o[k]) forced[k] = true; else delete forced[k]; }); },
         renderFace: function (e, look, size, bib, o) { return renderFace(e, look, size, bib, o).el; },
+        iconFor: function (id) { return iconFor(id); },
         cleanMakeup: cleanMakeup,
         unlocks: unlocks,
         giftFor: giftFor,
         nFor: nFor,
         zonesFor: zonesFor,
         trayFor: trayFor,
+        themeFor: themeFor,
+        get fresh() { return fresh.slice(); },
         foamed: foamed,
         piecesFor: piecesFor,
         ITEMS: ITEMS,
@@ -2083,6 +2640,12 @@
         POSES: POSES,
         ZONES: ZONES,
         GIFTS: GIFTS.length,
+        LIST: LIST.length,
+        V1_LEN: V1_LEN,
+        giftV1: giftV1,
+        restAfter: restAfter,
+        LOOK_OF: LOOK_OF,
+        MENU_V1: MENU_V1,
         tuning: { GAP: GAP, SWITCH_GAP: SWITCH_GAP, DABS: DABS, TICKLE_GAP: TICKLE_GAP, CHEER_GAP: CHEER_GAP },
       });
 

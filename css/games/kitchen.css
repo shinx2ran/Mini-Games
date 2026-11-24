@@ -34,6 +34,10 @@
   --kt-cone-dark: #B07A3A;
   --kt-ice: #CFE9F7;
   --kt-porridge: #E9D7AE;   /* (bubur's mix in kitchen.js: one cream in both themes, clear of --kt-tile and --kt-wall) */
+  --kt-bread: #F6E2B8;
+  --kt-leaf: #7BC96F;
+  --kt-santan: #FFF8EE;
+  --kt-water: #8FD3F4;
   --wall: 150px; --pip: 24px; --vessel: 120px; --board-w: 125px; --board-h: 290px; --chef: 30px; --want: 40px;
   --top: 46px; --pip-ov: 0px; --obj: 110px; --jar: 72px; --card: 100px; --cols: 3; --pcols: 3; --tab-w: 80px; --tab-h: 64px; --gift: 100px; --deco: 20px; --shelf-row: 0px;
   background: var(--kt-counter);
@@ -44,6 +48,7 @@
     --kt-steel: #6B7584; --kt-pan: #22222C; --kt-stone: #5B5B68; --kt-glass: rgba(255, 255, 255, 0.18); --kt-sky: #2B3E6B;
     --kt-plate: #E9E4F5; --kt-grout: rgba(255, 255, 255, 0.06); --kt-bowl: #3F7FA6; --kt-sponge: #D9A964; --kt-shell: #F2E2C2; --kt-inside: #1B1D24; --kt-sil: brightness(0) invert(1);
     --kt-dough: #D9BB82; --kt-crust: #B98A4A; --kt-baked: #C99A55; --kt-crust-baked: #9A6234; --kt-cone: #B98243; --kt-cone-dark: #8A5E2E; --kt-ice: #2B4A6B;
+    --kt-bread: #D9BF8E; --kt-leaf: #3F7A3A; --kt-santan: #E9E1D2; --kt-water: #3F7FA6;
   }
 }
 :root[data-theme="dark"] .g-kitchen {
@@ -51,6 +56,7 @@
   --kt-steel: #6B7584; --kt-pan: #22222C; --kt-stone: #5B5B68; --kt-glass: rgba(255, 255, 255, 0.18); --kt-sky: #2B3E6B;
   --kt-plate: #E9E4F5; --kt-grout: rgba(255, 255, 255, 0.06); --kt-bowl: #3F7FA6; --kt-sponge: #D9A964; --kt-shell: #F2E2C2; --kt-inside: #1B1D24; --kt-sil: brightness(0) invert(1);
     --kt-dough: #D9BB82; --kt-crust: #B98A4A; --kt-baked: #C99A55; --kt-crust-baked: #9A6234; --kt-cone: #B98243; --kt-cone-dark: #8A5E2E; --kt-ice: #2B4A6B;
+    --kt-bread: #D9BF8E; --kt-leaf: #3F7A3A; --kt-santan: #E9E1D2; --kt-water: #3F7FA6;
 }
 
 .g-kitchen .mg-sticker { display: inline-block; }
@@ -124,7 +130,7 @@
   border-top: 2px solid rgba(42, 35, 86, 0.45);
   border-radius: 0 0 50% 50% / 0 0 40% 40%;
 }
-.g-kitchen .kt-wall[data-tier="3"] .kt-lights { top: calc(var(--pip) + 1px); }
+.g-kitchen .kt-wall[data-tier="3"] .kt-lights, .g-kitchen .kt-wall[data-tier="4"] .kt-lights { top: calc(var(--pip) + 1px); }
 .g-kitchen .kt-lights i {
   display: block;
   width: 7px;
@@ -668,6 +674,8 @@
 .g-kitchen .kt-oven__door::after { content: ""; position: absolute; left: 25%; right: 25%; top: 8%; height: 0.1em; font-size: 0.3em; border: 3px solid var(--line); border-radius: 999px; background: var(--kt-steel); }
 .g-kitchen .kt-obj.is-gold .kt-oven__door, .g-kitchen .kt-obj.is-out .kt-oven__door { transform: translateY(40%) scaleY(0.25); }
 .g-kitchen .kt-obj.is-out .kt-oven__win .kt-food { transform: translate(-50%, -150%) scale(1.15); transition: transform 0.35s cubic-bezier(.3, 1.5, .5, 1); }
+/* (the kue kering cookie sits in the middle of the oven window: the cake keeps its own, older place) */
+.g-kitchen .kt-oven__win .kt-food.is-cookie { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
 /* the fridge (it chills instead of heating): frost creeps over the window, then the door swings open */
 .g-kitchen .kt-fridge { left: 10%; right: 10%; top: 4%; bottom: 4%; box-sizing: border-box; border: 3px solid var(--line); border-radius: 0.08em; background: var(--surface); box-shadow: 0 5px 0 var(--line); }
 .g-kitchen .kt-fridge > * { position: absolute; }
@@ -839,6 +847,166 @@
 .g-kitchen .kt-next__dots { position: absolute; left: 7%; bottom: 8%; display: flex; gap: 0.03em; }
 .g-kitchen .kt-next__dots i { display: block; width: 0.1em; height: 0.1em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 50%; background: var(--surface); }
 
+
+/* ---------------------------------------------------------------- v3: eight new dishes */
+
+/* the drawn dish pictures (klepon, kue lapis, es lilin, es cendol): a 1em box like an emoji, in --c (her colour on
+   the finished dish and the taste bowls, the first variant's elsewhere). The sticker's die-cut edge goes round them. */
+.g-kitchen .kt-art { position: relative; display: inline-block; width: 1em; height: 1em; vertical-align: middle; }
+.g-kitchen .kt-art > i { position: absolute; box-sizing: border-box; }
+.g-kitchen .kt-art--klepon .leaf { left: 2%; right: 2%; top: 52%; height: 40%; border: 0.045em solid var(--line); border-radius: 60% 40% 60% 40% / 50%; background: var(--kt-leaf); }
+.g-kitchen .kt-art--klepon .leaf::after { content: ""; position: absolute; left: 10%; right: 10%; top: 45%; border-top: 0.03em solid rgba(42, 35, 86, 0.35); }
+.g-kitchen .kt-art--klepon .ball { width: 0.4em; height: 0.4em; border: 0.045em solid var(--line); border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 62% 55%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 40% 72%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 70% 28%, #FFFFFF 0 4%, transparent 5%), var(--c); }
+.g-kitchen .kt-art--klepon .b1 { left: 8%; top: 36%; }
+.g-kitchen .kt-art--klepon .b2 { left: 52%; top: 36%; }
+.g-kitchen .kt-art--klepon .b3 { left: 30%; top: 12%; }
+.g-kitchen .kt-art--lapis .blk { left: 10%; right: 10%; top: 24%; height: 62%; border: 0.045em solid var(--line); border-radius: 0.06em; overflow: hidden; background: repeating-linear-gradient(to bottom, var(--c) 0 16.6%, var(--kt-santan) 16.6% 33.3%); }
+.g-kitchen .kt-art--lapis .peel { left: 50%; right: 4%; top: 12%; height: 0.12em; border: 0.04em solid var(--line); border-radius: 0.03em; background: var(--c); transform: rotate(-18deg); transform-origin: 0 100%; }
+.g-kitchen .kt-art--lolly .body { left: 26%; top: 4%; width: 0.48em; height: 0.64em; border: 0.045em solid var(--line); border-radius: 0.24em 0.24em 0.08em 0.08em; background: var(--c); transform: rotate(-10deg); }
+.g-kitchen .kt-art--lolly .body::after { content: ""; position: absolute; left: 18%; top: 14%; width: 16%; height: 46%; border-radius: 999px; background: rgba(255, 255, 255, 0.5); }
+.g-kitchen .kt-art--lolly .stick { left: 44%; top: 62%; width: 0.12em; height: 0.34em; border: 0.04em solid var(--line); border-radius: 0 0 0.06em 0.06em; background: var(--kt-wood); transform: rotate(-10deg); transform-origin: 50% 0; }
+.g-kitchen .kt-art--cendol .glass { left: 20%; right: 20%; top: 12%; height: 84%; border: 0.045em solid var(--line); border-radius: 0.04em 0.04em 0.12em 0.12em; overflow: hidden;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35) 0 10%, var(--kt-santan) 10% 36%, rgba(255, 255, 255, 0.2) 36% 72%, #7A4320 72%); }
+.g-kitchen .kt-art--cendol .w { width: 0.2em; height: 0.08em; border: 0.025em solid var(--line); border-radius: 999px; background: var(--c); }
+.g-kitchen .kt-art--cendol .w1 { left: 26%; top: 50%; transform: rotate(18deg); }
+.g-kitchen .kt-art--cendol .w2 { left: 48%; top: 46%; transform: rotate(-22deg); }
+.g-kitchen .kt-art--cendol .w3 { left: 34%; top: 61%; transform: rotate(-8deg); }
+.g-kitchen .kt-art--cendol .w4 { left: 54%; top: 60%; transform: rotate(26deg); }
+.g-kitchen .kt-art--cendol .straw { left: 56%; top: 0; width: 0.08em; height: 0.5em; border: 0.025em solid var(--line); background: repeating-linear-gradient(to bottom, var(--berry) 0 0.06em, #FFFFFF 0.06em 0.12em); transform: rotate(16deg); }
+
+/* the tokens: what she makes, drawn in her colour (in the dish, on the boards, in the air, on the step stickers) */
+.g-kitchen .kt-tok { position: relative; display: inline-block; width: 1em; height: 1em; vertical-align: middle; }
+.g-kitchen .kt-tok > i { position: absolute; box-sizing: border-box; border: max(1.5px, 0.045em) solid var(--line); background: var(--c); }
+.g-kitchen .kt-tok--klepon > i { width: 0.42em; height: 0.42em; border-radius: 50%;
+  background: radial-gradient(circle at 30% 32%, #FFFFFF 0 7%, transparent 8%), radial-gradient(circle at 64% 56%, #FFFFFF 0 7%, transparent 8%), radial-gradient(circle at 38% 72%, #FFFFFF 0 6%, transparent 7%), radial-gradient(circle at 70% 26%, #FFFFFF 0 6%, transparent 7%), var(--c); }
+.g-kitchen .kt-tok--klepon > .b1 { left: 6%; top: 50%; }
+.g-kitchen .kt-tok--klepon > .b2 { left: 52%; top: 50%; }
+.g-kitchen .kt-tok--klepon > .b3 { left: 29%; top: 12%; }
+.g-kitchen .kt-tok--kepal > i { inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.7) 0 9%, transparent 10%), radial-gradient(circle at 62% 40%, #FFFFFF 0 6%, transparent 7%), radial-gradient(circle at 40% 66%, #FFFFFF 0 6%, transparent 7%), radial-gradient(circle at 72% 70%, #FFFFFF 0 5%, transparent 6%), var(--c); }
+.g-kitchen .kt-tok--worms > i { width: 0.5em; height: 0.17em; border-width: max(1.5px, 0.04em); border-radius: 999px; }
+.g-kitchen .kt-tok--worms > .w1 { left: 6%; top: 26%; transform: rotate(20deg); }
+.g-kitchen .kt-tok--worms > .w2 { left: 44%; top: 22%; transform: rotate(-24deg); }
+.g-kitchen .kt-tok--worms > .w3 { left: 10%; top: 58%; transform: rotate(-10deg); }
+.g-kitchen .kt-tok--worms > .w4 { left: 44%; top: 56%; transform: rotate(28deg); }
+.g-kitchen .kt-tok--lolly > .body { left: 19%; top: 0; width: 0.62em; height: 0.66em; border-radius: 0.24em 0.24em 0.08em 0.08em; }
+.g-kitchen .kt-tok--lolly > .body::after { content: ""; position: absolute; left: 16%; top: 14%; width: 16%; height: 48%; border-radius: 999px; background: rgba(255, 255, 255, 0.5); }
+.g-kitchen .kt-tok--lolly > .stick { left: 43.5%; top: 0.6em; width: 0.13em; height: 0.34em; border-radius: 0 0 0.05em 0.05em; background: var(--kt-wood); }
+.g-kitchen .kt-pip.is-done > .kt-tok { opacity: 0.45; }
+
+/* kue kering: cookies of her cutter's shape, a silhouette (the same in every emoji font and both themes) */
+.g-kitchen .kt-cookiewrap { position: relative; }
+.g-kitchen .kt-cookie { display: inline-block; }
+.g-kitchen .kt-cookie.is-raw { filter: brightness(0) invert(0.86) sepia(0.6) saturate(1.6); }
+.g-kitchen .kt-cookie.is-baked { filter: brightness(0) invert(0.62) sepia(1) saturate(1.7) hue-rotate(-12deg) brightness(0.92); }
+.g-kitchen .kt-cookiewrap.is-oven > .is-baked { position: absolute; left: 0; top: 0; opacity: var(--cook, 0); }
+.g-kitchen .kt-food.is-cookie, .g-kitchen .kt-cut__raw.is-cookie { filter: none; }
+
+/* the dish: a cake tin (kue lapis) whose stripes stack in the order they are poured, a banana leaf (klepon), the
+   roti's spread inside the sandwich */
+.g-kitchen .kt-vessel[data-kind="tin"] .kt-vback::before { left: 12%; right: 12%; top: 30%; bottom: 6%; border: 3px solid var(--line); border-radius: 6%; background: var(--kt-steel); box-shadow: 0 5px 0 var(--line); }
+.g-kitchen .kt-vessel[data-kind="tin"] .kt-contents { left: 12%; right: 12%; top: 30%; height: 64%; }
+.g-kitchen .kt-vessel[data-kind="tin"] .kt-lid-big { top: 18%; }
+.g-kitchen .kt-bands { position: absolute; left: 6%; right: 6%; bottom: 6%; height: 84%; display: flex; flex-direction: column-reverse; overflow: hidden; }
+.g-kitchen .kt-bands > .kt-band { flex: none; height: calc(100% / var(--nb)); box-sizing: border-box; border-top: 2px solid rgba(42, 35, 86, 0.25); background: var(--c); }
+.g-kitchen .kt-bands > .kt-band.is-new { animation: kt-land-flat 0.3s cubic-bezier(.3, 1.6, .5, 1); }
+.g-kitchen .kt-vessel[data-kind="plate"][data-plate="leaf"] .kt-vback::before { left: 2%; right: 2%; top: 44%; height: 42%; border-radius: 60% 40% 60% 40% / 50%; background: var(--kt-leaf); }
+.g-kitchen .kt-vessel[data-kind="plate"][data-plate="leaf"] .kt-vback::after { left: 8%; right: 8%; top: 64%; height: 0; border: 0; border-top: 3px solid rgba(42, 35, 86, 0.3); border-radius: 0; }
+.g-kitchen .kt-glaze[data-look="fill"] { width: 0.72em; height: 0.16em; margin: -0.02em -0.36em; border: 2px solid var(--line); border-radius: 0.08em; background: var(--c); box-shadow: none; }
+.g-kitchen .kt-piece[data-e="lolly"] { font-size: calc(var(--vessel) * 0.2); }
+
+/* spread: a butter knife paints a stripe of her spread across the slice with every tap */
+.g-kitchen .kt-bread { left: 22%; right: 22%; top: 20%; height: 0.56em; box-sizing: border-box; border: 3px solid var(--line); border-radius: 42% 42% 8% 8% / 30% 30% 8% 8%; background: var(--kt-bread); box-shadow: inset 0 0 0 0.035em var(--kt-crust); overflow: hidden; }
+.g-kitchen .kt-bread > .kt-band { position: absolute; left: 12%; right: 12%; border-radius: 999px; background: var(--c); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.18s ease-out; }
+.g-kitchen .kt-board[data-side="1"] .kt-bread > .kt-band { transform-origin: 100% 50%; }
+.g-kitchen .kt-bread > .kt-band.is-on { transform: scaleX(1); }
+.g-kitchen .kt-spreadall { position: absolute; inset: 12%; border-radius: 30%; background: var(--c); opacity: 0; transition: opacity 0.25s; }
+.g-kitchen .kt-obj.is-spread .kt-spreadall { opacity: 1; }
+.g-kitchen .kt-spreader { z-index: 2; left: 20%; top: 0; width: 0.5em; height: 0.12em; translate: 0 calc(var(--sy, 30) * 0.01em); transform: rotate(-16deg); transition: translate 0.18s ease-out; }
+.g-kitchen .kt-board[data-side="1"] .kt-spreader { left: auto; right: 20%; transform: scaleX(-1) rotate(-16deg); }
+.g-kitchen .kt-spreader::before, .g-kitchen .kt-spreader::after { content: ""; position: absolute; box-sizing: border-box; border: 3px solid var(--line); }
+.g-kitchen .kt-spreader::before { left: 0; top: 0.01em; width: 0.32em; height: 0.09em; border-radius: 0.01em 999px 999px 0.01em; background: var(--kt-steel); }
+.g-kitchen .kt-spreader::after { left: 0.3em; top: 0; width: 0.2em; height: 0.11em; border-radius: 999px; background: var(--kt-wood); }
+/* her spread on her chef's face (the knife flicked it) */
+.g-kitchen .kt-smear { position: absolute; z-index: 3; left: 62%; bottom: 26%; width: 0.2em; height: 0.2em; box-sizing: border-box; border: 1.5px solid var(--line); border-radius: 52% 48% 56% 44%; background: var(--c, #6B4226); transform: scale(0); transition: transform 0.2s cubic-bezier(.3, 1.8, .5, 1); }
+.g-kitchen .kt-board.has-smear .kt-smear { transform: scale(1); }
+
+/* ball: two hands roll a lump into a ball (klepon: a secret palm sugar inside; es kepal: a snowball) */
+.g-kitchen .kt-lump { left: 50%; top: 62%; width: 0.42em; height: 0.42em; margin: -0.21em; box-sizing: border-box; border: 3px solid var(--line); background: var(--c);
+  border-radius: calc(42% + 8% * var(--r)) calc(58% - 8% * var(--r)) calc(46% + 4% * var(--r)) calc(54% - 4% * var(--r)) / calc(56% - 6% * var(--r)) calc(38% + 12% * var(--r)) calc(62% - 12% * var(--r)) calc(48% + 2% * var(--r));
+  transform: scale(calc(1.2 - 0.2 * var(--r)), calc(0.78 + 0.22 * var(--r))) rotate(var(--spin)); transition: transform 0.2s ease-out; }
+.g-kitchen .kt-lump.is-snow { width: 0.5em; height: 0.5em; margin: -0.25em;
+  background: radial-gradient(circle at 30% 30%, #FFFFFF 0 6%, transparent 7%), radial-gradient(circle at 65% 60%, #FFFFFF 0 6%, transparent 7%), radial-gradient(circle at 40% 75%, #FFFFFF 0 5%, transparent 6%), var(--c); }
+.g-kitchen .kt-obj.is-round .kt-lump::after { content: ""; position: absolute; left: 20%; top: 14%; width: 26%; height: 18%; border-radius: 50%; background: rgba(255, 255, 255, 0.55); }
+.g-kitchen .kt-sugar { z-index: 1; left: 50%; top: 60%; width: 0.11em; height: 0.11em; margin: -0.055em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 0.02em; background: var(--f); rotate: 12deg; opacity: 0; transition: opacity 0.25s; }
+.g-kitchen .kt-sugar.is-in { opacity: 1; }
+.g-kitchen .kt-sugar.is-wrapped { opacity: 0; }
+.g-kitchen .kt-hands { z-index: 2; left: 50%; top: 4%; font-size: 0.42em; transform: translateX(-50%); }
+
+/* squeeze, the cendol press: the plunger pushes her dough through the holes as worms into a bowl of ice water */
+.g-kitchen .kt-wbowl { left: 12%; right: 12%; bottom: 6%; height: 30%; border: 3px solid var(--line); border-radius: 6% 6% 50% 50% / 10% 10% 100% 100%; background: var(--kt-water); box-shadow: 0 5px 0 var(--line); }
+.g-kitchen .kt-worms { z-index: 1; left: 18%; right: 18%; top: 62%; height: 28%; }
+.g-kitchen .kt-worm { position: absolute; width: 0.16em; height: 0.055em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 999px; background: var(--c); rotate: var(--wr, 0deg); animation: kt-wriggle 0.5s ease-in-out 3 alternate; }
+@keyframes kt-wriggle { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+.g-kitchen .kt-press { z-index: 2; left: 32%; right: 32%; top: 22%; height: 28%; box-sizing: border-box; border: 3px solid var(--line); border-radius: 0 0 0.06em 0.06em; background: var(--kt-steel); overflow: hidden; }
+.g-kitchen .kt-press > i { position: absolute; left: 0; right: 0; bottom: 0; height: 84%; background: var(--c); transform-origin: 50% 100%; transform: scaleY(calc(1 - var(--sq, 0))); transition: transform 0.2s ease-out; }
+.g-kitchen .kt-press::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: 2px; height: 0.03em; background: radial-gradient(circle, var(--line) 0 30%, transparent 35%) 0 0 / 20% 100% repeat-x; }
+.g-kitchen .kt-plunger { z-index: 3; left: 22%; right: 22%; top: 6%; height: 0.09em; box-sizing: border-box; border: 3px solid var(--line); border-radius: 999px; background: var(--pc); translate: 0 calc(var(--sq, 0) * 0.1em); transition: translate 0.2s ease-out; }
+.g-kitchen .kt-plunger::after { content: ""; position: absolute; left: 44%; width: 12%; top: 100%; height: 0.12em; box-sizing: border-box; border: 2px solid var(--line); background: var(--kt-wood-dark); }
+.g-kitchen .kt-longworm { z-index: 1; left: 50%; top: 48%; width: 0.055em; height: 0.3em; margin-left: -0.0275em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 999px; background: var(--c); transform-origin: 50% 0; }
+/* squeeze, the piping bag: icing dots (kue kering) or the creamy dressing (salad buah) */
+.g-kitchen .kt-bag { z-index: 2; left: 50%; top: 8%; width: 0.4em; height: 0.5em; margin-left: -0.2em; box-sizing: border-box; border: 3px solid var(--line); border-radius: 0.12em 0.12em 50% 50% / 0.12em 0.12em 100% 100%; background: var(--liq); transform-origin: 50% 0; transition: transform 0.2s ease-out; }
+.g-kitchen .kt-bag__band { position: absolute; left: 0; right: 0; top: 18%; height: 16%; box-sizing: border-box; border-top: 2px solid var(--line); border-bottom: 2px solid var(--line); background: var(--pc); }
+.g-kitchen .kt-bag__tip { position: absolute; left: 38%; top: 94%; width: 24%; height: 20%; box-sizing: border-box; border: 2px solid var(--line); border-radius: 0 0 40% 40%; background: var(--kt-steel); }
+.g-kitchen .kt-obj.is-empty .kt-bag { transform: scaleY(0.6); }
+.g-kitchen .kt-pdots { z-index: 1; left: 10%; right: 10%; bottom: 10%; height: 12%; }
+.g-kitchen .kt-pdots > i { position: absolute; top: 15%; width: 0.07em; height: 0.07em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 50%; background: var(--c); }
+
+/* pop: an ice lolly in its mould; wiggle, wiggle, POP */
+.g-kitchen .kt-mould { left: 24%; right: 24%; top: 34%; bottom: 8%; box-sizing: border-box; border: 3px solid var(--line); border-radius: 0.06em; background: var(--kt-ice); box-shadow: 0 5px 0 var(--line); }
+.g-kitchen .kt-lollyset { z-index: 1; left: 30%; right: 30%; top: 16%; height: 0.64em; transform-origin: 50% 100%; transition: transform 0.35s cubic-bezier(.3, 1.6, .5, 1); }
+.g-kitchen .kt-lollyset > * { position: absolute; box-sizing: border-box; }
+.g-kitchen .kt-lstick { left: 50%; top: 0; width: 0.07em; height: 0.26em; margin-left: -0.035em; border: 2px solid var(--line); border-radius: 0.03em 0.03em 0 0; background: var(--kt-wood); }
+.g-kitchen .kt-lolly { left: 50%; top: 0.22em; width: 0.3em; height: 0.4em; margin-left: -0.15em; border: 3px solid var(--line); border-radius: 0.15em 0.15em 0.05em 0.05em; background: var(--c); }
+.g-kitchen .kt-lolly::after { content: ""; position: absolute; left: 18%; top: 14%; width: 16%; height: 46%; border-radius: 999px; background: rgba(255, 255, 255, 0.5); }
+.g-kitchen .kt-obj.is-pop .kt-lollyset { transform: translateY(-0.2em) scale(1.08); }
+.g-kitchen .kt-mcrack { z-index: 2; left: 24%; right: 24%; top: 31%; height: 6%; color: var(--line); opacity: var(--crk, 0); pointer-events: none; }
+.g-kitchen .kt-mcrack svg { display: block; width: 100%; height: 100%; }
+
+/* boil (klepon): a pot of water; they sit low, the water bubbles, and when they are cooked they float up */
+.g-kitchen .kt-bpot { left: 12%; right: 12%; top: 40%; bottom: 8%; box-sizing: border-box; border: 3px solid var(--line); border-radius: 0 0 0.12em 0.12em; background: var(--kt-steel); box-shadow: 0 5px 0 var(--line); }
+.g-kitchen .kt-bwater { left: 12%; right: 12%; top: 34%; height: 14%; box-sizing: border-box; border: 3px solid var(--line); border-radius: 50%; background: var(--kt-water); }
+.g-kitchen .kt-bubble { position: absolute; top: 18%; width: 0.06em; height: 0.06em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 50%; background: rgba(255, 255, 255, 0.75); opacity: var(--cook); animation: kt-bubble 0.6s ease-in-out infinite alternate; }
+.g-kitchen .kt-bubble:nth-child(1) { left: 14%; }
+.g-kitchen .kt-bubble:nth-child(2) { left: 46%; animation-delay: -0.3s; }
+.g-kitchen .kt-bubble:nth-child(3) { left: 76%; animation-delay: -0.15s; }
+@keyframes kt-bubble { to { transform: translateY(-60%) scale(1.2); } }
+.g-kitchen .kt-prop--boil .kt-food { z-index: 1; top: 18%; filter: none; opacity: 0.8; transform: translateX(-50%) translateY(30%); transition: transform 0.35s cubic-bezier(.3, 1.5, .5, 1), opacity 0.2s; }
+.g-kitchen .kt-prop--boil.is-gold .kt-food { opacity: 1; transform: translateX(-50%) translateY(-20%); animation: kt-float 0.8s ease-in-out infinite alternate; }
+@keyframes kt-float { from { transform: translateX(-50%) translateY(-20%); } to { transform: translateX(-50%) translateY(-30%); } }
+.g-kitchen .kt-prop--boil.is-out .kt-food { opacity: 1; animation: none; transform: translateX(-50%) translateY(-70%) scale(1.1); }
+.g-kitchen .kt-obj.is-gold .kt-bwater { box-shadow: 0 0 0 4px var(--sun); }
+
+/* the taste gags, on the taster's own chef */
+.g-kitchen .kt-splat { position: absolute; z-index: 3; left: 18%; bottom: 30%; width: 0.22em; height: 0.22em; box-sizing: border-box; border: 1.5px solid var(--line); border-radius: 52% 48% 56% 44% / 50% 56% 44% 50%; background: #7A4320; transform: scale(0); transition: transform 0.2s cubic-bezier(.3, 1.8, .5, 1); }
+.g-kitchen .kt-board.has-splat .kt-splat { transform: scale(1); }
+.g-kitchen .kt-tongue { position: absolute; z-index: 3; left: 50%; bottom: 8%; width: 0.22em; height: 0.16em; margin-left: -0.11em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 0 0 50% 50%; background: var(--c, #F2677A); transform: scaleY(0); transform-origin: 50% 0; transition: transform 0.2s ease-out; }
+.g-kitchen .kt-board.has-tongue .kt-tongue { transform: scaleY(1); }
+.g-kitchen .kt-wormdangle { position: absolute; z-index: 3; left: 52%; top: 70%; width: 0.1em; height: 0.3em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 999px; background: var(--c); transform-origin: 50% 0; animation: kt-dangle 0.35s ease-in-out 2 alternate; transition: transform 0.3s ease-in; }
+@keyframes kt-dangle { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+.g-kitchen .kt-wormdangle.is-up { animation: none; transform: scaleY(0); }
+.g-kitchen .kt-peelfly { display: block; width: 1.2em; height: 0.25em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 0.06em; background: var(--c); }
+
+/* tier 4: red-and-white bunting across the window, and its present. It hangs below the sign's band and in front of
+   both curtains (z-index 1, like the sign; the sign comes later in the window, so it still paints over the string) */
+.g-kitchen .kt-bunting { position: absolute; z-index: 1; left: 4%; right: 4%; top: 44%; height: 20%; pointer-events: none; }
+.g-kitchen .kt-buntgift { position: relative; display: inline-block; width: 1.3em; height: 0.5em; }
+.g-kitchen .kt-bunting::before, .g-kitchen .kt-buntgift::before { content: ""; position: absolute; left: 0; right: 0; top: -50%; height: 100%; box-sizing: border-box; border-bottom: 2px solid var(--line); border-radius: 0 0 50% 50% / 0 0 100% 100%; }
+.g-kitchen .kt-bunting > i, .g-kitchen .kt-buntgift > i { position: absolute; height: 80%; background: var(--line); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.g-kitchen .kt-bunting > i::before, .g-kitchen .kt-buntgift > i::before { content: ""; position: absolute; left: 2px; right: 2px; top: 2px; bottom: 4px; background: var(--fc); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.g-kitchen .kt-buntgift > i { height: 110%; }
+
 @media (prefers-reduced-motion: reduce) {
   .g-kitchen .kt-lights i, .g-kitchen .kt-item--cat > .mg-sticker, .g-kitchen .kt-board.is-done .kt-wave > .mg-sticker,
   .g-kitchen .kt-jar.is-bob .kt-glass, .g-kitchen .kt-fire, .g-kitchen .kt-coals i, .g-kitchen .kt-candle i,
@@ -851,4 +1019,7 @@
   .g-kitchen .kt-pip.is-now { box-shadow: 0 0 0 4px var(--tangerine); }
   .g-kitchen .kt-vessel.is-in, .g-kitchen .is-in-l, .g-kitchen .is-in-r, .g-kitchen .kt-gift__box, .g-kitchen .kt-dish__main, .g-kitchen .kt-dish__disc { animation-duration: 0.15s; }
   .g-kitchen .kt-piece.is-new, .g-kitchen .kt-layer.is-new, .g-kitchen .kt-pbase.is-new, .g-kitchen .kt-contents .kt-scoop.is-new { animation: none; }
+  .g-kitchen .kt-worm, .g-kitchen .kt-bubble, .g-kitchen .kt-prop--boil.is-gold .kt-food, .g-kitchen .kt-wormdangle, .g-kitchen .kt-bands > .kt-band.is-new { animation: none; }
+  .g-kitchen .kt-bread > .kt-band, .g-kitchen .kt-spreader, .g-kitchen .kt-lump, .g-kitchen .kt-press > i, .g-kitchen .kt-plunger, .g-kitchen .kt-lollyset,
+  .g-kitchen .kt-prop--boil .kt-food, .g-kitchen .kt-bag, .g-kitchen .kt-wormdangle { transition: none; }
 }
