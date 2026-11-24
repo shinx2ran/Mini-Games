@@ -6,6 +6,7 @@
    guest step. */
 'use strict';
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const h = require('./harness');
 const ID = 'makeup';
@@ -28,6 +29,24 @@ const OLD_ITEMS = ('sponge:wash:foam blush-pink:cheeks:blush blush-peach:cheeks:
   'pearls:neck:ring lei:neck:ring cone:top:cone bow:top:wear flower:top:wear tophat:top:wear wig:top:wig duck:top:wear leaves:top:ring crown:top:wear ' +
   'sunhat:top:wear antennae:top:antennae horn:top:cone gold:sparkle:glitter hearts:sparkle:glitter stars:sparkle:glitter flowers:sparkle:glitter ' +
   'dust:sparkle:glitter rainbow-dust:sparkle:glitter wave:pose:pose kiss:pose:pose ears:pose:pose').split(' ');
+// ...and their drawings, frozen: a short sha1 of JSON piecesFor(id, k, { n: 6, outer, c1: '#FF5D8F', seed: 3 }) for k 1-6, outer l then r
+// (joined by newlines), taken from v1 (00a9004)
+const OLD_PIECES = {
+  'sponge': '39177d56568c', 'blush-pink': '268e053d1088', 'blush-peach': '196df23f0f55', 'star': '91b1968facfe',
+  'heart': 'c248dce81855', 'dots': 'a7d8d84ad7ff', 'bolt': 'adbfd33d8bd0', 'stripes': '73b3854903ce', 'paws': '96bc94f4cbef',
+  'gem': '112b27cacf10', 'shell': 'c438f24aeee9', 'moon': 'ebf6e39de326', 'rainbow': '5325174b75e0',
+  'shadow-grape': '9a02d0b57786', 'shadow-sea': '37936e330fa0', 'lashes': 'f45459ed5aa1', 'specs': 'bfc6f0518e46',
+  'googly': 'fbd6fe09bdcc', 'mask-red': '0b3ab3c8fccd', 'mask-blue': '9cb3be3a873d', 'shadow-gold': '4ffdb89ede40',
+  'shades': '2f7b92e7ec5a', 'goggles': '7bb55c9b3477', 'clown': '247067bdab0d', 'button': 'cf573f976ce3',
+  'heart-nose': '7eedeeb49e3a', 'whiskers': 'c8c8c2a53661', 'cream': '98e62fcb71ab', 'lips-red': '918cffa12596',
+  'lips-pink': '6cbd1c12c858', 'stache': 'ffc240d7c7cc', 'smile': 'cd5e742c7608', 'lips-plum': '6584c3d5521e',
+  'bowtie': '3a57071d78be', 'scarf': '8dff8bf4e36b', 'tie': 'b474dd479caf', 'cape': 'de5e12394200', 'pearls': 'f07d7c6fe9e6',
+  'lei': '3cdb1d11e8e2', 'cone': '1ad0e9559d4e', 'bow': '6263ee821b43', 'flower': '32d4a11e9eca', 'tophat': '36f352039be4',
+  'wig': 'c51b3ee536de', 'duck': '33251cf5c3c0', 'leaves': '94db84f497f4', 'crown': 'eb1602f8c6d8', 'sunhat': '21d6f27bd4ee',
+  'antennae': '83f3f6e48cce', 'horn': 'bc76ed958c0e', 'gold': '07b2cdd7364f', 'hearts': 'f6a50119a282', 'stars': '84f4ca295f51',
+  'flowers': '082087b7374e', 'dust': '360801206bde', 'rainbow-dust': '9129e4f6bb94', 'wave': 'b3242ea2b501',
+  'kiss': 'e9c94f0159d5', 'ears': '1c4b018bd848'
+};
 // the eight v1 parties as v1 shipped them (copied from v1's PARTIES), frozen: an old salon's cards, photos and medals mean these
 const OLD_PARTIES = {
   party:   { e: '🎉', bg: 'sun',  deco: ['🎈', '🎉', '🎈'], zones: ['cheeks', 'eyes', 'mouth', 'neck', 'top'], extra: ['eyes', 'neck'],
@@ -370,6 +389,9 @@ h.run(ID, async (t) => {
         if (!eq(a.cleanMakeup(k), k)) out.push('cleanMakeup is idempotent on v2 (' + d + ')');
       });
       if (!eq(a.cleanMakeup({ v: 2, done: 15, legacy: 13 }).legacy, 13) || a.cleanMakeup({ v: 2, done: 15 }).legacy !== 0) out.push('a v2 save keeps its own legacy count');
+      // (spec 6.2: v2 = raw.v === 2 || own(raw, 'legacy')) a save with a legacy count but no v is v2 too: its bag stays given
+      const nov = a.cleanMakeup({ done: 15, legacy: 13 }), unov = a.unlocks(nov.done, nov.legacy);
+      if (nov.v !== 2 || nov.legacy !== 13 || !unov.base2 || unov.nextBag) out.push('a legacy count without v is a v2 save: ' + JSON.stringify([nov.v, nov.legacy, unov.base2, unov.nextBag]));
       // the presents: a new salon's list, then (spec 6.3) the worked examples
       const kindsOf = (L, from, to) => [...Array(to - from).keys()].map((i) => a.giftFor(from + i, L).kind);
       const want = ['party', 'helper', 'party', 'tier', 'party', 'party', 'helper', 'party', 'party', 'tier', 'party', 'helper', 'party', 'party', 'helper', 'party', 'tier', 'helper'].concat(Array(6).fill('decor'), Array(24).fill('medal'), ['thanks']);
@@ -508,6 +530,13 @@ h.run(ID, async (t) => {
           }
         } });
       });
+      // the dino roar is goofy, not a growl: a round open mouth, two rounded baby teeth on top only, a tongue; nothing pointed
+      for (let k = 1; k <= 3; k++) {
+        const ps = a.piecesFor('roar', k, { n: 3 }), mouth = ps[0], teeth = ps.filter((q) => q.bg === '#FFFFFF');
+        if (ps.some((q) => /polygon|mk-wing/.test((q.html || '') + (q.cls || '')))) out.push('roar dab ' + k + ': a pointed piece');
+        if (mouth.br !== '50%' || teeth.length !== (k >= 2 ? 2 : 0) || teeth.some((q) => q.at[1] >= mouth.at[1] || !/50%/.test(q.br))) out.push('roar dab ' + k + ': a round mouth, two rounded top teeth: ' + JSON.stringify(ps));
+        if (k === 3 && !ps.some((q) => q.bg === '#FF8FB1')) out.push('roar dab 3: the tongue');
+      }
       if (!eq(Object.keys(a.ANIMALS).sort(), MG.AVATARS.slice().sort())) out.push('ANIMALS = MG.AVATARS');
       for (let n = 2; n <= 6; n++) { let last = 0; for (let k = 1; k < n; k++) { const f = a.foamed(k, n); if (f < last) out.push('foamed falls'); last = f; } if (a.foamed(n - 1, n) !== 3) out.push('foamed reaches 3 at n-1, n=' + n); }
       // the guest step (zonesFor with a stub rnd): the same length, a change only at the last extra, never in Short
@@ -564,6 +593,22 @@ h.run(ID, async (t) => {
     const src = fs.readFileSync(path.join(h.ROOT, 'js', 'games', 'makeup.js'), 'utf8').replace(/\u{FE0F}/gu, '');
     const used = [...new Set(src.match(/\p{Extended_Pictographic}/gu))];
     assert.deepStrictEqual(used.filter((e) => !ALLOWED.includes(e)), [], 'every emoji is from Appendix A');
+    // every game timer goes through ctx.after / later(), and ctx.lock is never used (the source without its comments)
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"\\])\/\/.*$/gm, '$1');
+    assert.deepStrictEqual(code.match(/\b(setTimeout|setInterval|requestAnimationFrame)\s*\(|\bctx\.lock\s*\(/g), null, 'no raw timers and no ctx.lock');
+    // spec 10: every old item keeps its drawing at every dab count, both sides (an old polaroid redraws from these)
+    const drawn = await page.evaluate((ids) => {
+      const a = MG.current.api, out = {};
+      ids.forEach((id) => {
+        const s = [];
+        for (let k = 1; k <= 6; k++) for (const outer of ['l', 'r']) s.push(JSON.stringify(a.piecesFor(id, k, { n: 6, outer, c1: '#FF5D8F', seed: 3 })));
+        out[id] = s.join('\n');
+      });
+      return out;
+    }, OLD_ITEMS.map((s) => s.split(':')[0]));
+    const sha = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 12);
+    const changed = Object.keys(OLD_PIECES).filter((id) => sha(drawn[id]) !== OLD_PIECES[id]);
+    assert.deepStrictEqual([Object.keys(OLD_PIECES).length, changed], [OLD_ITEMS.length, []], 'every old item draws exactly as v1 did');
     lap(1);
   }
 
@@ -608,6 +653,13 @@ h.run(ID, async (t) => {
           if (z === 'mouth' && s === 0 && k === 1) {   // her colour step: the brush tip takes the colour she picked
             const tint = await page.evaluate(() => { const n = document.querySelector('.g-makeup .mk-board[data-side="0"] .mk-brush'); return n.classList.contains('is-tint') && n.style.getPropertyValue('--tint'); });
             assert.strictEqual(tint, await A(page, (a, id) => a.ITEMS[id].c, id), 'her brush takes the colour of the lipstick she chose');
+            // and she can see it: a big blob of the colour on the brush, and a puff of dots in it
+            const seen4 = await page.evaluate((c) => {
+              const tip = document.querySelector('.g-makeup .mk-board[data-side="0"] .mk-brush i').getBoundingClientRect(), x = document.createElement('i');
+              x.style.background = c;
+              return { tip: Math.min(tip.width, tip.height), dots: [...document.querySelectorAll('#mg-fx .mg-particle')].filter((n) => n.style.background === x.style.background).length };
+            }, tint);
+            assert.ok(seen4.tip >= 10 && seen4.dots >= 3, 'her colour shows: a big blob on the brush and a puff of it ' + JSON.stringify(seen4));
             assert.ok(b0.tray.every((x) => x.startsWith('lips')), 'and her colour step was three lipsticks: ' + b0.tray);
           }
           if (!b.done) {   // a tap inside the gap is refused: nothing changes
@@ -941,19 +993,40 @@ h.run(ID, async (t) => {
     assert.strictEqual((await api(page, 'marks'))[0].kiss, Math.min(3, k0 + 1), 'a lips tickle sends a kiss to the stylist');
     for (let i = 0; i < 4; i++) { await gameWait(page, 0.32); await tap(page, `${B(0)} .mk-mirror`, 0); }
     assert.strictEqual((await api(page, 'marks'))[0].kiss, 3, 'up to three kisses');
-    // the v2 gags: tickling a done friend wearing each one runs it and leaves its pieces as they were
-    await openMakeup(page, { length: 'short' });
-    await startAt(page, 'party');
-    await finishBoard(page, 0);
+    // her first face paint (a new kind, spec 4.5): a ✨ ×10 burst and a 'boost' as her step completes, and the kind is seen
+    await openMakeup(page, { length: 'short', kit: { done: 3, seen: ['stamp'] } });
+    await startAt(page, 'party', 'cheeks');
+    const her = await api(page, 'aSide');
+    assert.ok(await A(page, (a, s) => a.setTray(s, ['paint-star', 'heart', 'strawberry']), her), 'her tray: a face paint');
+    await page.evaluate(() => {
+      window.__boost = 0; window.__spark = [];
+      const play = MG.sfx.play;
+      MG.sfx.play = function (name) { if (name === 'boost') window.__boost++; return play.apply(this, arguments); };
+      new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.textContent === '✨') window.__spark.push(MG.current.ctx.time); }))).observe(MG.fx.layer(), { childList: true });
+    });
+    for (let i = 0; i < 8 && !(await boards(page))[her].done; i++) {
+      await page.evaluate(() => { window.__boost = 0; window.__spark = []; });   // (only the finishing tap counts)
+      await tap(page, i ? `${B(her)} .mk-mirror` : ITEM(her, 'paint-star'), 0);
+      await gameWait(page, 0.27);
+    }
+    const first = await page.evaluate(() => ({ boost: window.__boost, spark: window.__spark.length }));
+    assert.ok(first.boost === 1 && first.spark >= 10, 'her first face paint: a ✨ ×10 burst and a boost ' + JSON.stringify(first));
+    assert.ok((await api(page, 'kit')).seen.includes('paint') && (await saved(page)).seen.includes('paint'), 'and face paint is seen from now on');
+    // the v2 gags: tickling a done friend wearing each one runs that gag (the gag log) and leaves its pieces as they were
+    const GAG = { snout: 'snout', 'bee-nose': 'bee', teeth: 'teeth', roar: 'roar', claws: 'paws', 'hand-heart': 'paws', 'bunches-pink': 'hair', 'hair-sea': 'hair', spikes: 'spikes', 'ear-cherry': 'earring', wings: 'wings', 'heart-specs': 'hearts' };
     for (const [z, id] of [['nose', 'snout'], ['nose', 'bee-nose'], ['mouth', 'teeth'], ['mouth', 'roar'], ['paws', 'claws'], ['paws', 'hand-heart'], ['top', 'bunches-pink'],
       ['top', 'hair-sea'], ['top', 'spikes'], ['neck', 'ear-cherry'], ['neck', 'wings'], ['eyes', 'heart-specs']]) {
-      assert.ok(await A(page, (a, [z, id]) => a.wear(0, z, id), [z, id]), 'wear ' + id);
-      const n0 = await pieces(page, 0, z);
+      assert.ok(await A(page, (a, [s, z, id]) => a.wear(s, z, id), [her, z, id]), 'wear ' + id);
+      const n0 = await pieces(page, her, z);
       await gameWait(page, 0.32);
-      await tap(page, `${B(0)} .mk-mirror`, 0);
+      await page.evaluate(() => { window.__hearts = 0; window.__ho = new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.textContent === '💕') window.__hearts++; }))); window.__ho.observe(MG.fx.layer(), { childList: true }); });
+      await tap(page, `${B(her)} .mk-mirror`, 0);
+      assert.strictEqual((await api(page, 'gags')).slice(-1)[0], GAG[id], `tickling the ${id}: its own gag`);
+      const hearts = await page.evaluate(() => { window.__ho.disconnect(); return window.__hearts; });
+      if (id === 'heart-specs') assert.strictEqual(hearts, 4, 'the heart specs gag: a 💕 ×4 burst (spec 4.6), once');
       await page.waitForTimeout(100);
-      assert.strictEqual(await pieces(page, 0, z), n0, `the ${id} gag leaves its ${n0} pieces`);
-      await A(page, (a, z) => a.wear(0, z, null), z);
+      assert.strictEqual(await pieces(page, her, z), n0, `the ${id} gag leaves its ${n0} pieces`);
+      await A(page, (a, [s, z]) => a.wear(s, z, null), [her, z]);
     }
     // a soap-bubble glitter sneezes too (a sparkle flies: the bubbles have no emoji)
     await openMakeup(page, { length: 'short' });
@@ -974,6 +1047,7 @@ h.run(ID, async (t) => {
     await toPose('party');
     assert.ok(await A(page, (a) => a.setTray(0, ['peek', 'wave', 'kiss'])) && await A(page, (a) => a.setTray(1, ['hug', 'wave', 'kiss'])));
     await tap(page, ITEM(0, 'peek'), 0);
+    const tPeek = await page.evaluate(() => MG.current.ctx.time);
     assert.strictEqual(await page.locator('.g-makeup .mk-board[data-side="0"] .mk-peek').count(), 2, 'peekaboo: two hands over the eyes in the mirror');
     // the "boo!": at 1.3s the hands have slid apart, still inside the glass and clear of both eyes (the hand's em is its own
     // 17-model-em font-size, so a slide in em goes 17 times as far as the model's em)
@@ -999,18 +1073,27 @@ h.run(ID, async (t) => {
     });
     const booWhy = boo.why; delete boo.why;
     assert.deepStrictEqual(boo, { anims: [1, 1], covered: true, inGlass: [true, true], clear: [true, true], apart: true }, 'peekaboo: the hands slide apart beside the face (inside the glass, eyes uncovered) and back ' + booWhy);
+    // the hug ends the round before peekaboo's giggle (+1.1s) is due: the giggle never comes once the finale has begun
+    await page.evaluate(() => { window.__pb = []; const b = document.querySelector('.g-makeup .mk-board[data-side="0"] .mk-bubble'); new MutationObserver(() => { if (b.classList.contains('is-on')) window.__pb.push(MG.current.ctx.time); }).observe(b, { attributes: true, attributeFilter: ['class'] }); });
     await tap(page, ITEM(1, 'hug'), 0);
+    assert.ok(await page.evaluate(() => MG.current.ctx.time) < tPeek + 0.9, 'the round ends before the peekaboo giggle is due');
     await page.waitForSelector('.g-makeup .mk-frame.is-posed', { timeout: 4000 });
+    await page.waitForFunction((t) => MG.current.ctx.time >= t + 1.3, tPeek, { timeout: 4000 });
+    assert.deepStrictEqual(await page.evaluate((t) => window.__pb.filter((x) => x > t + 0.5), tPeek), [], 'no peekaboo giggle in the finale');
     const hug = await page.evaluate(() => ({
+      pawBg: getComputedStyle(document.querySelector('.g-makeup .mk-fslot[data-side="r"] .mk-hugpaw')).backgroundColor,
       hug: document.querySelector('.g-makeup .mk-frame').classList.contains('is-hug'),
       heart: document.querySelectorAll('.g-makeup .mk-fshot .mk-fheart').length,
       paw: document.querySelectorAll('.g-makeup .mk-fslot[data-side="r"] .mk-hugpaw').length + ':' + document.querySelectorAll('.g-makeup .mk-fslot[data-side="l"] .mk-hugpaw').length,
       peek: [...document.querySelectorAll('.g-makeup .mk-fslot[data-side="r"] .mk-posed')].filter((n) => n.textContent.includes('✋')).map((n) => n.querySelector('.mk-pc').classList.contains('mk-peek')),
       bubs: [...document.querySelectorAll('.g-makeup .mk-fbub')].map((n) => n.textContent),
     }));
+    const pawBg = hug.pawBg; delete hug.pawBg;
     assert.deepStrictEqual(hug, { hug: true, heart: 1, paw: '1:0', peek: [false, false], bubs: ['😮', '😍'] }, 'a hug: the friends lean together with a heart, the hugger\'s paw on the other; peekaboo with open hands; each reacts to the other\'s pose');
     const ph2 = (await saved(page)).photos[0];
     assert.deepStrictEqual([ph2.l.o, ph2.r.o], ['hug', 'peek'], 'the saved photo: the hug on the left friend (made up on board 1), the peekaboo on the right');
+    const furs = await A(page, (a, es) => es.map((e) => { const x = document.createElement('i'); x.style.background = a.ANIMALS[e].fur; document.body.appendChild(x); const c = getComputedStyle(x).backgroundColor; x.remove(); return c; }), [ph2.l.e, ph2.r.e]);
+    assert.ok(ph2.l.e !== ph2.r.e && pawBg === furs[0] && pawBg !== furs[1], `the paw on the hugged friend is the hugger's fur (${ph2.l.e} ${furs[0]}), not its own (${ph2.r.e} ${furs[1]}): ${pawBg}`);
     await t.waitForWin(page, 8000);
     // the cicak scuttles along a mirror while the friends admire each other, and is gone again
     await openMakeup(page, { length: 'short', kit: WHOLE });
@@ -1085,9 +1168,21 @@ h.run(ID, async (t) => {
       await openMakeup(p, { length: 'short', dabs: 'few', kit: { done: 3 } });
       await p.evaluate(() => { MG.timeScale = 8; });
       await startAt(p, 'party', 'pose');
-      assert.ok(await A(p, (a) => a.setTray(0, ['hooray', 'kiss', 'ears'])) && await A(p, (a) => a.setTray(1, ['hug', 'wave', 'kiss'])));
-      await tap(p, ITEM(0, 'hooray'), 0);
-      await tap(p, ITEM(1, 'hug'), 0);
+      assert.ok(await A(p, (a) => a.setTray(0, ['hug', 'wave', 'kiss'])) && await A(p, (a) => a.setTray(1, ['hooray', 'kiss', 'ears'])));
+      await tap(p, ITEM(0, 'hug'), 0);
+      // the mirror's 💞 is never under the reaction bubble (the bubble at full size, the heart popped in; board 0's bubble
+      // and the old heart were both at the mirror's right)
+      const under = await p.evaluate(() => {
+        const bd = document.querySelector('.g-makeup .mk-board[data-side="0"]'), h = [...bd.querySelectorAll('.mk-layer[data-zone="pose"] .mk-at')].find((n) => n.textContent.includes('💞'));
+        h.getAnimations({ subtree: true }).forEach((an) => an.finish());
+        const bub = bd.querySelector('.mk-bubble');
+        bub.style.transition = 'none'; bub.style.transform = 'none';
+        const q = h.querySelector('.mg-sticker').getBoundingClientRect(), r = bub.getBoundingClientRect();
+        bub.style.transform = ''; bub.style.transition = '';
+        return +(Math.max(0, Math.min(q.right, r.right) - Math.max(q.left, r.left)) * Math.max(0, Math.min(q.bottom, r.bottom) - Math.max(q.top, r.top)) / (q.width * q.height)).toFixed(2);
+      });
+      assert.ok(under <= 0.1, `the hug's 💞 shows beside the reaction bubble, not under it ${label}: ${under} covered`);
+      await tap(p, ITEM(1, 'hooray'), 0);
       await p.evaluate(() => { MG.timeScale = 0.5; });
       await p.waitForSelector('.g-makeup .mk-frame.is-posed.is-hug', { timeout: 6000 });
       if (vp === 'small' && !mode) assert.ok(await p.evaluate(() => [...document.querySelectorAll('.mg-particle--emoji')].filter((n) => n.textContent === '🎉').length >= 9), 'hooray: a 🎉 burst from that friend (on top of the party\'s own three)');
@@ -1098,10 +1193,27 @@ h.run(ID, async (t) => {
       await p.evaluate(() => { MG.timeScale = 1; });
       await p.waitForSelector('.g-makeup .mk-gift.is-open', { timeout: 4000 });
       assert.strictEqual(await p.evaluate(() => document.querySelector('.g-makeup .mk-gift__in').textContent), '👝', 'the present is the bag');
+      // its six new things stand in a ring round the bag: whole on screen, clear of the bag, of each other and of both faces.
+      // (Measured in their hold, 450ms in: every chip has flown out and settled by 273ms and fades from 722ms. The chips are
+      // made as the bag opens; their animations are held at 450ms for the measuring, then put back where they were.)
+      const fan = await p.evaluate(() => {
+        const held = [...document.querySelectorAll('.g-makeup .mk-fan')].flatMap((n) => n.getAnimations()).map((an) => [an, an.currentTime, an.playState]);
+        held.forEach(([an]) => { an.pause(); an.currentTime = 450; });
+        const R = (n) => n.getBoundingClientRect(), g = R(document.querySelector('#mg-game')), gift = R(document.querySelector('.g-makeup .mk-gift'));
+        const bag = { left: gift.left + gift.width * 0.2, right: gift.right - gift.width * 0.2, top: gift.top + gift.height * 0.2, bottom: gift.bottom - gift.height * 0.2 };
+        const meet = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) > 4;
+        const cs = [...document.querySelectorAll('.g-makeup .mk-fan')], rs = cs.map(R), heads = [...document.querySelectorAll('.g-makeup .mk-board .mk-head')].map(R);
+        const res = { n: cs.length, held: held.length, shown: cs.every((n) => +getComputedStyle(n).opacity > 0.9), onScreen: rs.every((r) => r.left >= g.left && r.right <= g.right && r.top >= g.top && r.bottom <= g.bottom),
+          clearOfBag: rs.every((r) => !meet(r, bag)), apart: rs.every((r, i) => rs.every((q, j) => i === j || !meet(r, q))), clearOfFaces: rs.filter((r) => heads.some((h) => meet(r, h))).length };
+        held.forEach(([an, t, st]) => { an.currentTime = t; if (st !== 'paused') an.play(); });
+        return res;
+      });
+      assert.deepStrictEqual(fan, { n: 6, held: 6, shown: true, onScreen: true, clearOfBag: true, apart: true, clearOfFaces: 0 }, 'the bag\'s fan ' + label);
       await p.waitForTimeout(250);
       await layoutChecks(t, p, 'gift ' + label);
       await t.shot(p, `${ID}-${tag}-gift.png`);
       await t.waitForWin(p, 6000);
+      assert.strictEqual(await p.locator('.g-makeup .mk-fan').count(), 0, 'the fan is gone before the party overlay ' + label);
       await p.close();
     }
     lap(9);
@@ -1307,7 +1419,7 @@ h.run(ID, async (t) => {
     await openMakeup(page, { length: 'short', kit: { v: 1, done: 13, looks, photos } });
     const m0 = await page.evaluate(() => ({ cards: [...document.querySelectorAll('.g-makeup .mk-card')].map((n) => n.dataset.id).join(), sil: document.querySelector('.g-makeup .mk-next .mk-next__sil').textContent, tag: document.querySelector('.g-makeup .mk-next .mk-next__tag').textContent }));
     assert.deepStrictEqual(m0, { cards: OLDP.join(), sil: '🐠', tag: '👝' }, 'an old salon: its eight cards in place, the sea next, the bag first');
-    await page.evaluate(() => { window.__fan = 0; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.classList && n.classList.contains('mk-flyer') && n.querySelector('.mk-ico, .mk-ico-e')) window.__fan++; }))).observe(document.querySelector('.g-makeup'), { childList: true }); });
+    await page.evaluate(() => { window.__fan = 0; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.classList && n.classList.contains('mk-fan') && n.querySelector('.mk-ico, .mk-ico-e')) window.__fan++; }))).observe(document.querySelector('.g-makeup'), { childList: true }); });
     const r = await followHand(page, 600);
     assert.ok(r.over, 'a Short round');
     await page.waitForSelector('.g-makeup .mk-gift.is-open', { timeout: 6000 });
@@ -1390,6 +1502,15 @@ h.run(ID, async (t) => {
 
   // --- 17. the guest step: in Full it takes the last extra's place (never one step more); an old salon gets no paws before its bag
   if (part(17)) {
+    // the coin (spec 3.1: roll('guest', 0.5)): 1 Full round in 2 has a guest step, with nothing forced. (Math.random is held
+    // just under and just over a half while the party starts.)
+    for (const [v, guest] of [[0.49, true], [0.51, false], [0.01, true], [0.99, false]]) {
+      await openMakeup(page, { kit: WHOLE });
+      await A(page, (a, v) => { const r0 = Math.random; Math.random = () => v; try { a.start('party'); } finally { Math.random = r0; } }, v);
+      await stateIs(page, 'zone');
+      const zs = (await api(page, 'zones')).join();
+      assert.strictEqual(zs !== 'wash,cheeks,eyes,mouth,neck,top,sparkle,pose', guest, `the coin at ${v}: ${guest ? 'a guest step' : 'the plain steps'} (${zs})`);
+    }
     await openMakeup(page, { kit: WHOLE });
     const seen = new Set();
     for (let i = 0; i < 4; i++) {

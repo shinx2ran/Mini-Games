@@ -196,7 +196,7 @@
       { extra: true, a: { do: 'shake', e: '🍬', dots: 'rainbow', n: 3 },   b: { do: 'shake', e: '🍫', dots: '#5A3A22', n: 3 } },
       { a: { do: 'garnish', e: '🍒' },                                      b: { do: 'fetch', e: '🍪', jars: ['🍪', '🧂', '🌶️'], to: 'mid' } },
       { a: { do: 'taste' }, b: { do: 'taste' } }] },
-    salad: { e: '🍇', vessel: 'bowl', stir: 'swish', taste: 'cold', beats: [   // Salad Buah: creamy dressing and a cheese storm
+    salad: { e: '🍇', vessel: 'bowl', stir: 'swish', batter: 'toss', taste: 'cold', beats: [   // Salad Buah: creamy dressing and a cheese storm (its stir is a toss of the fruit)
       { a: { do: 'wash', e: '🍎', n: 3, to: 'stay' },                      b: { do: 'wash', e: '🍈', n: 3, to: 'stay' } },
       { a: { do: 'chop', e: '🍎', n: 3, to: 'mid' },                       b: { do: 'chop', e: '🍈', n: 4, to: 'mid' } },
       { a: { do: 'pick', choices: ['🍓', '🥭', '🍉'] },                     b: { do: 'squeeze', prop: 'bag', e: '🥛', liquid: '#FFF8EE', out: 'drizzle', n: 2 } },   // her fruit; the dressing
@@ -949,7 +949,7 @@
           var s = CSLOTS[p.slot], lk = landed(p);
           // what she cooked sits above the chopped bits (is-keep); what she chose sits at the normal height, under the sauces
           var tok = TOKENS.indexOf(p.e) >= 0;
-          var n = el('span', { class: 'kt-piece' + (p.keep && !p.pick ? ' is-keep' : '') + lk.cls, 'data-e': p.e, style: { left: s[0] + '%', top: s[1] + '%', '--r': (p.e === 'lolly' ? 0 : p.r) + 'deg', animationDelay: lk.delay } },
+          var n = el('span', { class: 'kt-piece' + (p.keep && !p.pick ? ' is-keep' : '') + (p.baked && isShape(p.e) ? ' is-cookie' : '') + lk.cls, 'data-e': p.e, style: { left: s[0] + '%', top: s[1] + '%', '--r': (p.e === 'lolly' ? 0 : p.r) + 'deg', animationDelay: lk.delay } },
             p.e === 'yolk' ? el('span', { class: 'kt-yolk' }) : p.e === 'jelly' ? jellyEl(p.c) : tok ? tokenEl(p.e, p.c) : isShape(p.e) ? cookieEl(p.e, p.baked ? 'baked' : 'raw') : ctx.sticker(p.e));
           if (v.glaze && recipe && p.e === recipe.e) n.appendChild(el('span', { class: 'kt-glaze', 'data-look': recipe.glaze || '', style: { '--c': v.glaze } }));
           contentsEl.appendChild(n);
@@ -1569,7 +1569,7 @@
           dishEl.dataset.choice = e;
           // a colour: the disc behind the dish, and one of what she chose beside it (colour and shape both say which)
           if (pk.paint) { dishEl.appendChild(el('span', { class: 'kt-dish__disc', style: { '--c': pk.paint[choice] } })); dishEl.appendChild(el('span', { class: 'kt-dish__top', 'data-i': '2' }, ctx.sticker(e))); }
-          else for (var t = 0; t < 3; t++) dishEl.appendChild(el('span', { class: 'kt-dish__top', 'data-i': String(t) }, recipe.shape ? cookieEl(e, 'baked') : ctx.sticker(e)));   // (kue kering: three baked cookies of her shape)
+          else for (var t = 0; t < 3; t++) dishEl.appendChild(el('span', { class: 'kt-dish__top' + (recipe.shape ? ' is-cookie' : ''), 'data-i': String(t) }, recipe.shape ? cookieEl(e, 'baked') : ctx.sticker(e)));   // (kue kering: three baked cookies of her shape)
         }
         dishEl.appendChild(el('span', { class: 'kt-dish__main' }, dishSticker(recipeId, null, variantColour())));
         if (u.helpers.herbs) dishEl.appendChild(el('span', { class: 'kt-dish__herb' }, ctx.sticker('🌿')));
@@ -1721,6 +1721,18 @@
           o.style.setProperty('--turn', '0deg');
           o.style.setProperty('--batter', batterOf());        // (her colour on a '$c' dish: never the raw token)
           b.parts = { spoon: spoon };
+          if (recipe.batter === 'toss') {
+            // salad buah: no batter, the fruit itself tosses round the bowl (a little dressing on it)
+            var pk = pickOf(recipe), fr = [pk ? pk.choices[variant()] : '🍓', '🍎', '🍈', pk ? pk.choices[variant()] : '🍓', '🍎'];
+            var toss = el('span', { class: 'kt-toss' });
+            fr.forEach(function (e, i) { toss.appendChild(el('i', { 'data-i': String(i) }, ctx.sticker(e))); });
+            var drs = el('span', { class: 'kt-toss__dressing' });   // (the creamy dressing zigzag on the fruit: the dish's drizzle look)
+            drs.innerHTML = '<svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true"><polyline points="2,10 14,3 26,17 38,3 50,17 62,3 74,17 86,3 98,10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+            toss.appendChild(drs);
+            o.classList.add('is-toss');
+            o.insertBefore(toss, spoon);
+            b.parts.toss = toss;
+          }
         },
         pour: function (b, o) {
           var job = b.job, jug = el('span', { class: 'kt-jug', style: { '--liq': job.liquid } }, el('span', { class: 'kt-jug__body' }), el('span', { class: 'kt-jug__band' }), el('span', { class: 'kt-jug__label' }, ctx.sticker(job.e)));
@@ -2024,6 +2036,9 @@
           vesselEl.style.setProperty('--spin' + b.side, (b.turns * 90) + 'deg');
           var snd = recipe.stir || 'swish';
           if (snd === 'sizzle') S.sizzle(0.06); else if (snd === 'clink') S.clink(); else S.swish();
+          if (b.parts.toss) [].forEach.call(b.parts.toss.children, function (f, i) {   // (salad buah: the fruit jumps)
+            anim(f, [{ transform: 'translateY(0)' }, { transform: 'translateY(-' + (40 + 15 * (i % 3)) + '%) rotate(' + (i % 2 ? -25 : 25) + 'deg)' }, { transform: 'translateY(0)' }], 260 + 30 * (i % 3));
+          });
           sfx.scale(b.k + 2);
           b.k++;
           if (b.k >= b.n) sfx.play('good');
@@ -2269,8 +2284,9 @@
         },
         squeeze: function (b) {
           var job = b.job, p = b.parts;
-          S.squish(b.k); sfx.scale(b.k + 1);
+          S.squish(b.k);
           if (job.prop === 'press') {
+            sfx.scale(b.k + 1);                                // (the bag counts aloud instead: one note a squeeze)
             anim(p.plunger, [{ transform: 'translateY(0)' }, { transform: 'translateY(150%)' }, { transform: 'translateY(0)' }], 220);
             b.k++;
             b.obj.style.setProperty('--sq', (b.k / b.n).toFixed(2));
@@ -2386,6 +2402,8 @@
         });
         else if (g === 'worm') at(first ? 600 : 0, function () {
           var w = el('span', { class: 'kt-wormdangle', style: { '--c': variantColour() } });
+          // a fat, wriggly worm in her colour (an outline, her colour, a shine), hanging from the mouth
+          w.innerHTML = '<svg viewBox="0 0 40 72" aria-hidden="true"><path class="o" d="M20 8 C 8 20, 32 30, 20 42 S 9 56, 20 64"/><path class="c" d="M20 8 C 8 20, 32 30, 20 42 S 9 56, 20 64"/><path class="s" d="M16 16 C 12 20, 14 24, 18 28"/></svg>';
           chef.appendChild(w);
           ctx.after(700, function () {
             if (!w.isConnected) return;

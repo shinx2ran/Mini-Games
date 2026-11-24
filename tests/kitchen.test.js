@@ -180,6 +180,12 @@ function followHand(page, max = 400, pauseFor = [], o = {}) {
         const v = a.vessel;
         last = { contents: v.contents, obj: objNow(), picks: v.picks, scoops: v.scoops, base: v.base, baked: v.baked, bands: v.bands, tokens: v.tokens, cookies: v.cookies,
           plate: v.plate, glaze: v.glaze, kept: v.kept, level: v.level, drizzles: v.drizzles,
+          // (the size of a baked cookie on the plate, against the dish)
+          // (klepon on the leaf: a darker rim on each ball, and the coconut sprinkled round them, never over them)
+          klepon: (() => { const b = document.querySelector('.g-kitchen .kt-contents .kt-tok--klepon > i'), d = document.querySelector('.g-kitchen .kt-contents .kt-dot'); if (!b) return null; const pc = b.closest('.kt-piece'); return { rim: /inset/.test(getComputedStyle(b).boxShadow), size: +(parseFloat(getComputedStyle(pc).fontSize) / parseFloat(getComputedStyle(pc).getPropertyValue('--vessel'))).toFixed(2), under: !!d && +getComputedStyle(d).zIndex < +getComputedStyle(pc).zIndex }; })(),
+          // (the drawn tokens in the dish as painted: each in the colour the model gives it, never tokenEl's fallback)
+          tokDom: [...document.querySelectorAll('.g-kitchen .kt-contents .kt-tok')].map((n) => n.style.getPropertyValue('--c')),
+          cookieFs: [...document.querySelectorAll('.g-kitchen .kt-contents .kt-piece.is-cookie')].map((n) => +(parseFloat(getComputedStyle(n).fontSize) / parseFloat(getComputedStyle(n).getPropertyValue('--vessel'))).toFixed(2)),
           // (what the screen says with the dish full: a token's name, say klepon, must never show as words)
           text: document.querySelector('.g-kitchen').innerText.replace(/\p{Extended_Pictographic}|\p{Emoji_Modifier}|[\u{FE0F}\u{200D}\u{20E3}]|\s/gu, '') };
         if (pauseFor.includes(a.recipe)) return { paused: true, steps, bad, herOk, picked, last, pickAt, recipe: a.recipe };   // (the caller looks, then calls again)
@@ -322,7 +328,13 @@ async function buntingShows(t, p, label) {
   t.assert.ok(area > 0 && changed >= 0.8 * area, `the bunting shows across the window ${label}: ${changed} changed pixels for ${Math.round(area)} of flags`);
 }
 
-/** Part 9's v3 checks at one size: the full v3 menu (three tabs of eight), and every new job and prop fits, with a full
+/** After the POP: the whole lolly (its rendered box) sits above the mould's top edge, clear of it. */
+const lollyFree = (p, sel) => p.evaluate((sel) => {
+  const o = document.querySelector(sel + ' .kt-obj'), l = o.querySelector('.kt-lolly').getBoundingClientRect(), m = o.querySelector('.kt-mould').getBoundingClientRect();
+  return l.bottom <= m.top + 0.5;
+}, sel);
+
+/** Part 9's v3 checks at one size:the full v3 menu (three tabs of eight), and every new job and prop fits, with a full
  *  shelf of 14 (the most there can be: five helpers, six decorations, three chicks). */
 async function v3Sizes(t, p, vp, jobs) {
   const { assert } = t;
@@ -386,6 +398,7 @@ async function v3Sizes(t, p, vp, jobs) {
         for (let k = 0; k < bs[0].n; k++) { await tapJob(p, 0, 1, 0); await gameWait(p, 0.2); }
         await p.waitForTimeout(420);
         assert.ok(await p.evaluate(() => !!document.querySelector('.g-kitchen .kt-board[data-side="0"] .kt-obj.is-pop')), 'popped ' + label);
+        assert.ok(await lollyFree(p, board(0)), 'the lolly is right out of its mould ' + label);
         await jobsInside(t, p, `${label}, popped`);
       }
     }
@@ -624,6 +637,9 @@ h.run(ID, async (t) => {
     const src = fs.readFileSync(path.join(h.ROOT, 'js', 'games', 'kitchen.js'), 'utf8').replace(/️/g, '');
     const found = [...new Set(src.match(/\p{Extended_Pictographic}/gu))];
     assert.deepStrictEqual(found.filter((e) => !ALLOWED.includes(e)), [], 'only emoji from the allowed list');
+    // the timer audit: every game timer goes through ctx.after / later(), and ctx.lock is never used (comments aside)
+    const code = src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+    assert.deepStrictEqual(code.match(/\b(setTimeout|setInterval|requestAnimationFrame)\s*\(|ctx\.lock\s*\(/g), null, 'every timer goes through ctx.after / later(); ctx.lock is never used');
   }
 
   // --- 2. a whole round with real taps: fresh kitchen, she is on the left, help off, Full, Normal
@@ -825,10 +841,13 @@ h.run(ID, async (t) => {
       // the new dishes, at their last step, in her first choice (the hand chooses bowl 0)
       const L = r.last, c0 = PK[r.recipe].choices[0], p0 = PK[r.recipe].paint && PK[r.recipe].paint[0];
       const toks = (e) => L.tokens.filter((x) => x.e === e);
+      assert.deepStrictEqual(L.tokDom, L.tokens.map((x) => x.c), `${r.recipe}: every drawn token in the dish is painted in its own colour`);
       const allP0 = (list) => list.every((x) => x.c.toLowerCase() === p0.toLowerCase());
       if (r.recipe === 'roti') assert.ok(L.kept.filter((e) => e === '🥪').length === 2 && L.glaze && L.glaze.toLowerCase() === p0.toLowerCase(), `roti: two sandwiches, her spread inside: ${JSON.stringify(L)}`);
       if (r.recipe === 'klepon') assert.ok(toks('klepon').length === 2 && allP0(toks('klepon')) && L.plate === 'leaf', `klepon: two klepon in her colour on a banana leaf: ${JSON.stringify(L)}`);
-      if (r.recipe === 'kering') assert.deepStrictEqual(L.cookies, [c0, c0], 'kue kering: two baked cookies of her shape');
+      if (r.recipe === 'klepon') assert.deepStrictEqual(L.klepon, { rim: true, size: 0.24, under: true }, 'klepon: big balls with a darker rim, the grated coconut round them');
+      if (r.recipe === 'kering') assert.deepStrictEqual([L.cookies, L.cookieFs], [[c0, c0], [0.21, 0.21]], 'kue kering: two baked cookies of her shape (a little bigger than a sticker in the dish)');
+      else assert.deepStrictEqual(L.cookieFs, [], `${r.recipe}: no cookie-sized pieces`);
       if (r.recipe === 'lapis') assert.ok(L.bands.length === 12 && L.bands.every((c) => c === p0 || c === '#FFF8EE') && L.bands.includes(p0) && L.bands.includes('#FFF8EE'), `kue lapis: twelve stripes, hers and santan: ${L.bands}`);
       if (r.recipe === 'lilin') assert.ok(toks('lolly').length === 2 && allP0(toks('lolly')), `es lilin: two lollies in her colour: ${JSON.stringify(L.tokens)}`);
       if (r.recipe === 'cendol') assert.ok(toks('worms').length >= 2 && allP0(toks('worms')) && L.level > 0, `es cendol: worms in her colour in a filled glass: ${JSON.stringify(L)}`);
@@ -1533,25 +1552,38 @@ h.run(ID, async (t) => {
     assert.strictEqual((await api(page, 'vessel')).sauce, '#D9452B', 'pizza: tomato sauce on the base');    // the new dishes: each of her three choices shows on the finished dish (her colour's disc, or three baked cookies or
     // three fruit; the drawn dishes in her colour) and is marked on the menu card
     const PK = await picksOf(page);
-    const ARTS = ['klepon', 'lapis', 'lilin', 'cendol'];
+    const ARTS = ['klepon', 'lapis', 'lilin', 'cendol'], TOKD = ['klepon', 'lilin', 'cendol', 'kepal'];
     for (const id of NEW8) {
       for (const V of [0, 1, 2]) {
         await openKitchen(page, V || id !== NEW8[0] ? { keep: true, scale: 8 } : { kitchen: FULL3, scale: 8 });
         await startAt(page, id, PK[id].at);
         await choose(page, V);
-        await A(page, (a) => a.jump(a.beats.length - 1));
+        // the drawn dishes (her klepon, kepal, lollies, cendol worms) are cooked for real at her second and third
+        // colour: each token in the dish is painted paint[V] (part 3 sees only paint[0], which for klepon and cendol is
+        // also tokenEl's fallback green)
+        const played = TOKD.includes(id) && V > 0;
+        if (played) await playTo(page, (await api(page, 'beats')).length - 1);
+        else await A(page, (a) => a.jump(a.beats.length - 1));
         await page.waitForFunction(() => MG.current.api.state === 'beat' && MG.current.api.boards.every((b) => b.do === 'taste'), null, { timeout: 5000 });
         await gameWait(page, 0.35);
+        if (played) {
+          const tk = await page.evaluate(() => ({ model: MG.current.api.vessel.tokens.map((x) => x.c), dom: [...document.querySelectorAll('.g-kitchen .kt-contents .kt-tok')].map((n) => n.style.getPropertyValue('--c')) }));
+          const want = PK[id].paint[V];
+          assert.ok(tk.dom.length >= 2 && tk.dom.every((c) => c.toLowerCase() === want.toLowerCase()) && tk.model.every((c) => c.toLowerCase() === want.toLowerCase()), `${id} ${V}: every drawn token in the dish is in her colour ${want}: ${JSON.stringify(tk)}`);
+        }
         await tapJob(page, 0, 1, 0); await tapJob(page, 1, 1, 0);
         await page.waitForFunction(() => !document.querySelector('.g-kitchen .kt-dish').hidden, null, { timeout: 5000 });
         const d = await page.evaluate(() => {
           const d = document.querySelector('.g-kitchen .kt-dish'), disc = d.querySelector('.kt-dish__disc'), art = d.querySelector('.kt-dish__main .kt-art');
-          return { disc: disc ? disc.style.getPropertyValue('--c') : null, tops: [...d.querySelectorAll('.kt-dish__top')].map((n) => n.textContent), cookies: d.querySelectorAll('.kt-dish__top .kt-cookie.is-baked').length, art: art ? art.style.getPropertyValue('--c') : null };
+          return { disc: disc ? disc.style.getPropertyValue('--c') : null, tops: [...d.querySelectorAll('.kt-dish__top')].map((n) => n.textContent), cookies: d.querySelectorAll('.kt-dish__top .kt-cookie.is-baked').length, art: art ? art.style.getPropertyValue('--c') : null,
+            top: d.querySelector('.kt-dish__top') ? +(parseFloat(getComputedStyle(d.querySelector('.kt-dish__top')).fontSize) / parseFloat(getComputedStyle(d).getPropertyValue('--vessel'))).toFixed(2) : null };
         });
         const pk = PK[id], e = pk.choices[V];
         if (pk.paint) assert.deepStrictEqual([d.disc, d.tops], [pk.paint[V], [e]], `${id} ${V}: the finished dish shows her colour and one of what she chose`);
         else assert.deepStrictEqual([d.disc, d.tops, d.cookies], [null, [e, e, e], id === 'kering' ? 3 : 0], `${id} ${V}: the finished dish shows three of what she chose${id === 'kering' ? ', baked cookies' : ''}`);
         assert.strictEqual(d.art, ARTS.includes(id) ? pk.paint[V] : null, `${id} ${V}: a drawn dish is in her colour`);
+        // (kue kering's cookies are a little bigger than the other dishes' stickers there, so her shape reads)
+        assert.strictEqual(d.top, id === 'kering' ? 0.2 : 0.15, `${id} ${V}: the size of what she chose around the finished dish`);
         assert.strictEqual((await api(page, 'kitchen')).made[id], [1, 3, 7][V], `${id} ${V}: the kitchen remembers the choice`);
       }
     }
@@ -1724,8 +1756,12 @@ h.run(ID, async (t) => {
     await startAt(page, 'kering', 4);
     let v0 = await api(page, 'vessel');
     const bag = [];
-    for (let k = 0, n = (await her(page)).n; k < n; k++) { await tapHer(page); const v = await api(page, 'vessel'); bag.push([v.pieces - v0.pieces, v.dots]); }
+    // (spec 3.4: a squeeze of the bag counts aloud, one scale note, and squishes; never a second note)
+    await page.evaluate(() => { const s = MG.sfx; s.__kts = s.scale; window.__notes = 0; s.scale = function () { window.__notes++; return s.__kts.apply(this, arguments); }; });
+    for (let k = 0, n = (await her(page)).n; k < n; k++) { await tapHer(page); const v = await api(page, 'vessel'); bag.push([v.pieces - v0.pieces, v.dots, await page.evaluate(() => window.__notes)]); }
+    await page.evaluate(() => { MG.sfx.scale = MG.sfx.__kts; });
     assert.deepStrictEqual(bag.map((x) => x[0]), [1, 2, 3], 'the icing bag: one squeeze, one more in the dish');
+    assert.deepStrictEqual(bag.map((x) => x[2]), [1, 2, 3], 'the icing bag: one note a squeeze (it counts aloud)');
     assert.ok(bag[2][1] >= 9 && (await api(page, 'vessel')).dotColors.includes('#FFFFFF'), 'icing dots on the cookies');
     await openKitchen(page, { keep: true, scale: 2 });
     await startAt(page, 'salad', 2);
@@ -1734,6 +1770,15 @@ h.run(ID, async (t) => {
     for (let k = 0, n = (await boards(page))[bS].n; k < n; k++) { await tapJob(page, bS, 1, 0); await gameWait(page, 0.25); }
     const v1 = await api(page, 'vessel');
     assert.deepStrictEqual([v1.pieces - v0.pieces, v1.drizzles - v0.drizzles], [2, 2], 'the dressing: a zigzag a squeeze');
+    // the salad's stir is a toss: the fruit itself goes round both bowls (her fruit too), never a cake batter
+    await A(page, (a) => a.jump(3));
+    await page.waitForFunction(() => MG.current.api.boards.every((b) => b.do === 'stir'), null, { timeout: 5000 });
+    await gameWait(page, 0.35);
+    const fruit0 = (await picksOf(page)).salad.choices[0];
+    const toss = await page.evaluate(() => [0, 1].map((s) => { const o = document.querySelector(`.g-kitchen .kt-board[data-side="${s}"] .kt-obj`), t = o.querySelector('.kt-toss'); return { fruit: t ? [...t.querySelectorAll('.mg-sticker')].map((n) => n.textContent) : [], bowl: getComputedStyle(o.querySelector('.kt-mswirl')).backgroundColor }; }));
+    assert.ok(toss.every((x) => x.fruit.length === 5 && x.fruit.includes(fruit0) && x.fruit.includes('🍎') && x.fruit.includes('🍈') && x.bowl !== 'rgb(255, 244, 220)'), `the toss: fruit in both bowls, no cream batter: ${JSON.stringify(toss)}`);
+    await tapJob(page, 0, 1, 0);
+    assert.ok(await page.evaluate(() => { const f = [...document.querySelectorAll('.g-kitchen .kt-board[data-side="0"] .kt-toss > i')]; return f.length === 5 && f.every((n) => n.getAnimations().length > 0); }), 'a stir tap tosses the fruit');
     // pop: nothing until the last tap, then POP
     await openKitchen(page, { keep: true, scale: 2 });
     await startAt(page, 'lilin', 4);
@@ -1741,6 +1786,8 @@ h.run(ID, async (t) => {
     const pops = [];
     for (let k = 0, n = (await her(page)).n; k < n; k++) { await tapHer(page); pops.push(await page.evaluate((s) => document.querySelector(s + ' .kt-obj').classList.contains('is-pop'), hs)); }
     assert.deepStrictEqual(pops, [false, false, true], 'pop: wiggle, wiggle, POP');
+    await page.waitForTimeout(450);
+    assert.ok(await lollyFree(page, hs), 'POP: the lolly is right out of its mould');
     assert.ok(!(await api(page, 'vessel')).contents.includes('lolly'), 'no lolly in the dish before the merge');
     // boil: a tap while they cook never finishes; once they float, one tap scoops them out
     await openKitchen(page, { keep: true, scale: 1 });
@@ -1765,17 +1812,22 @@ h.run(ID, async (t) => {
       const gap = async () => { const t0 = C.time; await until(() => C.time - t0 > 0.2); };
       tapB(s); await gap(); tapB(1 - s); await gap(); tapB(s); await gap();
       const order = a.vessel.bands.slice();
-      let lids = 0, lidAt = null, was = false;
+      let lids = 0, lidAt = null, was = false, mergeAt = null, polling = true;
+      (function poll() { if (mergeAt === null && a.state === 'merge') mergeAt = C.time; if (polling) requestAnimationFrame(poll); })();   // (when the merge starts)
       const watch = new MutationObserver(() => { const on = document.querySelector('.g-kitchen .kt-vessel').classList.contains('has-lid'); if (on && !was) { lids++; if (lidAt === null) lidAt = C.time; } was = on; });
       watch.observe(document.querySelector('.g-kitchen .kt-vessel'), { attributes: true, attributeFilter: ['class'] });
       for (let k = 0; k < 12 && !(a.boards[0].done && a.boards[1].done); k++) { for (const b of [0, 1]) if (!a.boards[b].done) tapB(b); await gap(); }
       await until(() => a.beat === 3 && a.state === 'beat');
       const startAt3 = C.time;
       watch.disconnect();
-      return { order, lids, wait: lidAt === null ? null : +(startAt3 - lidAt).toFixed(2) };
+      polling = false;
+      return { order, lids, wait: lidAt === null ? null : +(startAt3 - lidAt).toFixed(2), merge: mergeAt === null ? null : +(startAt3 - mergeAt).toFixed(2) };
     });
     assert.deepStrictEqual(stripes.order, [PK.lapis.paint[0], '#FFF8EE', PK.lapis.paint[0]], 'tap her, him, her: her stripe, santan, her stripe');
     assert.ok(stripes.lids === 1 && stripes.wait !== null && stripes.wait <= 1.5, `the lid steams once, and the next step comes within 1.5s of it (${JSON.stringify(stripes)})`);
+    // (and from the start of the merge, the whole of it: the pours fly in, the lid steams, the next step; a slower
+    //  merge, a later lid, fails here even when the lid's own 1.2s is untouched)
+    assert.ok(stripes.merge !== null && stripes.merge <= 2.5, `the whole steam merge takes at most 2.5s (${JSON.stringify(stripes)})`);
     // the gags: klepon squirts palm sugar, es lilin a coloured tongue, kue lapis peels, es kepal freezes the brain
     const tasteAt = async (id, sec, fn) => {
       await openKitchen(page, { keep: true, scale: 1 });
@@ -1792,10 +1844,14 @@ h.run(ID, async (t) => {
     assert.ok(await tasteAt('klepon', 0.45, 'function (b) { return b.classList.contains("has-splat"); }'), 'klepon: palm sugar squirts onto the taster');
     const tongue = await tasteAt('lilin', 0.8, 'function (b) { return [b.classList.contains("has-tongue"), b.querySelector(".kt-tongue").style.getPropertyValue("--c"), b.querySelector(".kt-face").textContent]; }');
     assert.deepStrictEqual(tongue, [true, PK.lilin.paint[0], '😛'], 'es lilin: a tongue in her colour');
+    // (big enough to cover the emoji's own tongue: a third of the face wide, below its middle, a rounded tip)
+    const tg = await page.evaluate(() => { const n = document.querySelector('.g-kitchen .kt-board.has-tongue .kt-tongue'), f = n.parentElement.querySelector('.kt-face'), r = n.getBoundingClientRect(), q = f.getBoundingClientRect(), fs = parseFloat(getComputedStyle(n.parentElement).fontSize); return { w: n.offsetWidth / fs, h: n.offsetHeight / fs, dx: Math.abs((r.left + r.right) - (q.left + q.right)) / 2, below: r.top > (q.top + q.bottom) / 2, tip: getComputedStyle(n).borderBottomLeftRadius !== '0px' }; });
+    assert.ok(tg.w >= 0.33 && tg.h >= 0.38 && tg.dx <= 3 && tg.below && tg.tip, `es lilin: the tongue covers the emoji's own: ${JSON.stringify(tg)}`);
     assert.ok(await tasteAt('lapis', 0.15, 'function (b) { return !!document.querySelector(".g-kitchen .kt-peelfly"); }'), 'kue lapis: a stripe peels off and flies to the taster');
     assert.strictEqual(await tasteAt('kepal', 0.7, 'function (b) { return b.querySelector(".kt-face").textContent; }'), '🥶', 'es kepal: still shivering at 0.7s (a brain freeze)');
-    const wormGag = await tasteAt('cendol', 0.75, 'function (b) { const w = b.querySelector(".kt-wormdangle"); return !!w; }');
-    assert.ok(wormGag, 'es cendol: a worm dangles from the taster');
+    const wormGag = await tasteAt('cendol', 0.75, 'function (b) { const w = b.querySelector(".kt-wormdangle"); if (!w || !w.querySelector("svg .o")) return null; const sv = w.querySelector("svg").getBoundingClientRect(), fs = parseFloat(getComputedStyle(w.parentElement).fontSize), c = w.querySelector(".c"); return { thick: parseFloat(getComputedStyle(w.querySelector(".o")).strokeWidth) * sv.width / 40 / fs, c: w.style.getPropertyValue("--c"), paint: getComputedStyle(c).stroke, wiggle: w.getAnimations().some((a) => a.animationName === "kt-dangle") }; }');
+    // (a fat worm, about a third of the face thick: 8px on the smallest phone; in her colour; it wriggles)
+    assert.ok(wormGag && wormGag.thick >= 0.29 && wormGag.c === PK.cendol.paint[0] && near(wormGag.paint.match(/\d+/g).map(Number), rgbOf(PK.cendol.paint[0]), 2) && wormGag.wiggle, `es cendol: a fat worm in her colour dangles from the taster: ${JSON.stringify(wormGag)}`);
     await gameWait(page, 1.2);
     assert.strictEqual(await page.locator('.g-kitchen .kt-wormdangle').count(), 0, 'and is slurped up');
     // four fingers for a second on each new job (and on the pot once it floats): never past the taps, one step at a time

@@ -583,6 +583,17 @@
 .g-kitchen .kt-mswirl i + i { inset: 34%; border-top-color: transparent; border-bottom-color: var(--pc); }
 .g-kitchen .kt-spoon { left: 0; top: 0; width: 100%; height: 100%; transform: translateY(8%) rotate(var(--turn)); transition: transform 0.25s ease-out; }
 .g-kitchen .kt-spoon > .mg-sticker { position: absolute; left: 38%; top: 2%; font-size: 0.48em; transform: rotate(-12deg); }
+/* salad buah: its stir is a toss, the fruit itself (no batter) goes round the bowl, the dressing on it */
+.g-kitchen .kt-obj.is-toss .kt-mswirl { background: var(--kt-bowl); }
+.g-kitchen .kt-toss { left: 21%; top: 33%; width: 0.56em; height: 0.56em; transform: rotate(var(--turn)); transition: transform 0.25s ease-out; }
+.g-kitchen .kt-toss > i { position: absolute; font-size: 0.2em; }
+.g-kitchen .kt-toss > [data-i="0"] { left: 2%; top: 30%; }
+.g-kitchen .kt-toss > [data-i="1"] { left: 32%; top: 2%; }
+.g-kitchen .kt-toss > [data-i="2"] { left: 62%; top: 28%; }
+.g-kitchen .kt-toss > [data-i="3"] { left: 46%; top: 60%; }
+.g-kitchen .kt-toss > [data-i="4"] { left: 10%; top: 60%; }
+.g-kitchen .kt-toss__dressing { position: absolute; left: 8%; right: 8%; top: 42%; height: 16%; color: #FFF8EE; filter: drop-shadow(0 1.5px 0 var(--line)) drop-shadow(0 -1.5px 0 var(--line)); }
+.g-kitchen .kt-toss__dressing svg { display: block; width: 100%; height: 100%; overflow: visible; }
 
 /* pour: a jug with a band of what is inside, tipped toward the dish */
 .g-kitchen .kt-jug { left: 20%; right: 20%; top: 10%; bottom: 8%; transform-origin: 50% 100%; }
@@ -857,7 +868,8 @@
 .g-kitchen .kt-art--klepon .leaf { left: 2%; right: 2%; top: 52%; height: 40%; border: 0.045em solid var(--line); border-radius: 60% 40% 60% 40% / 50%; background: var(--kt-leaf); }
 .g-kitchen .kt-art--klepon .leaf::after { content: ""; position: absolute; left: 10%; right: 10%; top: 45%; border-top: 0.03em solid rgba(42, 35, 86, 0.35); }
 .g-kitchen .kt-art--klepon .ball { width: 0.4em; height: 0.4em; border: 0.045em solid var(--line); border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 62% 55%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 40% 72%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 70% 28%, #FFFFFF 0 4%, transparent 5%), var(--c); }
+  background: radial-gradient(ellipse 22% 16% at 34% 28%, rgba(255, 255, 255, 0.85) 0 90%, transparent 100%), radial-gradient(circle at 62% 55%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 40% 72%, #FFFFFF 0 5%, transparent 6%), radial-gradient(circle at 72% 30%, #FFFFFF 0 4%, transparent 5%), var(--c);
+  box-shadow: inset 0 0 0 0.03em rgba(20, 15, 40, 0.28), inset -0.03em -0.05em 0 0.01em rgba(20, 15, 40, 0.3), 0 0.03em 0 rgba(20, 15, 40, 0.45); }
 .g-kitchen .kt-art--klepon .b1 { left: 8%; top: 36%; }
 .g-kitchen .kt-art--klepon .b2 { left: 52%; top: 36%; }
 .g-kitchen .kt-art--klepon .b3 { left: 30%; top: 12%; }
@@ -879,7 +891,9 @@
 .g-kitchen .kt-tok { position: relative; display: inline-block; width: 1em; height: 1em; vertical-align: middle; }
 .g-kitchen .kt-tok > i { position: absolute; box-sizing: border-box; border: max(1.5px, 0.045em) solid var(--line); background: var(--c); }
 .g-kitchen .kt-tok--klepon > i { width: 0.42em; height: 0.42em; border-radius: 50%;
-  background: radial-gradient(circle at 30% 32%, #FFFFFF 0 7%, transparent 8%), radial-gradient(circle at 64% 56%, #FFFFFF 0 7%, transparent 8%), radial-gradient(circle at 38% 72%, #FFFFFF 0 6%, transparent 7%), radial-gradient(circle at 70% 26%, #FFFFFF 0 6%, transparent 7%), var(--c); }
+  background: radial-gradient(ellipse 22% 16% at 34% 28%, rgba(255, 255, 255, 0.85) 0 90%, transparent 100%), radial-gradient(circle at 64% 56%, #FFFFFF 0 7%, transparent 8%), radial-gradient(circle at 38% 72%, #FFFFFF 0 6%, transparent 7%), radial-gradient(circle at 72% 30%, #FFFFFF 0 6%, transparent 7%), var(--c);
+  /* (a darker rim and a shadow under it: her ball reads on the banana leaf even in pandan green) */
+  box-shadow: inset 0 0 0 0.03em rgba(20, 15, 40, 0.28), inset -0.03em -0.05em 0 0.01em rgba(20, 15, 40, 0.3), 0 0.03em 0 rgba(20, 15, 40, 0.45); }
 .g-kitchen .kt-tok--klepon > .b1 { left: 6%; top: 50%; }
 .g-kitchen .kt-tok--klepon > .b2 { left: 52%; top: 50%; }
 .g-kitchen .kt-tok--klepon > .b3 { left: 29%; top: 12%; }
@@ -902,6 +916,9 @@
 .g-kitchen .kt-cookie.is-baked { filter: brightness(0) invert(0.62) sepia(1) saturate(1.7) hue-rotate(-12deg) brightness(0.92); }
 .g-kitchen .kt-cookiewrap.is-oven > .is-baked { position: absolute; left: 0; top: 0; opacity: var(--cook, 0); }
 .g-kitchen .kt-food.is-cookie, .g-kitchen .kt-cut__raw.is-cookie { filter: none; }
+/* (a little bigger on the plate and around the finished dish, so her shape reads on a small phone) */
+.g-kitchen .kt-piece.is-cookie { font-size: calc(var(--vessel) * 0.21); }
+.g-kitchen .kt-dish__top.is-cookie { font-size: calc(var(--vessel) * 0.2); }
 
 /* the dish: a cake tin (kue lapis) whose stripes stack in the order they are poured, a banana leaf (klepon), the
    roti's spread inside the sandwich */
@@ -915,6 +932,10 @@
 .g-kitchen .kt-vessel[data-kind="plate"][data-plate="leaf"] .kt-vback::after { left: 8%; right: 8%; top: 64%; height: 0; border: 0; border-top: 3px solid rgba(42, 35, 86, 0.3); border-radius: 0; }
 .g-kitchen .kt-glaze[data-look="fill"] { width: 0.72em; height: 0.16em; margin: -0.02em -0.36em; border: 2px solid var(--line); border-radius: 0.08em; background: var(--c); box-shadow: none; }
 .g-kitchen .kt-piece[data-e="lolly"] { font-size: calc(var(--vessel) * 0.2); }
+/* klepon on the banana leaf: big enough to see, and the grated coconut a light sprinkle round them (never over them:
+   their own white flecks are the coconut on top) */
+.g-kitchen .kt-vessel[data-plate="leaf"] .kt-piece[data-e="klepon"] { font-size: calc(var(--vessel) * 0.24); }
+.g-kitchen .kt-vessel[data-plate="leaf"] .kt-dot { z-index: 3; width: calc(var(--vessel) * 0.022); height: calc(var(--vessel) * 0.022); margin: calc(var(--vessel) * -0.011); box-shadow: 0 0 0 1px rgba(42, 35, 86, 0.25); }
 
 /* spread: a butter knife paints a stripe of her spread across the slice with every tap */
 .g-kitchen .kt-bread { left: 22%; right: 22%; top: 20%; height: 0.56em; box-sizing: border-box; border: 3px solid var(--line); border-radius: 42% 42% 8% 8% / 30% 30% 8% 8%; background: var(--kt-bread); box-shadow: inset 0 0 0 0.035em var(--kt-crust); overflow: hidden; }
@@ -970,7 +991,11 @@
 .g-kitchen .kt-lstick { left: 50%; top: 0; width: 0.07em; height: 0.26em; margin-left: -0.035em; border: 2px solid var(--line); border-radius: 0.03em 0.03em 0 0; background: var(--kt-wood); }
 .g-kitchen .kt-lolly { left: 50%; top: 0.22em; width: 0.3em; height: 0.4em; margin-left: -0.15em; border: 3px solid var(--line); border-radius: 0.15em 0.15em 0.05em 0.05em; background: var(--c); }
 .g-kitchen .kt-lolly::after { content: ""; position: absolute; left: 18%; top: 14%; width: 16%; height: 46%; border-radius: 999px; background: rgba(255, 255, 255, 0.5); }
-.g-kitchen .kt-obj.is-pop .kt-lollyset { transform: translateY(-0.2em) scale(1.08); }
+/* POP: the lolly springs right up out of its mould (clear of it, a gap between) and the mould drops away */
+.g-kitchen .kt-obj.is-pop .kt-lollyset { transform: translateY(-0.36em) rotate(-6deg) scale(1.08); }
+.g-kitchen .kt-mould, .g-kitchen .kt-mcrack { transition: transform 0.3s ease-in, opacity 0.3s ease-in; }
+.g-kitchen .kt-obj.is-pop .kt-mould { transform: translateY(0.18em) rotate(4deg); opacity: 0.4; }
+.g-kitchen .kt-obj.is-pop .kt-mcrack { transform: translateY(0.18em); opacity: 0; }
 .g-kitchen .kt-mcrack { z-index: 2; left: 24%; right: 24%; top: 31%; height: 6%; color: var(--line); opacity: var(--crk, 0); pointer-events: none; }
 .g-kitchen .kt-mcrack svg { display: block; width: 100%; height: 100%; }
 
@@ -991,10 +1016,19 @@
 /* the taste gags, on the taster's own chef */
 .g-kitchen .kt-splat { position: absolute; z-index: 3; left: 18%; bottom: 30%; width: 0.22em; height: 0.22em; box-sizing: border-box; border: 1.5px solid var(--line); border-radius: 52% 48% 56% 44% / 50% 56% 44% 50%; background: #7A4320; transform: scale(0); transition: transform 0.2s cubic-bezier(.3, 1.8, .5, 1); }
 .g-kitchen .kt-board.has-splat .kt-splat { transform: scale(1); }
-.g-kitchen .kt-tongue { position: absolute; z-index: 3; left: 50%; bottom: 8%; width: 0.22em; height: 0.16em; margin-left: -0.11em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 0 0 50% 50%; background: var(--c, #F2677A); transform: scaleY(0); transform-origin: 50% 0; transition: transform 0.2s ease-out; }
+/* her-colour tongue: it covers the emoji's own tongue (out of the mouth, a rounded tip, a groove down the middle) */
+.g-kitchen .kt-tongue { position: absolute; z-index: 3; left: 50%; top: 66%; width: 0.44em; height: 0.52em; margin-left: -0.2em; box-sizing: border-box; border: 2px solid var(--line); border-top: 0; border-radius: 0 0 50% 50% / 0 0 62% 62%; background: var(--c, #F2677A); transform: scaleY(0); transform-origin: 50% 0; transition: transform 0.2s ease-out; }
+.g-kitchen .kt-tongue::after { content: ""; position: absolute; left: 50%; top: 0; height: 52%; margin-left: -1px; border-left: 2px solid rgba(42, 35, 86, 0.35); border-radius: 999px; }
 .g-kitchen .kt-board.has-tongue .kt-tongue { transform: scaleY(1); }
-.g-kitchen .kt-wormdangle { position: absolute; z-index: 3; left: 52%; top: 70%; width: 0.1em; height: 0.3em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 999px; background: var(--c); transform-origin: 50% 0; animation: kt-dangle 0.35s ease-in-out 2 alternate; transition: transform 0.3s ease-in; }
-@keyframes kt-dangle { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+/* a fat wriggly cendol worm in her colour hangs from the taster's mouth (a little below the face, still inside the
+   board), wriggles, and is slurped up */
+.g-kitchen .kt-wormdangle { position: absolute; z-index: 3; left: 50%; top: 70%; width: 0.56em; height: 1em; margin-left: -0.28em; transform-origin: 50% 8%; animation: kt-dangle 0.35s ease-in-out 2 alternate; transition: transform 0.3s ease-in; }
+.g-kitchen .kt-wormdangle svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.g-kitchen .kt-wormdangle path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.g-kitchen .kt-wormdangle .o { stroke: var(--line); stroke-width: 24; }
+.g-kitchen .kt-wormdangle .c { stroke: var(--c); stroke-width: 17; }
+.g-kitchen .kt-wormdangle .s { stroke: rgba(255, 255, 255, 0.6); stroke-width: 4; }
+@keyframes kt-dangle { from { transform: rotate(-12deg) skewX(10deg); } to { transform: rotate(12deg) skewX(-10deg); } }
 .g-kitchen .kt-wormdangle.is-up { animation: none; transform: scaleY(0); }
 .g-kitchen .kt-peelfly { display: block; width: 1.2em; height: 0.25em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 0.06em; background: var(--c); }
 
@@ -1021,5 +1055,5 @@
   .g-kitchen .kt-piece.is-new, .g-kitchen .kt-layer.is-new, .g-kitchen .kt-pbase.is-new, .g-kitchen .kt-contents .kt-scoop.is-new { animation: none; }
   .g-kitchen .kt-worm, .g-kitchen .kt-bubble, .g-kitchen .kt-prop--boil.is-gold .kt-food, .g-kitchen .kt-wormdangle, .g-kitchen .kt-bands > .kt-band.is-new { animation: none; }
   .g-kitchen .kt-bread > .kt-band, .g-kitchen .kt-spreader, .g-kitchen .kt-lump, .g-kitchen .kt-press > i, .g-kitchen .kt-plunger, .g-kitchen .kt-lollyset,
-  .g-kitchen .kt-prop--boil .kt-food, .g-kitchen .kt-bag, .g-kitchen .kt-wormdangle { transition: none; }
+  .g-kitchen .kt-prop--boil .kt-food, .g-kitchen .kt-bag, .g-kitchen .kt-wormdangle, .g-kitchen .kt-mould, .g-kitchen .kt-mcrack, .g-kitchen .kt-toss { transition: none; }
 }

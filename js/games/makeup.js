@@ -378,6 +378,11 @@
   };
   var SPARE_BIG = 12;   // em: about 11px on the smallest phone
   var RAINBOW = ['#FF5D8F', '#FF8A3D', '#FFC933', '#4CCB6B', '#2FB4F5', '#9B6BFF'];
+  // bits of the v2 backdrops: [left %, top %, size %] (bubble rings, daisies); the bottom-right corner stays clear for medals
+  var BGBITS = {
+    deep: [[12, 20, 8], [78, 30, 6], [60, 12, 5], [24, 55, 4]],
+    meadow: [[10, 18, 9], [84, 14, 9], [64, 34, 8], [18, 50, 8], [44, 12, 7], [86, 48, 7]],
+  };
 
   /* ---------------------------------------------------------- pure rules */
 
@@ -643,13 +648,15 @@
   var mx = function (sg, x) { return sg < 0 ? x : 100 - x; };                    // x on the friend's left (sg -1), else mirrored
   var rot = function (sg, a) { return 'rotate(' + (sg < 0 ? a : -a) + 'deg)'; };
   var SVG_TRI = '<svg viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><polygon points="0.6,9.4 5,0.6 9.4,9.4"/></svg>';   // point up
-  var TRI_DN = '<svg viewBox="0 0 12 11" preserveAspectRatio="none" aria-hidden="true"><polygon points="0.6,0.6 11.4,0.6 6,10.4"/></svg>';
-  var TRI_UP = '<svg viewBox="0 0 12 11" preserveAspectRatio="none" aria-hidden="true"><polygon points="6,0.6 11.4,10.4 0.6,10.4"/></svg>';
   /** A paw held up in front of the bib (side -1: the friend's left, on the viewer's left). */
   function pawOf(sg, d) { return shp([mx(sg, 22), 111], 18, 14, { bg: 'var(--fur)', br: '50% 50% 45% 45% / 60% 60% 40% 40%', d: d, rise: true }); }
   var NAILS = [[-5.5, -4.6], [0, -6.6], [5.5, -4.6]];
   var HEART_D = function (x0) { return 'M' + (x0 + 12) + ' 20 C' + (x0 + 2) + ' 13 ' + x0 + ' 8 ' + (x0 + 3) + ' 4 C' + (x0 + 6) + ' 0.6 ' + (x0 + 10) + ' 1 ' + (x0 + 12) + ' 5 C' + (x0 + 14) + ' 1 ' + (x0 + 18) + ' 0.6 ' + (x0 + 21) + ' 4 C' + (x0 + 24) + ' 8 ' + (x0 + 22) + ' 13 ' + (x0 + 12) + ' 20 Z'; };
   var HEARTS_SVG = '<svg viewBox="0 0 56 22" aria-hidden="true"><path d="' + HEART_D(2) + '"/><path d="' + HEART_D(30) + '"/><rect x="25" y="6.5" width="6" height="2.6"/></svg>';
+  // the fairy-wings tray icon: a big and a small lobe each side, joined in the middle, with a shine on each big lobe
+  var WING_L = '<path d="M50 52 C44 30 28 8 13 11 C1 14 3 38 18 46 C28 51 40 53 50 52 Z"/><path d="M50 55 C38 55 22 60 17 72 C12 85 24 93 34 86 C42 80 48 66 50 55 Z"/>' +
+    '<ellipse class="is-shine" cx="21" cy="25" rx="6" ry="3.6" transform="rotate(-40 21 25)"/>';
+  var WINGS_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">' + WING_L + '<g transform="translate(100 0) scale(-1 1)">' + WING_L + '</g><ellipse class="is-body" cx="50" cy="54" rx="3.4" ry="9"/></svg>';
 
   /* the six face-paint designs (it.v), each 3 named looks: left half, right half, the finishing touch */
   var PAINT = {
@@ -906,13 +913,10 @@
         if (kk >= 3) [-1, 1].forEach(function (sg) { [[24, 79], [29, 75], [30, 80.5]].forEach(function (p) { tt.push(shp([mx(sg, p[0]), p[1]], 2.8, 2.8, { bg: '#8A5A30', br: '50%', ln: false, d: 2 })); }); });
         return tt;
       }
-      if (it.v === 'roar') {    // a round open mouth, two top teeth, then a tongue and two bottom teeth (goofy, not scary)
-        var ro = [shp([50, 82], 22, 12, { bg: it.c, br: '45% 45% 50% 50% / 35% 35% 65% 65%', d: kk >= 2 ? 1 : 0 })];
-        if (kk >= 2) [44.5, 55.5].forEach(function (x) { ro.push(shp([x, 79.4], 5, 5.5, { ln: false, cls: 'mk-wing', vars: { '--c': '#FFFFFF' }, html: TRI_DN, d: 1 })); });
-        if (kk >= 3) {
-          ro.push(shp([50, 85], 10, 4.5, { bg: '#FF8FB1', br: '50% 50% 40% 40% / 70% 70% 30% 30%', ln: false, d: 2 }));
-          [42.5, 57.5].forEach(function (x) { ro.push(shp([x, 85.6], 4.5, 5, { ln: false, cls: 'mk-wing', vars: { '--c': '#FFFFFF' }, html: TRI_UP, d: 2 })); });
-        }
+      if (it.v === 'roar') {    // a goofy "aaah": a round open mouth, then wider with two little rounded baby teeth on top, then the pink tongue (no fangs)
+        var wide = kk >= 2, ro = [shp([50, wide ? 85 : 83.5], wide ? 21 : 15, wide ? 17 : 12, { bg: it.c, br: '50%', d: wide ? 1 : 0 })];
+        if (kk >= 2) [46.4, 53.6].forEach(function (x) { ro.push(shp([x, 79.1], 4.8, 4.2, { bg: '#FFFFFF', br: '25% 25% 50% 50% / 20% 20% 65% 65%', thin: true, d: 1 })); });
+        if (kk >= 3) ro.push(shp([50, 89], 11, 5.5, { bg: '#FF8FB1', br: '50% 50% 40% 40% / 70% 70% 30% 30%', ln: false, d: 2 }));
         return ro;
       }
       var out = [shp([50, 77], 30, 10, { ln: false, cls: 'mk-smile', vars: { '--c': it.c, '--sw': kk >= 2 ? '3.5em' : '2em' }, d: kk >= 2 ? 1 : 0 })];
@@ -1039,7 +1043,8 @@
     pose: function (it, kk, o) {
       var id = o.id;
       // the v2 poses (o.photo: the still photo; peek there shows its "boo!", hands open beside the face)
-      if (id === 'hug') return [shp([16, 100], 16, 12, { bg: 'var(--fur)', br: '50%', t: 'rotate(40deg)', d: 0 }), shp([84, 100], 16, 12, { bg: 'var(--fur)', br: '50%', t: 'rotate(-40deg)', d: 0 }), emo([80, 26], '💞', 12, { d: 0 })];
+      // (the mirror's 💞 goes on the outer side: the reaction bubble has the mirror's inner top corner)
+      if (id === 'hug') return [shp([16, 100], 16, 12, { bg: 'var(--fur)', br: '50%', t: 'rotate(40deg)', d: 0 }), shp([84, 100], 16, 12, { bg: 'var(--fur)', br: '50%', t: 'rotate(-40deg)', d: 0 }), emo([o.photo || o.outer === 'r' ? 80 : 20, 26], '💞', 12, { d: 0 })];
       if (id === 'peek') return o.photo
         ? [emo([17, 62], '✋', 15, { t: 'rotate(-20deg)', d: 0 }), emo([83, 62], '✋', 15, { t: 'scaleX(-1) rotate(-20deg)', d: 0 })]
         : [emo([36, 58], '✋', 17, { t: 'rotate(-10deg)', d: 0, cls: 'mk-peek' }), emo([64, 58], '✋', 17, { t: 'scaleX(-1) rotate(-10deg)', d: 0, cls: 'mk-peek is-r' })];
@@ -1195,11 +1200,11 @@
     if (k === 'ball' && it.v === 'snout') return box('mk-ico--ball is-snout', 3);
     if (k === 'whisk' && it.v === 'kitty') return box('mk-ico--whisk is-kitty', 7);   // the 6 whiskers + a pink nose
     if (k === 'smile' && it.v === 'teeth') return stk(it.ic, 'mk-ico-e');
-    if (k === 'smile' && it.v === 'roar') return box('mk-ico--smile is-roar', 1);
+    if (k === 'smile' && it.v === 'roar') return box('mk-ico--smile is-roar', 2);   // the round mouth (its two baby teeth) and the tongue
     if (k === 'ring' && it.ring === 'beads') return box('mk-ico--ring is-beads', 7);
     if (k === 'ring' && it.ring === 'spike') return box('mk-ico--spikes', 3);
     if (k === 'glitter' && it.v === 'bubble') return box('mk-ico--glitter is-bubble', 3);
-    if (k === 'cape' && it.v === 'wings') return box('mk-ico--cape is-wings', 4);
+    if (k === 'cape' && it.v === 'wings') { var bw = box('mk-ico--wings'); bw.innerHTML = WINGS_SVG; return bw; }   // a pair of fairy wings
     if (k === 'lips' && it.c === LIPS_RAINBOW) return box('mk-ico--lips is-rainbow', 2);   // (the em-sized stripes are for the face; the icon has its own bands)
     return null;
   }
@@ -1582,12 +1587,7 @@
 
       /* ---- the wall: pips, helpers, photos, decorations ---- */
 
-      // bits of the v2 backdrops: [left %, top %, size %] (bubble rings, daisies); the bottom-right corner stays clear for medals
-  var BGBITS = {
-    deep: [[12, 20, 8], [78, 30, 6], [60, 12, 5], [24, 55, 4]],
-    meadow: [[10, 18, 9], [84, 14, 9], [64, 34, 8], [18, 50, 8], [44, 12, 7], [86, 48, 7]],
-  };
-  /** A party's backdrop; deco: true for all three corner stickers, or how many (the menu card keeps its bottom row clear). */
+      /** A party's backdrop; deco: true for all three corner stickers, or how many (the menu card keeps its bottom row clear). */
       function bgEl(id, deco) {
         var P0 = PARTIES[id], n = el('span', { class: 'mk-bg', 'data-bg': P0.bg });
         if (P0.bg === 'night') for (var i = 0; i < 6; i++) n.appendChild(el('i', { class: 'mk-star', 'data-i': String(i) }));
@@ -1916,6 +1916,8 @@
         var on = !!(id && party && party.pal === zone && b.side === aSide && typeof c === 'string' && c.charAt(0) === '#');
         b.brush.classList.toggle('is-tint', on);
         if (on) b.brush.style.setProperty('--tint', c); else b.brush.style.removeProperty('--tint');
+        // her pick shows: the brush grows a big blob of the colour (css) and puffs a few dots of it (decoration only)
+        if (on) burstAt(b.brush.firstChild, { color: c, count: 8, distance: 34, size: 9 });
       }
       /** The same item again (or the face): one more dab. */
       function dab(b, wasHinted) {
@@ -1949,8 +1951,8 @@
         // a bubble on the nose (sometimes, in the wash); a glitter sneeze (sometimes, once per board)
         if (it.k === 'foam' && b.k === 2 && b.k < b.n && roll('foamSneeze', 1 / 6)) foamSneeze(b);
         if (it.k === 'glitter' && b.k === 2 && !b.sneezed && roll('sneeze', 1 / 4)) glitterSneeze(b);
-        // peekaboo: the hands slide apart (css), and the friend giggles behind them
-        if (id === 'peek' && zone === 'pose') ctx.after(1100, function () { if (zone === 'pose' && b.item === 'peek') showBubble(b, '😆'); });
+        // peekaboo: the hands slide apart (css), and the friend giggles behind them (never once the finale has begun)
+        if (id === 'peek' && zone === 'pose') ctx.after(1100, function () { if (state === 'zone' && zone === 'pose' && b.item === 'peek') showBubble(b, '😆'); });
         checkLooks(b);
         events.push({ t: ctx.time, side: b.side, k: b.k });
         if (events.length > 200) events.shift();
@@ -2102,7 +2104,7 @@
           else if (r === 'kiss') anim(F, [{ transform: 'translateX(0) rotate(0)' }, { transform: 'translateX(' + (b.side ? 6 : -6) + '%) rotate(' + (b.side ? 5 : -5) + 'deg)' }, { transform: 'translateX(0) rotate(0)' }], 500);
           else if (BODY[r]) anim(F, BODY[r][0], BODY[r][1]);
         }
-        if (r === 'love') burstAt(F, { emoji: '💕', count: 4, distance: 50, size: 16 });
+        if (r === 'love' && o.burst !== false) burstAt(F, { emoji: '💕', count: 4, distance: 50, size: 16 });
         if (r === 'clown') burstAt(F, { emoji: '🎈', count: 3, distance: 60, size: 18 });
         if (r === 'roar') burstAt(F, { emoji: '🐾', count: 4, distance: 50, size: 16 });
         if (r === 'star') burstAt(F, { emoji: '✨', count: 6, distance: 60, size: 16 });
@@ -2228,6 +2230,7 @@
 
       /* ---- tickles: taps on a done friend (and face taps while they admire) ---- */
 
+      var gagLog = [];   // the gags the tickles ran, newest last (tests read it)
       function tickle(b) {
         if (ctx.time - b.tickleAt < TICKLE_GAP) { press(b.sway); return; }
         b.tickleAt = ctx.time;
@@ -2248,8 +2251,10 @@
         if (L.top === 'duck') gags.push('duck');
         if (L.top === 'antennae') gags.push('antennae');
         if (L.neck === 'cape') gags.push('cape');
-        if (kindOf('eyes') === 'glasses' || kindOf('eyes') === 'mask') gags.push('cool');
+        if ((kindOf('eyes') === 'glasses' && L.eyes !== 'heart-specs') || kindOf('eyes') === 'mask') gags.push('cool');   // (the heart specs have their own)
         var g = gags.length ? gags[b.tickleI++ % gags.length] : 'giggle', F = b.F.el;
+        gagLog.push(g);
+        if (gagLog.length > 50) gagLog.shift();
         var jiggle = function (sel, frames, ms) { F.querySelectorAll(sel).forEach(function (n) { anim(n, frames, ms); }); };
         if (g === 'nose') { S.honk(); jiggle('[data-zone="nose"] .mk-at', [{ transform: 'scale(1, 1)' }, { transform: 'scale(1.3, 0.7)' }, { transform: 'scale(1, 1)' }], 300); react(b, 'clown', { quiet: true }); }
         else if (g === 'googly') { sfx.play('boing'); F.querySelectorAll('.mk-googly').forEach(function (n) { n.classList.remove('is-spin'); void n.offsetWidth; n.classList.add('is-spin'); }); react(b, 'silly', { quiet: true }); }
@@ -2272,7 +2277,12 @@
         else if (g === 'hair') { sfx.play('boing'); jiggle('[data-zone="top"] .mk-at', [{ transform: 'translateY(0)' }, { transform: 'translateY(-3em)' }, { transform: 'translateY(0)' }], 360); react(b, ITEMS[L.top].r, { quiet: true, id: L.top }); }
         else if (g === 'earring') { S.jingle2(); jiggle('.mk-dangle', [{ transform: 'rotate(0)' }, { transform: 'rotate(-18deg)' }, { transform: 'rotate(18deg)' }, { transform: 'rotate(0)' }], 500); react(b, ITEMS[L.neck].r, { quiet: true, id: L.neck }); }
         else if (g === 'wings') { sfx.play('whoosh'); jiggle('.mk-wingp', [{ transform: 'scaleX(1)' }, { transform: 'scaleX(0.7)' }, { transform: 'scaleX(1)' }, { transform: 'scaleX(0.7)' }, { transform: 'scaleX(1)' }], 400); react(b, 'wow', { quiet: true }); }
-        else if (g === 'hearts') { S.ooh(); jiggle('[data-zone="eyes"] .mk-at', [{ transform: 'scale(1)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }], 400); react(b, 'love', { quiet: true }); }
+        else if (g === 'hearts') {   // the heart specs pulse and puff out four 💕 (the burst comes from the specs, not again from the face)
+          S.ooh();
+          jiggle('[data-zone="eyes"] .mk-at', [{ transform: 'scale(1)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }], 400);
+          burstAt(F.querySelector('[data-zone="eyes"] .mk-pc') || F, { emoji: '💕', count: 4, distance: 50, size: 16 });
+          react(b, 'love', { quiet: true, burst: false });
+        }
         else {
           sfx.play('giggle');
           if (!RM) fx.wiggle(F);
@@ -2478,17 +2488,58 @@
         if (gift.kind === 'bag') bagFan();
         buildMenu();
       }
-      // the 👝 bag opens and the new everyday things fan out of it (decoration, done by +3.7s)
+      // the 👝 bag opens and the new everyday things fan out of it to a ring round it, hold, and fade (decoration, all
+      // over 0.82s after the bag opens at +2.85s: done by +3.7s, before the party overlay)
       var BAG_FAN = ['paint-star', 'nails-pink', 'bunches-pink', 'heart-specs', 'ear-cherry', 'hug'];
+      var FAN_MS = 820;
       function bagFan() {
-        // (0.9 of the box; on a short screen turned sideways, no further than keeps the top one on screen)
         var gr = giftEl.getBoundingClientRect(), rr = root.getBoundingClientRect();
-        var R = Math.max(40, Math.min(0.9 * (giftEl.offsetWidth || 100), gr.top + gr.height / 2 - rr.top - 20));
-        BAG_FAN.forEach(function (id, i) {
-          ctx.after(60 * i, function () {
-            var a = (-150 + 24 * i) * Math.PI / 180;
-            fly(iconFor(id), giftEl, giftEl, { to: [R * Math.cos(a), R * Math.sin(a)], size: 26, ms: 450, endScale: 1 });
+        if (!gr.width) return;
+        var sz = Math.round(clamp(gr.width * 0.3, 26, 40)), chip = sz * 1.25, half = chip / 2 + 2;
+        var cx = gr.left + gr.width / 2 - rr.left, cy = gr.top + gr.height / 2 - rr.top, R = gr.width * 0.45 + chip * 0.75 + 2;   // (just clear of the bag)
+        // the ring keeps off both friends' faces and stays whole on screen: of the places round the bag (every 15°, and a
+        // little further out), the six most spread out that are clear of the faces and of each other (the top one first)
+        var hit = function (p, q, m) { return Math.abs(p.x - q.x) < m && Math.abs(p.y - q.y) < m; };
+        var heads = boards.map(function (b) { var q = b.F.el.querySelector('.mk-head'); q = q && q.getBoundingClientRect(); return q && q.width ? { l: q.left - rr.left, t: q.top - rr.top, r: q.right - rr.left, b: q.bottom - rr.top } : null; }).filter(Boolean);
+        var cands = [];
+        for (var m = 0; m < 3; m++) for (var deg = -90; deg < 270; deg += 15) {
+          var a = deg * Math.PI / 180, rad = R + m * chip * 0.7, c = { x: cx + rad * Math.cos(a), y: cy + rad * Math.sin(a), deg: deg, m: m };
+          if (c.x < half || c.y < half || c.x > rr.width - half || c.y > rr.height - half) continue;
+          if (heads.some(function (q) { return c.x + half > q.l && c.x - half < q.r && c.y + half > q.t && c.y - half < q.b; })) continue;
+          cands.push(c);
+        }
+        var apart = function (d1, d2) { var d = Math.abs(d1 - d2) % 360; return Math.min(d, 360 - d); };
+        var spots = [];
+        while (spots.length < BAG_FAN.length) {
+          var best = null, bestGap = -1;
+          cands.forEach(function (c) {
+            if (spots.some(function (q) { return hit(c, q, 2 * half); })) return;
+            var gap = spots.length ? Math.min.apply(null, spots.map(function (q) { return apart(c.deg, q.deg); })) : 360 - apart(c.deg, -90);
+            if (gap > bestGap || (gap === bestGap && c.m < best.m)) { best = c; bestGap = gap; }
           });
+          if (!best) break;
+          spots.push(best);
+          // (and its mirror image on the other side, the friends being mirror images too)
+          var mir = best.deg === -90 || best.deg === 90 ? null : cands.filter(function (c) { return c.m === best.m && c.deg === 180 - best.deg; })[0];
+          if (mir && spots.length < BAG_FAN.length && !spots.some(function (q) { return hit(mir, q, 2 * half); })) spots.push(mir);
+        }
+        for (var j = spots.length; j < BAG_FAN.length; j++) {   // (a screen too cramped for that: the plain ring, kept on screen)
+          var a2 = (-90 + 60 * j) * Math.PI / 180;
+          spots.push({ x: clamp(cx + R * Math.cos(a2), half, rr.width - half), y: clamp(cy + R * Math.sin(a2), half, rr.height - half), deg: -90 + 60 * j });
+        }
+        spots.sort(function (p, q) { return (p.deg + 450) % 360 - (q.deg + 450) % 360; });   // (clockwise from the top: the fan's order)
+        BAG_FAN.forEach(function (id, i) {
+          var x = spots[i].x, y = spots[i].y;
+          var f = el('span', { class: 'mk-fan', style: { left: cx + 'px', top: cy + 'px', fontSize: sz + 'px' } }, iconFor(id));
+          root.appendChild(f);
+          var at = 'translate(calc(-50% + ' + (x - cx) + 'px), calc(-50% + ' + (y - cy) + 'px))', d = 20 * i, ms = FAN_MS - d;
+          if (f.animate) f.animate(RM
+            ? [{ transform: at, opacity: 1 }, { transform: at, opacity: 1, offset: 0.85 }, { transform: at, opacity: 0 }]
+            : [{ transform: 'translate(-50%, -50%) scale(0.3)', opacity: 0, easing: 'ease-out' }, { transform: at + ' scale(1.15)', opacity: 1, offset: 0.16 },
+              { transform: at + ' scale(1)', opacity: 1, offset: 0.24 }, { transform: at + ' scale(1)', opacity: 1, offset: 0.88 }, { transform: at + ' scale(0.9)', opacity: 0 }],
+          { duration: ms, delay: d, fill: 'both' });
+          else { f.style.transform = at; f.style.opacity = '1'; }
+          ctx.after(FAN_MS, function () { f.remove(); });
         });
       }
       function giftFace(g) {
@@ -2590,6 +2641,8 @@
         get mud() { return boards.map(function (b) { return b.mud; }); },
         get locked() { return ctx.locked; },
         get events() { return events.slice(); },
+        /** The tickle gags that ran, oldest first (the last 50). */
+        get gags() { return gagLog.slice(); },
         hintNext: hintNext,
         start: function (id) { pick(id, cardsEl.querySelector('.mk-card[data-id="' + id + '"]')); },
         setKit: function (raw) {

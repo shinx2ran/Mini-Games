@@ -656,6 +656,9 @@
 /* ---------------------------------------------------------------- flyers, the finale photo, the present */
 
 .g-makeup .mk-flyer { position: absolute; z-index: 30; line-height: 1; pointer-events: none; transform: translate(-50%, -50%); }
+/* the 👝 bag's fan: each new thing on a little chip, in a ring round the open bag (above everything; decoration) */
+.g-makeup .mk-fan { position: absolute; z-index: 31; display: grid; place-items: center; width: 1.25em; height: 1.25em; box-sizing: border-box; border: 2px solid var(--line); border-radius: 50%; background: var(--surface); box-shadow: 0 2px 0 var(--line); line-height: 1; pointer-events: none; transform: translate(-50%, -50%); opacity: 0; }
+.g-makeup .mk-fan > * { font-size: 0.78em; }
 .g-makeup .mk-clone { position: absolute; z-index: 30; margin: 0; transform-origin: 0 0; pointer-events: none; }
 .g-makeup .mk-frame {
   position: absolute;
@@ -851,8 +854,11 @@
 .g-makeup .mk-cicak { position: absolute; left: 0; top: 3%; z-index: 3; font-size: max(18px, calc(var(--m) * 0.16)); line-height: 1; pointer-events: none; animation: mk-cicak 1s linear forwards; }
 .g-makeup .mk-cicak.is-still { left: 70%; animation: none; }
 @keyframes mk-cicak { from { transform: translateX(-120%); } to { transform: translateX(calc(var(--m) * 1.4)); } }
-/* her colour step: the brush tip takes the colour she picked */
-.g-makeup .mk-brush.is-tint i { background: var(--tint); }
+/* her colour step: the brush grows and its tip becomes a big blob of the colour she picked */
+.g-makeup .mk-brush { transition: transform 0.2s cubic-bezier(.3, 1.6, .5, 1); }
+.g-makeup .mk-brush.is-tint { transform: rotate(-30deg) scale(1.35); }
+.g-makeup .mk-board[data-side="1"] .mk-brush.is-tint { transform: rotate(30deg) scale(1.35); }
+.g-makeup .mk-brush.is-tint i { left: -110%; right: -110%; top: -34%; height: 62%; border-radius: 50% 50% 42% 42% / 58% 58% 42% 42%; background: var(--tint); }
 /* a tray item new since the last present: a small twinkle in its corner */
 .g-makeup .mk-item__new { position: absolute; right: 4%; top: 4%; font-size: 0.28em; line-height: 1; pointer-events: none; }
 /* the photo: a hug leans the two friends together (the booth's own lean is the same) */
@@ -863,6 +869,7 @@
   .g-makeup .mk-frame.is-posed.is-hug .mk-fslot { transform: none; }
   .g-makeup .mk-pc.mk-peek { animation: none; }
   .g-makeup .mk-cicak { animation: none; left: 70%; }
+  .g-makeup .mk-brush { transition: none; }
 }
 
 /* ---- the menu: 12 look slots wrap to two rows on narrow phones, or stand at the side (2 wide) in landscape */
@@ -902,12 +909,13 @@
 .g-makeup .mk-ico--ball.is-snout > i:nth-child(2) { left: 32%; }
 .g-makeup .mk-ico--ball.is-snout > i:nth-child(3) { left: 54%; }
 .g-makeup .mk-ico--whisk.is-kitty > i:nth-child(7) { left: 36%; top: 40%; width: 28%; height: 20%; border-width: max(1.5px, 0.04em); border-radius: 45% 45% 50% 50% / 35% 35% 65% 65%; background: var(--c); }
-/* roar: a dark open mouth with two white teeth, on a soft orange disc (reads in dark mode) */
+/* roar: a round open mouth with two little rounded baby teeth and a pink tongue, on a soft orange disc (reads in dark mode) */
 .g-makeup .mk-ico--smile.is-roar { border: max(2px, 0.05em) solid var(--line); border-radius: 50%; background: var(--tangerine-soft); box-sizing: border-box; }
-.g-makeup .mk-ico--smile.is-roar > i { left: 12%; top: 22%; width: 76%; height: 54%; border-radius: 45% 45% 50% 50% / 35% 35% 65% 65%; background: var(--c); border-width: max(2px, 0.05em); border-color: var(--line); }
-.g-makeup .mk-ico--smile.is-roar > i::before, .g-makeup .mk-ico--smile.is-roar > i::after { content: ""; position: absolute; top: 0; width: 22%; height: 40%; background: #FFFFFF; clip-path: polygon(0 0, 100% 0, 50% 100%); }
-.g-makeup .mk-ico--smile.is-roar > i::before { left: 16%; }
-.g-makeup .mk-ico--smile.is-roar > i::after { right: 16%; }
+.g-makeup .mk-ico--smile.is-roar > i:nth-child(1) { left: 17%; top: 16%; width: 66%; height: 64%; border-width: max(2px, 0.05em); border-color: var(--line); border-radius: 50%; background: var(--c); overflow: hidden; }
+.g-makeup .mk-ico--smile.is-roar > i:nth-child(1)::before, .g-makeup .mk-ico--smile.is-roar > i:nth-child(1)::after { content: ""; position: absolute; top: -1px; width: 20%; height: 26%; box-sizing: border-box; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 50% 50% / 0 0 70% 70%; background: #FFFFFF; }
+.g-makeup .mk-ico--smile.is-roar > i:nth-child(1)::before { left: 28%; }
+.g-makeup .mk-ico--smile.is-roar > i:nth-child(1)::after { right: 28%; }
+.g-makeup .mk-ico--smile.is-roar > i:nth-child(2) { left: 33%; top: 54%; width: 34%; height: 18%; border: 0; border-radius: 50% 50% 40% 40% / 70% 70% 30% 30%; background: #FF8FB1; }
 /* rainbow lipstick: the bullet in five bands */
 .g-makeup .mk-ico--lips.is-rainbow > i:nth-child(2) { background: linear-gradient(to right, #FF5D8F 0 20%, #FFC933 20% 40%, #4CCB6B 40% 60%, #2FB4F5 60% 80%, #9B6BFF 80% 100%); }
 /* rainbow beads */
@@ -923,14 +931,15 @@
 .g-makeup .mk-ico--spikes > i:nth-child(1) { left: 28%; width: 44%; height: 76%; }
 .g-makeup .mk-ico--spikes > i:nth-child(2) { left: 2%; width: 34%; height: 52%; }
 .g-makeup .mk-ico--spikes > i:nth-child(3) { right: 2%; width: 34%; height: 52%; }
-/* soap bubbles: three rings on the glitter disc */
-.g-makeup .mk-ico--glitter.is-bubble > i { border-width: 1.5px; border-radius: 50%; background: rgba(127, 219, 255, 0.45); }
-.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(1) { left: 14%; top: 18%; width: 42%; height: 42%; }
-.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(2) { left: 54%; top: 30%; width: 30%; height: 30%; }
-.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(3) { left: 30%; top: 60%; width: 24%; height: 24%; }
-/* fairy wings: four lilac lobes (each lobe's left/top set, or the cape rule's leak in) */
-.g-makeup .mk-ico--cape.is-wings > i { width: 42%; height: 46%; border-radius: 50%; background: var(--c); }
-.g-makeup .mk-ico--cape.is-wings > i:nth-child(1) { left: 4%; top: 6%; transform: rotate(-25deg); }
-.g-makeup .mk-ico--cape.is-wings > i:nth-child(2) { left: 54%; top: 6%; transform: rotate(25deg); }
-.g-makeup .mk-ico--cape.is-wings > i:nth-child(3) { left: 12%; top: 56%; width: 32%; height: 36%; }
-.g-makeup .mk-ico--cape.is-wings > i:nth-child(4) { left: 56%; top: 56%; width: 32%; height: 36%; }
+/* soap bubbles: three light, shiny bubbles (a pale blue rim, a white glint) on a pale sky disc */
+.g-makeup .mk-ico--glitter.is-bubble { background: #DDF3FF; }
+.g-makeup .mk-ico--glitter.is-bubble > i { border: 1.5px solid #3F9FE0; border-radius: 50%; background: radial-gradient(circle at 62% 70%, rgba(255, 170, 230, 0.55) 0 22%, transparent 48%), rgba(190, 236, 255, 0.55); }
+.g-makeup .mk-ico--glitter.is-bubble > i::after { content: ""; position: absolute; left: 18%; top: 14%; width: 30%; height: 30%; border-radius: 50%; background: #FFFFFF; }
+.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(1) { left: 12%; top: 16%; width: 46%; height: 46%; }
+.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(2) { left: 56%; top: 30%; width: 30%; height: 30%; }
+.g-makeup .mk-ico--glitter.is-bubble > i:nth-child(3) { left: 32%; top: 62%; width: 24%; height: 24%; }
+/* fairy wings: a pair of lilac wings (a big and a small lobe each side) joined in the middle, with a shine */
+.g-makeup .mk-ico--wings svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
+.g-makeup .mk-ico--wings path { fill: var(--c); stroke: var(--line); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.g-makeup .mk-ico--wings .is-shine { fill: #FFFFFF; opacity: 0.8; }
+.g-makeup .mk-ico--wings .is-body { fill: var(--line); }
